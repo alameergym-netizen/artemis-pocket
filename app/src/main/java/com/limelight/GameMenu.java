@@ -288,6 +288,10 @@ public class GameMenu implements Game.GameMenuCallbacks {
     public void showMenu(GameInputDevice device) {
         List<MenuOption> options = new ArrayList<>();
 
+        // Artemis Pocket: the most used actions first
+        options.add(new MenuOption(getString(R.string.pocket_menu_guide), true, game::pressGuideButton));
+        options.add(new MenuOption(getString(R.string.pocket_menu_stats), true, game::toggleHUD));
+
         options.add(new MenuOption(getString(R.string.game_menu_disconnect), game::disconnect));
 
         options.add(new MenuOption(getString(R.string.game_menu_quit_session), game::quit));

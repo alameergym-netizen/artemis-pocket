@@ -19,10 +19,48 @@
         <!-- All customizations that are NOT specific to a particular API-level can go here. -->
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
-        <item name="android:statusBarColor">#1A1A1A</item>
-        <item name="android:navigationBarColor">#1A1A1A</item>
-        <item name="android:colorBackground">#1A1A1A</item>
-        <item name="android:windowBackground">#1A1A1A</item>
+        <item name="android:statusBarColor">@color/pocket_bg</item>
+        <item name="android:navigationBarColor">@color/pocket_bg</item>
+        <item name="android:colorBackground">@color/pocket_bg</item>
+        <item name="android:windowBackground">@color/pocket_bg</item>
+        <item name="android:windowAnimationStyle">@style/PocketActivityAnimations</item>
+        <item name="android:alertDialogTheme">@style/PocketDialog</item>
+        <item name="alertDialogTheme">@style/PocketDialogCompat</item>
+        <item name="colorAccent">@color/pocket_accent</item>
+        <item name="colorPrimary">@color/pocket_accent</item>
+        <item name="colorSecondary">@color/pocket_accent</item>
+    </style>
+
+    <!-- Artemis Pocket: smooth zoom/fade transitions between screens -->
+    <style name="PocketActivityAnimations" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/pocket_enter</item>
+        <item name="android:activityOpenExitAnimation">@anim/pocket_exit</item>
+        <item name="android:activityCloseEnterAnimation">@anim/pocket_pop_enter</item>
+        <item name="android:activityCloseExitAnimation">@anim/pocket_pop_exit</item>
+    </style>
+
+    <!-- Artemis Pocket: dark rounded dialogs (context menus, the in-stream quick menu, prompts) -->
+    <style name="PocketDialog" parent="@android:style/Theme.Material.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/pocket_dialog_bg</item>
+        <item name="android:textColorPrimary">@color/pocket_text</item>
+        <item name="android:textColorSecondary">@color/pocket_text_dim</item>
+        <item name="android:colorAccent">@color/pocket_accent</item>
+        <item name="android:colorControlHighlight">#405CF2D0</item>
+        <item name="android:listSelector">@drawable/pocket_list_selector</item>
+        <item name="android:windowAnimationStyle">@style/PocketDialogAnimations</item>
+    </style>
+
+    <style name="PocketDialogCompat" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="android:windowBackground">@drawable/pocket_dialog_bg</item>
+        <item name="colorAccent">@color/pocket_accent</item>
+        <item name="colorPrimary">@color/pocket_accent</item>
+        <item name="android:colorControlHighlight">#405CF2D0</item>
+        <item name="android:windowAnimationStyle">@style/PocketDialogAnimations</item>
+    </style>
+
+    <style name="PocketDialogAnimations" parent="@android:style/Animation.Dialog">
+        <item name="android:windowEnterAnimation">@anim/pocket_pop_enter</item>
+        <item name="android:windowExitAnimation">@anim/pocket_exit</item>
     </style>
 
     <style name="StreamBaseTheme" parent="AppBaseTheme">

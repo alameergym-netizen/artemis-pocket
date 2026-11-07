@@ -7,6 +7,8 @@ import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import androidx.core.content.ContextCompat;
+
 import com.limelight.PcView;
 import com.limelight.R;
 import com.limelight.nvstream.http.ComputerDetails;
@@ -90,5 +92,27 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
         else {
             overlayView.setVisibility(View.GONE);
         }
+
+        // Artemis Pocket: status line under the PC name
+        TextView statusView = parentView.findViewById(R.id.pc_status_text);
+        ImageView dotView = parentView.findViewById(R.id.pc_status_dot);
+        if (statusView != null && context instanceof PcView) {
+            statusView.setText(((PcView) context).describeComputer(obj.details, false));
+        }
+        if (dotView != null) {
+            int color;
+            if (obj.details.state == ComputerDetails.State.ONLINE) {
+                color = obj.details.pairState == PairingManager.PairState.PAIRED ?
+                        R.color.pocket_ok : R.color.pocket_warn;
+            }
+            else if (obj.details.state == ComputerDetails.State.OFFLINE) {
+                color = R.color.pocket_off;
+            }
+            else {
+                color = R.color.pocket_text_faint;
+            }
+            dotView.setColorFilter(ContextCompat.getColor(context, color));
+        }
+        txtView.setAlpha(1.0f);
     }
 }

@@ -11,8 +11,13 @@ android {
         minSdk 21
         targetSdk 34
 
-        versionName "20.2.6"
-        versionCode = 57
+        versionName "1.0.0-pocket"
+        versionCode = 100
+
+        // Artemis Pocket targets the Retroid Pocket 6 (Snapdragon 8 Gen 2), so only arm64 is built
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
 
         // Generate native debug symbols to allow Google Play to symbolicate our native crashes
         ndk.debugSymbolLevel = 'FULL'
@@ -25,26 +30,6 @@ android {
     }
 
     productFlavors {
-        root {
-            // Android O has native mouse capture, so don't show the rooted
-            // version to devices running O on the Play Store.
-            maxSdk 25
-
-            externalNativeBuild {
-                ndkBuild {
-                    arguments "PRODUCT_FLAVOR=root"
-                }
-            }
-
-            resValue "string",
-                    "obtainium_app_url",
-                    "data:text/html;base64,PGgxPlJvb3QgYnVpbGQgaXMgbm90IGF2YWlsYWJsZTwvaDE+"
-
-            applicationId "com.limelight.root"
-            dimension "root"
-            buildConfigField "boolean", "ROOT_BUILD", "true"
-        }
-
         nonRoot_game {
             externalNativeBuild {
                 ndkBuild {
@@ -54,9 +39,9 @@ android {
 
             resValue "string",
                     "obtainium_app_url",
-                    "https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.limelight.noir%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FClassicOldSong%2Fmoonlight-android%22%2C%22author%22%3A%22ClassicOldSong%22%2C%22name%22%3A%22Artemis%22%2C%22additionalSettings%22%3A%22%7B%5C%22apkFilterRegEx%5C%22%3A%5C%22nonRoot%5C%22%2C%5C%22matchGroutToUse%5C%22%3A%5C%22%241%5C%22%2C%5C%22versionExtractionRegEx%5C%22%3A%5C%22v(.%2B)%5C%22%7D%22%7D"
+                    "https://github.com/alameergym-netizen/artemis-pocket/releases"
 
-            applicationId "com.limelight"
+            applicationId "com.artemispocket"
             dimension "root"
             buildConfigField "boolean", "ROOT_BUILD", "false"
         }
@@ -71,6 +56,19 @@ android {
     lint {
         disable 'MissingTranslation'
         lintConfig file('lint.xml')
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    signingConfigs {
+        // A fixed key committed with the project so every CI build can update the previous one
+        // in place (a fresh debug key per build would force an uninstall each time).
+        pocket {
+            storeFile rootProject.file('keystore/artemis-pocket.jks')
+            storePassword 'artemispocket'
+            keyAlias 'artemispocket'
+            keyPassword 'artemispocket'
+        }
     }
 
     bundle {
@@ -95,10 +93,11 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix ".noirdebug"
-            resValue "string", "app_label", "Diana"
-            resValue "string", "app_label_root", "Diana (Root)"
-            resValue "string", "app_label_game", "Diana (Game)"
+            applicationIdSuffix ".debug"
+            resValue "string", "app_label", "Artemis Pocket (Debug)"
+            resValue "string", "app_label_root", "Artemis Pocket (Debug)"
+            resValue "string", "app_label_game", "Artemis Pocket (Debug)"
+            signingConfig signingConfigs.pocket
 
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
@@ -134,10 +133,12 @@ android {
             // is to please change the applicationId before you publish.
             //
             // TL;DR: Leave the following line alone!
-            applicationIdSuffix ".noir"
-            resValue "string", "app_label", "Artemis"
-            resValue "string", "app_label_root", "Artemis (Root)"
-            resValue "string", "app_label_game", "Artemis (Game)"
+            // Artemis Pocket uses its own application ID (com.artemispocket), so it installs
+            // next to the official Artemis instead of replacing it.
+            resValue "string", "app_label", "Artemis Pocket"
+            resValue "string", "app_label_root", "Artemis Pocket"
+            resValue "string", "app_label_game", "Artemis Pocket"
+            signingConfig signingConfigs.pocket
 
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
@@ -147,14 +148,6 @@ android {
     externalNativeBuild {
         ndkBuild {
             path "src/main/jni/Android.mk"
-        }
-    }
-
-    splits {
-        abi {
-            enable true
-            reset()
-            include "x86", "x86_64", "armeabi-v7a", "arm64-v8a"
         }
     }
 
@@ -179,9 +172,6 @@ dependencies {
     implementation 'com.google.android.material:material:1.13.0'
     implementation 'com.github.ByteHamster:SearchPreference:v2.5.1'
     implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
-    implementation 'com.google.ai.edge.litert:litert:1.4.0'
-    implementation 'com.google.ai.edge.litert:litert-gpu:1.4.0'
-    implementation 'org.opencv:opencv:4.12.0'
 
     // Unit test dependencies
     testImplementation 'junit:junit:4.13.2'

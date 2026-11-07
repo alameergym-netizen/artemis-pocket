@@ -2940,6 +2940,23 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
         return true;
     }
 
+    /**
+     * Artemis Pocket: press/release the Guide (Xbox) button on controller 1.
+     * Used when Back or Home is configured to act as the Guide button.
+     */
+    public void setEmulatedGuideButton(boolean down) {
+        if (stopped) {
+            return;
+        }
+        if (down) {
+            defaultContext.inputMap |= ControllerPacket.SPECIAL_BUTTON_FLAG;
+        }
+        else {
+            defaultContext.inputMap &= ~ControllerPacket.SPECIAL_BUTTON_FLAG;
+        }
+        sendControllerInputPacket(defaultContext);
+    }
+
     public void reportOscState(int buttonFlags,
                                short leftStickX, short leftStickY,
                                short rightStickX, short rightStickY,

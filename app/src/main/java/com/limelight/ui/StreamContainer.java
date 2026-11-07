@@ -69,7 +69,8 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
 
         this.game = game;
         this.prefConfig = prefConfig;
-        this.renderMode = mapIntToStreamMode(prefConfig.renderMode);
+        // Artemis Pocket: AI 3D modes were removed, always render in 2D
+        this.renderMode = StreamMode.MODE_2D;
 
         Stereo3DRenderer.isMovieMode = renderMode == StreamMode.MODE_AI_3D_MOVIE;
 

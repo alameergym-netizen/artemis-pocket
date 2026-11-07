@@ -13,6 +13,8 @@ import com.limelight.binding.audio.AndroidAudioRenderer;
 import com.limelight.binding.input.ControllerHandler;
 import com.limelight.binding.input.GameInputDevice;
 import com.limelight.binding.input.KeyboardTranslator;
+import com.limelight.pocket.PocketPrefs;
+import com.limelight.pocket.UsbLink;
 import com.limelight.binding.input.capture.InputCaptureManager;
 import com.limelight.binding.input.capture.InputCaptureProvider;
 import com.limelight.binding.input.touch.AbsoluteTouchContext;
@@ -286,6 +288,12 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     private NvHTTP httpConn;
 
+    // Artemis Pocket: hotkey that opens the quick menu, and Home/Back acting as the Guide button
+    private String pocketMenuHotkey;
+    private boolean pocketHomeAsGuide;
+    private boolean pocketHotkeyDown;
+    private boolean pocketGuideDown;
+
     public interface GameMenuCallbacks {
         void showMenu(GameInputDevice devic);
         void hideMenu();
@@ -538,7 +546,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Warn the user if they're on a metered connection
         ConnectivityManager connMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        boolean isMetered = connMgr.isActiveNetworkMetered();
+        // Artemis Pocket: a USB-C cable (or no default network at all) is never a metered link
+        boolean isMetered = UsbLink.isStreamMetered(this, getIntent().getStringExtra(EXTRA_HOST));
+        pocketMenuHotkey = PocketPrefs.getMenuHotkey(this);
+        pocketHomeAsGuide = PocketPrefs.homeAsGuide(this);
         if (isMetered) {
             displayTransientMessage(getResources().getString(R.string.conn_metered));
         }
@@ -664,7 +675,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     }
                 },
                 tombstonePrefs.getInt("CrashCount", 0),
-                connMgr.isActiveNetworkMetered(),
+                isMetered,
                 willStreamHdr,
                 shouldInvertDecoderResolution,
                 glPrefs.glRenderer,
@@ -787,7 +798,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 .setResolutionScaleFactor(prefConfig.resolutionScaleFactor)
                 .setApp(app)
                 .setEnableUltraLowLatency(prefConfig.enableUltraLowLatency)
-                .setBitrate(isMetered ? prefConfig.meteredBitrate: prefConfig.bitrate)
+                .setBitrate(isMetered ? prefConfig.meteredBitrate :
+                        (UsbLink.isUsbAddress(host) ? PocketPrefs.usbBitrateKbps(this) : prefConfig.bitrate))
                 .setEnableSops(prefConfig.enableSops)
                 .enableLocalAudioPlayback(prefConfig.playHostAudio)
                 .setMaxPacketSize(1392)
@@ -2073,6 +2085,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             return true;
         }
 
+        if (handlePocketKey(event, true)) {
+            return true;
+        }
+
         boolean handled = false;
 
         if (ControllerHandler.isGameControllerDevice(event.getDevice())) {
@@ -2163,6 +2179,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             return true;
         }
 
+        if (handlePocketKey(event, false)) {
+            return true;
+        }
+
         boolean handled = false;
         if (ControllerHandler.isGameControllerDevice(event.getDevice())) {
             // Always try the controller handler first, unless it's an alphanumeric keyboard device.
@@ -2198,6 +2218,63 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
 
         return true;
+    }
+
+    /** Artemis Pocket: tap the Xbox Guide button on the PC (from the quick menu). */
+    public void pressGuideButton() {
+        if (controllerHandler == null) {
+            return;
+        }
+        controllerHandler.setEmulatedGuideButton(true);
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (controllerHandler != null) {
+                controllerHandler.setEmulatedGuideButton(false);
+            }
+        }, 150);
+    }
+
+    /**
+     * Artemis Pocket keys, handled before anything else so they never reach the PC:
+     *  - the configured menu hotkey opens the quick menu
+     *  - Back (and Home, delivered by the accessibility service) can act as the Xbox Guide button
+     */
+    private boolean handlePocketKey(KeyEvent event, boolean down) {
+        if (PocketPrefs.matchesHotkey(pocketMenuHotkey, event)) {
+            if (down) {
+                if (event.getRepeatCount() == 0 && !pocketHotkeyDown) {
+                    pocketHotkeyDown = true;
+                    if (gameMenuCallbacks != null && gameMenuCallbacks.isMenuOpen()) {
+                        gameMenuCallbacks.hideMenu();
+                    }
+                    else {
+                        showGameMenu(null);
+                    }
+                }
+            }
+            else {
+                pocketHotkeyDown = false;
+            }
+            return true;
+        }
+
+        int keyCode = event.getKeyCode();
+        boolean guideKey = (keyCode == KeyEvent.KEYCODE_BACK && prefConfig.backAsGuide) ||
+                (keyCode == KeyEvent.KEYCODE_HOME && pocketHomeAsGuide);
+        if (guideKey && controllerHandler != null) {
+            if (down) {
+                if (!pocketGuideDown) {
+                    pocketGuideDown = true;
+                    controllerHandler.setEmulatedGuideButton(true);
+                }
+            }
+            else {
+                pocketGuideDown = false;
+                controllerHandler.setEmulatedGuideButton(false);
+            }
+            return true;
+        }
+
+        return false;
     }
 
     @Override

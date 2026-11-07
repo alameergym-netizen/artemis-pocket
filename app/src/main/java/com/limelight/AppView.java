@@ -15,8 +15,10 @@ import com.limelight.nvstream.http.NvHTTP;
 import com.limelight.nvstream.http.PairingManager;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.profiles.ProfilesManager;
-import com.limelight.ui.AdapterFragment;
-import com.limelight.ui.AdapterFragmentCallbacks;
+import com.limelight.pocket.ConsoleActivity;
+import com.limelight.pocket.PocketPrefs;
+import com.limelight.pocket.UsbLink;
+import com.limelight.pocket.ui.CarouselAdapter;
 import com.limelight.utils.CacheHelper;
 import com.limelight.utils.Dialog;
 import com.limelight.utils.ServerHelper;
@@ -51,12 +53,28 @@ import android.widget.Toast;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import android.graphics.Color;
+import android.graphics.RenderEffect;
+import android.graphics.Shader;
+import android.graphics.drawable.Drawable;
+import android.view.KeyEvent;
+import android.view.ViewGroup;
+import androidx.core.content.ContextCompat;
 
 import org.xmlpull.v1.XmlPullParserException;
 
-public class AppView extends AppCompatActivity implements AdapterFragmentCallbacks {
+public class AppView extends ConsoleActivity implements CarouselAdapter.Listener {
     private AppGridAdapter appGridAdapter;
+    private RecyclerView appCarousel;
+    private CarouselAdapter carouselAdapter;
+    private int contextPosition = -1;
+    private View contextView;
+    private boolean heroArtOnA = true;
+    private Bitmap heroBitmap;
+    private boolean initialFocusDone;
     private String uuidString;
     private ShortcutHelper shortcutHelper;
 
@@ -147,16 +165,7 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
                                 return;
                             }
 
-                            // Despite my best efforts to catch all conditions that could
-                            // cause the activity to be destroyed when we try to commit
-                            // I haven't been able to, so we have this try-catch block.
-                            try {
-                                getFragmentManager().beginTransaction()
-                                        .replace(R.id.appFragmentContainer, new AdapterFragment())
-                                        .commitAllowingStateLoss();
-                            } catch (IllegalStateException e) {
-                                e.printStackTrace();
-                            }
+                            setupCarousel();
                         }
                     });
                 }
@@ -180,14 +189,7 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
             // Update the app grid adapter to create grid items with the correct layout
             appGridAdapter.updateLayoutWithPreferences(this, this.prefConfig);
 
-            try {
-                // Reinflate the app grid itself to pick up the layout change
-                getFragmentManager().beginTransaction()
-                        .replace(R.id.appFragmentContainer, new AdapterFragment())
-                        .commitAllowingStateLoss();
-            } catch (IllegalStateException e) {
-                e.printStackTrace();
-            }
+            setupCarousel();
         }
     }
 
@@ -444,8 +446,18 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
     public void onCreateContextMenu(ContextMenu menu, View v, ContextMenuInfo menuInfo) {
         super.onCreateContextMenu(menu, v, menuInfo);
 
-        AdapterContextMenuInfo info = (AdapterContextMenuInfo) menuInfo;
-        AppObject selectedApp = (AppObject) appGridAdapter.getItem(info.position);
+        int position = contextPosition;
+        View targetView = contextView;
+        if (menuInfo instanceof AdapterContextMenuInfo) {
+            position = ((AdapterContextMenuInfo) menuInfo).position;
+            targetView = ((AdapterContextMenuInfo) menuInfo).targetView;
+        }
+        if (appGridAdapter == null || position < 0 || position >= appGridAdapter.getCount()) {
+            return;
+        }
+        contextPosition = position;
+        contextView = targetView;
+        AppObject selectedApp = (AppObject) appGridAdapter.getItem(position);
 
         menu.setHeaderTitle(selectedApp.app.getAppName());
 
@@ -483,8 +495,8 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             // Only add an option to create shortcut if box art is loaded
             // and when we're in grid-mode (not list-mode).
-            ImageView appImageView = info.targetView.findViewById(R.id.grid_image);
-            if (appImageView != null) {
+            ImageView appImageView = targetView != null ? targetView.findViewById(R.id.grid_image) : null;
+            if (appImageView != null && appImageView.getDrawable() instanceof BitmapDrawable) {
                 // We have a grid ImageView, so we must be in grid-mode
                 BitmapDrawable drawable = (BitmapDrawable)appImageView.getDrawable();
                 if (drawable != null && drawable.getBitmap() != null) {
@@ -503,8 +515,16 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
 
     @Override
     public boolean onContextItemSelected(MenuItem item) {
-        AdapterContextMenuInfo info = (AdapterContextMenuInfo) item.getMenuInfo();
-        final AppObject app = (AppObject) appGridAdapter.getItem(info.position);
+        int position = contextPosition;
+        View targetView = contextView;
+        if (item.getMenuInfo() instanceof AdapterContextMenuInfo) {
+            position = ((AdapterContextMenuInfo) item.getMenuInfo()).position;
+            targetView = ((AdapterContextMenuInfo) item.getMenuInfo()).targetView;
+        }
+        if (appGridAdapter == null || position < 0 || position >= appGridAdapter.getCount()) {
+            return super.onContextItemSelected(item);
+        }
+        final AppObject app = (AppObject) appGridAdapter.getItem(position);
         int itemId = item.getItemId();
         switch (itemId) {
             case START_WITH_QUIT:
@@ -591,7 +611,10 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
             }
 
             case CREATE_SHORTCUT_ID: {
-                ImageView appImageView = info.targetView.findViewById(R.id.grid_image);
+                ImageView appImageView = targetView != null ? targetView.findViewById(R.id.grid_image) : null;
+                if (appImageView == null || !(appImageView.getDrawable() instanceof BitmapDrawable)) {
+                    return true;
+                }
                 Bitmap appBits = ((BitmapDrawable) appImageView.getDrawable()).getBitmap();
                 if (!shortcutHelper.createPinnedGameShortcut(computer, app.app, appBits)) {
                     Toast.makeText(AppView.this, getResources().getString(R.string.unable_to_pin_shortcut), Toast.LENGTH_LONG).show();
@@ -655,6 +678,8 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
 
                 if (updated) {
                     appGridAdapter.notifyDataSetChanged();
+                    updateHero(carouselAdapter != null ? carouselAdapter.getFocusedPosition() : -1, null);
+                    updateHints();
                 }
             }
         });
@@ -729,50 +754,254 @@ public class AppView extends AppCompatActivity implements AdapterFragmentCallbac
 
                 if (updated) {
                     appGridAdapter.notifyDataSetChanged();
+                    updateSectionTitle();
+                    if (appCarousel != null) {
+                        appCarousel.post(AppView.this::focusInitialGame);
+                    }
                 }
             }
         });
     }
 
-    @Override
-    public int getAdapterFragmentLayoutId() {
-        return PreferenceConfiguration.readPreferences(AppView.this).smallIconMode ?
-                    R.layout.app_grid_view_small : R.layout.app_grid_view;
+    // ---- Console carousel ------------------------------------------------------------
+
+    private void setupCarousel() {
+        if (appGridAdapter == null) {
+            return;
+        }
+        appCarousel = findViewById(R.id.pocketAppCarousel);
+        if (appCarousel == null) {
+            return;
+        }
+        appCarousel.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        appCarousel.setItemAnimator(null);
+        carouselAdapter = new CarouselAdapter(appGridAdapter, this);
+        appCarousel.setAdapter(carouselAdapter);
+        updateSectionTitle();
+        updateHints();
+        ConsoleActivity.reveal(findViewById(R.id.pocketHero), 40);
+        ConsoleActivity.reveal(appCarousel, 120);
+        appCarousel.post(this::focusInitialGame);
+    }
+
+    /** Lands on the running game, else the last one played, else the first. */
+    private void focusInitialGame() {
+        if (initialFocusDone || appCarousel == null || appGridAdapter == null || appGridAdapter.getCount() == 0) {
+            return;
+        }
+        int target = 0;
+        int lastAppId = computer != null ? PocketPrefs.getLastAppId(this, computer.uuid) : 0;
+        int lastIndex = -1;
+        for (int i = 0; i < appGridAdapter.getCount(); i++) {
+            AppObject obj = (AppObject) appGridAdapter.getItem(i);
+            if (obj.isRunning) {
+                target = i;
+                lastIndex = -2;
+                break;
+            }
+            if (obj.app.getAppId() == lastAppId) {
+                lastIndex = i;
+            }
+        }
+        if (lastIndex >= 0) {
+            target = lastIndex;
+        }
+        final int position = target;
+        appCarousel.scrollToPosition(position);
+        appCarousel.post(() -> {
+            RecyclerView.ViewHolder holder = appCarousel.findViewHolderForAdapterPosition(position);
+            if (holder != null) {
+                initialFocusDone = true;
+                holder.itemView.requestFocus();
+                updateHero(position, holder.itemView instanceof ViewGroup && ((ViewGroup) holder.itemView).getChildCount() > 0 ?
+                        ((ViewGroup) holder.itemView).getChildAt(0) : null);
+            }
+        });
     }
 
     @Override
-    public void receiveAbsListView(AbsListView listView) {
-        listView.setAdapter(appGridAdapter);
-        listView.setOnItemClickListener(new OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> arg0, View arg1, int pos,
-                                    long id) {
-                AppObject app = (AppObject) appGridAdapter.getItem(pos);
+    public void onItemClicked(int pos, View itemView) {
+        if (appGridAdapter == null || pos < 0 || pos >= appGridAdapter.getCount()) {
+            return;
+        }
+        AppObject app = (AppObject) appGridAdapter.getItem(pos);
 
-                // Only open the context menu if something is running, otherwise start it
-                if (lastRunningAppId != 0) {
-                    if (prefConfig.resumeWithoutConfirm && lastRunningAppId == app.app.getAppId()) {
-                        ServerHelper.doStart(AppView.this, app.app, computer, managerBinder, prefConfig.useVirtualDisplay);
-                    } else {
-                        openContextMenu(arg1);
-                    }
-                } else {
-                    if (prefConfig.useVirtualDisplay && !(computer.vDisplaySupported && computer.vDisplayDriverReady)) {
-                        UiHelper.displayVdisplayConfirmationDialog(
-                                AppView.this,
-                                computer,
-                                () -> ServerHelper.doStart(AppView.this, app.app, computer, managerBinder, true),
-                                null
-                        );
-                    } else {
-                        ServerHelper.doStart(AppView.this, app.app, computer, managerBinder, prefConfig.useVirtualDisplay);
-                    }
-                }
+        // Only open the context menu if something is running, otherwise start it
+        if (lastRunningAppId != 0) {
+            if (prefConfig.resumeWithoutConfirm && lastRunningAppId == app.app.getAppId()) {
+                ServerHelper.doStart(AppView.this, app.app, computer, managerBinder, prefConfig.useVirtualDisplay);
+            } else {
+                onItemOptions(pos, itemView);
+            }
+        } else {
+            if (prefConfig.useVirtualDisplay && !(computer.vDisplaySupported && computer.vDisplayDriverReady)) {
+                UiHelper.displayVdisplayConfirmationDialog(
+                        AppView.this,
+                        computer,
+                        () -> ServerHelper.doStart(AppView.this, app.app, computer, managerBinder, true),
+                        null
+                );
+            } else {
+                ServerHelper.doStart(AppView.this, app.app, computer, managerBinder, prefConfig.useVirtualDisplay);
+            }
+        }
+    }
+
+    @Override
+    public void onItemOptions(int pos, View itemView) {
+        if (appGridAdapter == null || pos < 0 || pos >= appGridAdapter.getCount() || itemView == null) {
+            return;
+        }
+        contextPosition = pos;
+        contextView = itemView;
+        registerForContextMenu(itemView);
+        openContextMenu(itemView);
+        unregisterForContextMenu(itemView);
+    }
+
+    @Override
+    public void onItemFocused(int pos, View itemView) {
+        updateHero(pos, itemView);
+    }
+
+    private void updateSectionTitle() {
+        TextView section = findViewById(R.id.pocketSectionTitle);
+        if (section != null && appGridAdapter != null) {
+            section.setText(getString(R.string.pocket_library_count, appGridAdapter.getCount()));
+        }
+    }
+
+    private void updateHints() {
+        boolean running = lastRunningAppId != 0;
+        if (running) {
+            setHints(hintA(this, R.string.pocket_hint_play),
+                    hintY(this, R.string.pocket_hint_options),
+                    hintX(this, R.string.pocket_hint_quit_game),
+                    hintB(this, R.string.pocket_hint_back),
+                    hintStart(this, R.string.pocket_hint_settings));
+        }
+        else {
+            setHints(hintA(this, R.string.pocket_hint_play),
+                    hintY(this, R.string.pocket_hint_options),
+                    hintB(this, R.string.pocket_hint_back),
+                    hintStart(this, R.string.pocket_hint_settings));
+        }
+    }
+
+    private void updateHero(int position, View card) {
+        TextView title = findViewById(R.id.pocketHeroTitle);
+        TextView subtitle = findViewById(R.id.pocketHeroSubtitle);
+        if (title == null || subtitle == null || appGridAdapter == null) {
+            return;
+        }
+        if (position < 0 || position >= appGridAdapter.getCount()) {
+            return;
+        }
+        AppObject obj = (AppObject) appGridAdapter.getItem(position);
+        title.setText(obj.app.getAppName());
+
+        int lastAppId = computer != null ? PocketPrefs.getLastAppId(this, computer.uuid) : 0;
+        if (obj.isRunning) {
+            subtitle.setText(R.string.pocket_now_playing);
+            subtitle.setTextColor(ContextCompat.getColor(this, R.color.pocket_bg));
+            subtitle.setBackgroundResource(R.drawable.pocket_chip_usb_bg);
+            subtitle.getBackground().mutate().setTint(ContextCompat.getColor(this, R.color.pocket_accent));
+        }
+        else {
+            subtitle.setText(obj.app.getAppId() == lastAppId ? R.string.pocket_last_played : R.string.pocket_ready_to_play);
+            subtitle.setTextColor(ContextCompat.getColor(this, R.color.pocket_text));
+            subtitle.setBackgroundResource(R.drawable.pocket_chip_bg);
+        }
+
+        if (card != null) {
+            ImageView art = card.findViewById(R.id.grid_image);
+            if (art != null && art.getDrawable() instanceof BitmapDrawable) {
+                showHeroArt(((BitmapDrawable) art.getDrawable()).getBitmap());
+            }
+        }
+    }
+
+    private void showHeroArt(Bitmap bitmap) {
+        if (bitmap == null || bitmap == heroBitmap || bitmap.isRecycled()) {
+            return;
+        }
+        heroBitmap = bitmap;
+        ImageView a = findViewById(R.id.pocketHeroArtA);
+        ImageView b = findViewById(R.id.pocketHeroArtB);
+        if (a == null || b == null) {
+            return;
+        }
+        ImageView incoming = heroArtOnA ? b : a;
+        ImageView outgoing = heroArtOnA ? a : b;
+        heroArtOnA = !heroArtOnA;
+
+        incoming.setImageBitmap(bitmap);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            incoming.setRenderEffect(RenderEffect.createBlurEffect(36f, 36f, Shader.TileMode.CLAMP));
+        }
+        boolean animate = PocketPrefs.animationsEnabled(this);
+        incoming.animate().cancel();
+        outgoing.animate().cancel();
+        if (animate) {
+            incoming.setScaleX(1.08f);
+            incoming.setScaleY(1.08f);
+            incoming.animate().alpha(0.55f).scaleX(1f).scaleY(1f).setDuration(450).start();
+            outgoing.animate().alpha(0f).setDuration(450).start();
+        }
+        else {
+            incoming.setAlpha(0.55f);
+            outgoing.setAlpha(0f);
+        }
+
+        // Tint the background glow with the art's average colour
+        try {
+            Bitmap tiny = Bitmap.createScaledBitmap(bitmap, 1, 1, true);
+            int c = tiny.getPixel(0, 0);
+            com.limelight.pocket.ui.AuroraView aurora = findViewById(R.id.pocketAurora);
+            if (aurora != null) {
+                int a1 = Color.argb(0x55, Color.red(c), Color.green(c), Color.blue(c));
+                aurora.setColors(a1, 0x448C6CFF);
+            }
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    @Override
+    protected boolean onButtonX() {
+        if (lastRunningAppId == 0 || computer == null || managerBinder == null) {
+            return false;
+        }
+        UiHelper.displayQuitConfirmationDialog(this, () -> {
+            suspendGridUpdates = true;
+            ServerHelper.doQuit(AppView.this, computer,
+                    new NvApp("app", null, lastRunningAppId, false), managerBinder, () -> {
+                        suspendGridUpdates = false;
+                        if (poller != null) {
+                            poller.pollNow();
+                        }
+                    });
+        }, null);
+        return true;
+    }
+
+    @Override
+    protected boolean onShoulder(int direction) {
+        if (appCarousel == null || appGridAdapter == null || appGridAdapter.getCount() == 0) {
+            return false;
+        }
+        int current = carouselAdapter != null ? carouselAdapter.getFocusedPosition() : 0;
+        if (current < 0) {
+            current = 0;
+        }
+        final int target = Math.max(0, Math.min(appGridAdapter.getCount() - 1, current + direction * 5));
+        appCarousel.scrollToPosition(target);
+        appCarousel.post(() -> {
+            RecyclerView.ViewHolder holder = appCarousel.findViewHolderForAdapterPosition(target);
+            if (holder != null) {
+                holder.itemView.requestFocus();
             }
         });
-        UiHelper.applyStatusBarPadding(listView);
-        registerForContextMenu(listView);
-        listView.requestFocus();
+        return true;
     }
 
     public static class AppObject {

@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pocket_brand_title">Artemis Pocket</string>
+    <string name="pocket_my_pcs">أجهزتك</string>
+    <string name="pocket_hero_no_pc">اشبك كيبل USB-C أو اتصل بنفس واي فاي الكمبيوتر حتى تبدأ</string>
+    <string name="pocket_searching_title">عم ندوّر على الكمبيوتر…</string>
+    <string name="pocket_searching_sub">اشبك كيبل USB-C بالكمبيوتر، أو اتصل بنفس شبكة الواي فاي. لازم يكون Apollo أو Sunshine شغّال على الكمبيوتر.</string>
+
+    <string name="pocket_link_usb">USB-C</string>
+    <string name="pocket_link_wifi">واي فاي</string>
+    <string name="pocket_link_offline">بدون اتصال</string>
+
+    <string name="pocket_status_online">متصل</string>
+    <string name="pocket_status_offline">غير متصل</string>
+    <string name="pocket_status_checking">عم نتأكد…</string>
+    <string name="pocket_status_unpaired">مش مقترن · اضغط A للاقتران</string>
+    <string name="pocket_status_ingame">في لعبة شغّالة</string>
+    <string name="pocket_status_via_usb">عبر USB-C</string>
+
+    <string name="pocket_hint_select">اختيار</string>
+    <string name="pocket_hint_open">فتح</string>
+    <string name="pocket_hint_back">رجوع</string>
+    <string name="pocket_hint_options">خيارات</string>
+    <string name="pocket_hint_add_pc">إضافة جهاز</string>
+    <string name="pocket_hint_settings">الإعدادات</string>
+    <string name="pocket_hint_play">العب</string>
+    <string name="pocket_hint_cancel">إلغاء</string>
+    <string name="pocket_hint_close">إغلاق</string>
+    <string name="pocket_hint_clear">مسح</string>
+    <string name="pocket_hint_go">ابدأ هلّق</string>
+    <string name="pocket_hint_pair">اقتران</string>
+    <string name="pocket_hint_tabs">تبديل القسم</string>
+    <string name="pocket_hint_quit_game">إغلاق اللعبة</string>
+
+    <string name="pocket_usb_detected">انشبك كيبل USB-C</string>
+    <string name="pocket_usb_searching">عم ندوّر على الكمبيوتر عبر الكيبل…</string>
+    <string name="pocket_usb_found">متصل بـ %1$s</string>
+    <string name="pocket_usb_needs_pair">هالجهاز مش مقترن لسا. اضغط A، وبعدين حط الرمز بصفحة Apollo على الكمبيوتر.</string>
+    <string name="pocket_usb_not_found">ما في كمبيوتر رد عبر الكيبل</string>
+    <string name="pocket_usb_not_found_help">تأكد إنو Apollo شغّال وإنك شغّلت سكربت إعداد الكمبيوتر مرة وحدة. لسا عم نحاول…</string>
+    <string name="pocket_usb_countdown">%1$s خلال %2$d…</string>
+    <string name="pocket_usb_opening_library">فتح مكتبة الألعاب</string>
+    <string name="pocket_usb_resuming">الرجوع للعبتك</string>
+    <string name="pocket_usb_starting">تشغيل %1$s</string>
+    <string name="pocket_usb_status_on">متصل · %1$s</string>
+    <string name="pocket_usb_status_off">غير متصل</string>
+    <string name="pocket_usb_help_title">إعداد الستريم عبر USB-C</string>
+    <string name="pocket_usb_help_sub">خطوات مرة وحدة على الجهاز والكمبيوتر</string>
+    <string name="pocket_usb_help_body">الستريم عبر الكيبل ما بيحتاج واي فاي ولا إنترنت. الكيبل بصير شبكة خاصة بين الجهاز والكمبيوتر.\n\nعلى الكمبيوتر (مرة وحدة)\n1. نزّل Apollo (أو Sunshine) وتأكد إنو شغّال.\n2. نزّل مجلد pc-setup من صفحة Artemis Pocket على GitHub واعمل دبل كليك على ArtemisPocket-USB-Setup.bat. بيفتح الفايروول لشبكة الـ USB وبيمنع ويندوز يستخدم الجهاز للإنترنت.\n\nعلى الريترويد (مرة وحدة)\n3. الإعدادات ← حول الجهاز ← اضغط على رقم الإصدار (Build number) ٧ مرات.\n4. الإعدادات ← النظام ← خيارات المطوّر ← Default USB configuration ← USB tethering.\n\nكل مرة\n5. افتح Artemis Pocket واشبك الكيبل بالكمبيوتر، وهو بيلاقي الكمبيوتر لحاله. أول مرة اعمل اقتران بالرمز من صفحة Apollo.\n\nنصائح: استخدم منفذ وكيبل USB 3. الجهاز بيشحن من الكمبيوتر وإنت بتلعب، بس أبطأ من شاحن الحيط.</string>
+
+    <string name="pocket_library">المكتبة</string>
+    <string name="pocket_library_count">المكتبة · %1$d</string>
+    <string name="pocket_ready_to_play">جاهزة للعب</string>
+    <string name="pocket_now_playing">● شغّالة الآن</string>
+    <string name="pocket_last_played">آخر لعبة</string>
+
+    <string name="pocket_settings_title">الإعدادات</string>
+    <string name="pocket_tab_stream">الستريم</string>
+    <string name="pocket_tab_controls">التحكم</string>
+    <string name="pocket_tab_connection">الاتصال</string>
+    <string name="pocket_tab_system">النظام</string>
+
+    <string name="pocket_header_quality">الجودة</string>
+    <string name="pocket_header_video">الفيديو</string>
+    <string name="pocket_header_buttons">الأزرار</string>
+    <string name="pocket_header_feel">الإحساس</string>
+    <string name="pocket_header_usb">USB-C</string>
+    <string name="pocket_header_pcs">الأجهزة</string>
+    <string name="pocket_header_app">التطبيق</string>
+    <string name="pocket_header_advanced">المزيد</string>
+
+    <string name="pocket_on">تشغيل</string>
+    <string name="pocket_off">إيقاف</string>
+    <string name="pocket_not_set">غير محدد</string>
+    <string name="pocket_value_auto">تلقائي</string>
+    <string name="pocket_value_custom">مخصص</string>
+    <string name="pocket_apply">تطبيق</string>
+
+    <string name="pocket_set_preset">مستوى الجودة</string>
+    <string name="pocket_set_preset_sub">بيضبط الدقة والفريمات والبت ريت مع بعض</string>
+    <string name="pocket_preset_battery">توفير البطارية</string>
+    <string name="pocket_preset_balanced">متوازن</string>
+    <string name="pocket_preset_quality">أعلى جودة</string>
+    <string name="pocket_preset_custom">مخصص</string>
+    <string name="pocket_set_resolution">الدقة</string>
+    <string name="pocket_set_resolution_sub">شاشة Retroid Pocket 6 دقتها 1080p</string>
+    <string name="pocket_set_fps">الفريمات</string>
+    <string name="pocket_set_bitrate_wifi">البت ريت على الواي فاي</string>
+    <string name="pocket_set_bitrate_wifi_sub">نزّله إذا الصورة بتقطّع</string>
+    <string name="pocket_set_bitrate_usb">البت ريت على USB-C</string>
+    <string name="pocket_set_bitrate_usb_sub">الكيبل بيتحمل أكثر بكثير من الواي فاي</string>
+    <string name="pocket_set_codec">كوديك الفيديو</string>
+    <string name="pocket_set_codec_sub">HEVC أقل تأخير على هالجهاز</string>
+    <string name="pocket_set_pacing">توزيع الفريمات</string>
+    <string name="pocket_pacing_latency">أقل تأخير</string>
+    <string name="pocket_pacing_balanced">متوازن</string>
+    <string name="pocket_pacing_smooth">أنعم صورة</string>
+    <string name="pocket_set_perf">عرض الأداء</string>
+    <string name="pocket_perf_lite">مختصر</string>
+    <string name="pocket_perf_full">كامل</string>
+    <string name="pocket_set_vdisplay">شاشة افتراضية</string>
+    <string name="pocket_set_vdisplay_sub">Apollo بيعمل شاشة على مقاس الجهاز</string>
+    <string name="pocket_set_hdr">HDR</string>
+
+    <string name="pocket_set_hotkey">زر القائمة</string>
+    <string name="pocket_set_hotkey_sub">بيفتح الإعدادات هون، والقائمة السريعة أثناء الستريم</string>
+    <string name="pocket_set_back_guide">زر Back يشتغل كـ Xbox Guide</string>
+    <string name="pocket_set_back_guide_sub">أثناء الستريم، Back بيضغط زر Guide</string>
+    <string name="pocket_set_home_guide">زر Home يشتغل كـ Xbox Guide</string>
+    <string name="pocket_set_home_guide_sub">أثناء الستريم. بيحتاج خدمة إمكانية الوصول</string>
+    <string name="pocket_set_flip">تبديل A/B و X/Y</string>
+    <string name="pocket_set_flip_sub">لترتيب أزرار نينتندو</string>
+    <string name="pocket_set_rumble">الاهتزاز</string>
+    <string name="pocket_set_rumble_sub">اهتزاز الألعاب عبر موتور الجهاز</string>
+    <string name="pocket_set_deadzone">المنطقة الميتة للستيك</string>
+    <string name="pocket_set_gyro">التصويب بالجيرو</string>
+    <string name="pocket_set_gyro_sub">يبعت حساس الحركة بالجهاز للألعاب</string>
+    <string name="pocket_set_mouse">وضع الماوس</string>
+    <string name="pocket_set_mouse_sub">اضغط مطوّلاً على START لتحرك مؤشر الكمبيوتر بالستيك</string>
+
+    <string name="pocket_set_usb_status">رابط USB-C</string>
+    <string name="pocket_set_usb_auto">اتصال تلقائي عبر USB-C</string>
+    <string name="pocket_set_usb_auto_sub">يلاقي الكمبيوتر أول ما تشبك الكيبل</string>
+    <string name="pocket_set_usb_action">لما ينشبك USB-C</string>
+    <string name="pocket_usb_action_library">افتح المكتبة</string>
+    <string name="pocket_usb_action_last">شغّل آخر لعبة</string>
+    <string name="pocket_usb_action_nothing">ولا شي</string>
+    <string name="pocket_set_usb_tether">إعدادات التيثرنج</string>
+    <string name="pocket_set_usb_tether_sub">شغّل USB tethering يدوياً</string>
+    <string name="pocket_set_add_pc">إضافة جهاز بالعنوان</string>
+    <string name="pocket_set_add_pc_sub">للأجهزة اللي ما بتنلاقى تلقائياً</string>
+
+    <string name="pocket_set_animations">الأنيميشن</string>
+    <string name="pocket_set_animations_sub">طفّيه لتوفر شوية بطارية</string>
+    <string name="pocket_set_language">اللغة</string>
+    <string name="pocket_set_language_sub">العربية، English وغيرها</string>
+    <string name="pocket_set_profiles">البروفايلات</string>
+    <string name="pocket_set_profiles_sub">احفظ إعدادات مختلفة لكل لعبة أو مكان</string>
+    <string name="pocket_set_rp6">إعدادات Retroid Pocket 6</string>
+    <string name="pocket_set_rp6_sub">رجّع الإعدادات المضبوطة لهالجهاز</string>
+    <string name="pocket_rp6_confirm">رح يضبط 1080p على 120 فريم، و HEVC، وزر Back كـ Guide، وباقي الخيارات المقترحة. أجهزتك والاقتران ما بيتغيروا.</string>
+    <string name="pocket_rp6_applied">تم تطبيق إعدادات Retroid Pocket 6</string>
+    <string name="pocket_set_advanced">إعدادات متقدمة</string>
+    <string name="pocket_set_advanced_sub">كل خيارات Artemis: الصوت، الإدخال، الكوديك، العرض…</string>
+    <string name="pocket_set_about">الإصدار</string>
+    <string name="pocket_about_sub">Artemis Pocket، مبني على Artemis و Moonlight</string>
+
+    <string name="pocket_capture_title">اضغط الزر اللي بدك ياه</string>
+    <string name="pocket_capture_sub">مثلاً M1 أو M2 من ورا. اربطهم أول بإعدادات ريترويد بزر ما بتستخدمه الألعاب.</string>
+    <string name="pocket_hotkey_assigned">زر القائمة: %1$s</string>
+    <string name="pocket_hotkey_cleared">تم مسح زر القائمة</string>
+    <string name="pocket_hotkey_reserved">هالزر بنحتاجه للقوائم. اختار زر ثاني.</string>
+
+    <string name="pocket_a11y_title">السماح لزر Home يشتغل كـ Guide</string>
+    <string name="pocket_a11y_message">أندرويد ما بيعطي زر Home للتطبيقات إلا عن طريق خدمة إمكانية الوصول. بالصفحة الجاية فعّل \"Artemis Pocket: Home button and keyboard capture\".\n\nبيشتغل بس وإنت عامل ستريم. عشان Home يصير Guide بكل التطبيقات، اتبع خطوات Key Mapper بدليل الإعداد.</string>
+    <string name="pocket_a11y_open">افتح الإعدادات</string>
+
+    <string name="pocket_menu_guide">اضغط Xbox Guide</string>
+    <string name="pocket_menu_settings">إعدادات الستريم</string>
+    <string name="pocket_menu_stats">إظهار/إخفاء معلومات الأداء</string>
+</resources>

@@ -956,6 +956,36 @@ public class StreamSettings extends AppCompatActivity {
                     }
                 });
             }
+
+            // Artemis Pocket: hide features that were removed or make no sense on a handheld
+            hidePocketRemovedFeatures();
+        }
+
+        private void hidePocketRemovedFeatures() {
+            String[] keys = {
+                    // On-screen controls / virtual layouts (the Retroid has real buttons)
+                    "category_onscreen_controls",
+                    "category_special_key_layout",
+                    "category_virtual_trackpad_settings",
+                    // AI SBS 3D (removed)
+                    "render_mode_list",
+                    "parallax_depth",
+                    "convergence_ratio",
+                    "balance_shift",
+                    // Phone/tablet-only behaviour
+                    "checkbox_enable_pip",
+                    "checkbox_auto_orientation",
+                    "checkbox_small_icon_mode",
+                    // Upstream update links (Artemis Pocket updates come from its own GitHub)
+                    "option_follow_update",
+                    "option_software_release",
+            };
+            for (String key : keys) {
+                Preference pref = findPreference(key);
+                if (pref != null && pref.getParent() != null) {
+                    pref.getParent().removePreference(pref);
+                }
+            }
         }
 
         private void removeEntryFromListAndSetValue(String resolutionPrefString, String entryToRemove, String nextDefault) {

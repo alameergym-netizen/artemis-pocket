@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="pocket_brand" translatable="false">ARTEMIS POCKET</string>
+    <string name="pocket_brand_title">Artemis Pocket</string>
+    <string name="pocket_my_pcs">Your PCs</string>
+    <string name="pocket_hero_no_pc">Plug in USB-C or join your PC\'s Wi-Fi to begin</string>
+    <string name="pocket_searching_title">Looking for your PC…</string>
+    <string name="pocket_searching_sub">Plug the USB-C cable into your PC, or connect to the same Wi-Fi. Apollo or Sunshine must be running on the PC.</string>
+
+    <string name="pocket_link_usb">USB-C</string>
+    <string name="pocket_link_wifi">Wi-Fi</string>
+    <string name="pocket_link_offline">No link</string>
+
+    <string name="pocket_status_online">Online</string>
+    <string name="pocket_status_offline">Offline</string>
+    <string name="pocket_status_checking">Checking…</string>
+    <string name="pocket_status_unpaired">Not paired · press A to pair</string>
+    <string name="pocket_status_ingame">Game running</string>
+    <string name="pocket_status_via_usb">via USB-C</string>
+
+    <!-- Button hints -->
+    <string name="pocket_hint_select">Select</string>
+    <string name="pocket_hint_open">Open</string>
+    <string name="pocket_hint_back">Back</string>
+    <string name="pocket_hint_options">Options</string>
+    <string name="pocket_hint_add_pc">Add PC</string>
+    <string name="pocket_hint_settings">Settings</string>
+    <string name="pocket_hint_play">Play</string>
+    <string name="pocket_hint_cancel">Cancel</string>
+    <string name="pocket_hint_close">Close</string>
+    <string name="pocket_hint_clear">Clear</string>
+    <string name="pocket_hint_go">Go now</string>
+    <string name="pocket_hint_pair">Pair</string>
+    <string name="pocket_hint_tabs">Switch tab</string>
+    <string name="pocket_hint_quit_game">Quit game</string>
+
+    <!-- USB-C plug & play -->
+    <string name="pocket_usb_detected">USB-C link detected</string>
+    <string name="pocket_usb_searching">Finding your PC on the cable…</string>
+    <string name="pocket_usb_found">Connected to %1$s</string>
+    <string name="pocket_usb_needs_pair">This PC isn\'t paired yet. Press A, then enter the PIN in Apollo\'s web page on the PC.</string>
+    <string name="pocket_usb_not_found">No PC answered on the cable</string>
+    <string name="pocket_usb_not_found_help">Check that Apollo is running and that you ran the PC setup script once. Still trying…</string>
+    <string name="pocket_usb_countdown">%1$s in %2$d…</string>
+    <string name="pocket_usb_opening_library">Opening your library</string>
+    <string name="pocket_usb_resuming">Resuming your game</string>
+    <string name="pocket_usb_starting">Starting %1$s</string>
+    <string name="pocket_usb_status_on">Connected · %1$s</string>
+    <string name="pocket_usb_status_off">Not connected</string>
+    <string name="pocket_usb_help_title">USB-C streaming setup</string>
+    <string name="pocket_usb_help_sub">One-time steps on the handheld and the PC</string>
+    <string name="pocket_usb_help_body">Streaming over the cable needs no Wi-Fi and no internet. The cable becomes a private network between the handheld and your PC.\n\nON THE PC (once)\n1. Install Apollo (or Sunshine) and make sure it is running.\n2. Download the pc-setup folder from the Artemis Pocket GitHub page and double-click ArtemisPocket-USB-Setup.bat. It opens the firewall for the USB network and stops Windows from using the handheld for internet.\n\nON THE RETROID (once)\n3. Settings → About device → tap Build number 7 times.\n4. Settings → System → Developer options → Default USB configuration → USB tethering.\n\nEVERY TIME\n5. Open Artemis Pocket and plug the cable into the PC. It finds the PC on its own. The first time, pair with the PIN in Apollo\'s web page.\n\nTips: use a USB 3 port and cable. The handheld charges from the PC while you play, but more slowly than from a wall charger.</string>
+
+    <!-- Library -->
+    <string name="pocket_library">Library</string>
+    <string name="pocket_library_count">Library · %1$d</string>
+    <string name="pocket_ready_to_play">Ready to play</string>
+    <string name="pocket_now_playing">● Now playing</string>
+    <string name="pocket_last_played">Last played</string>
+
+    <!-- Settings -->
+    <string name="pocket_settings_title">Settings</string>
+    <string name="pocket_tab_stream">Stream</string>
+    <string name="pocket_tab_controls">Controls</string>
+    <string name="pocket_tab_connection">Connection</string>
+    <string name="pocket_tab_system">System</string>
+
+    <string name="pocket_header_quality">Quality</string>
+    <string name="pocket_header_video">Video</string>
+    <string name="pocket_header_buttons">Buttons</string>
+    <string name="pocket_header_feel">Feel</string>
+    <string name="pocket_header_usb">USB-C</string>
+    <string name="pocket_header_pcs">PCs</string>
+    <string name="pocket_header_app">App</string>
+    <string name="pocket_header_advanced">More</string>
+
+    <string name="pocket_on">ON</string>
+    <string name="pocket_off">OFF</string>
+    <string name="pocket_not_set">Not set</string>
+    <string name="pocket_value_auto">Auto</string>
+    <string name="pocket_value_custom">Custom</string>
+    <string name="pocket_apply">Apply</string>
+
+    <string name="pocket_set_preset">Quality preset</string>
+    <string name="pocket_set_preset_sub">Sets resolution, frame rate and bitrate together</string>
+    <string name="pocket_preset_battery">Battery saver</string>
+    <string name="pocket_preset_balanced">Balanced</string>
+    <string name="pocket_preset_quality">Max quality</string>
+    <string name="pocket_preset_custom">Custom</string>
+    <string name="pocket_set_resolution">Resolution</string>
+    <string name="pocket_set_resolution_sub">The Retroid Pocket 6 screen is 1080p</string>
+    <string name="pocket_set_fps">Frame rate</string>
+    <string name="pocket_set_bitrate_wifi">Bitrate over Wi-Fi</string>
+    <string name="pocket_set_bitrate_wifi_sub">Lower it if the picture stutters</string>
+    <string name="pocket_set_bitrate_usb">Bitrate over USB-C</string>
+    <string name="pocket_set_bitrate_usb_sub">The cable can take much more than Wi-Fi</string>
+    <string name="pocket_set_codec">Video codec</string>
+    <string name="pocket_set_codec_sub">HEVC has the lowest latency on this handheld</string>
+    <string name="pocket_set_pacing">Frame pacing</string>
+    <string name="pocket_pacing_latency">Lowest latency</string>
+    <string name="pocket_pacing_balanced">Balanced</string>
+    <string name="pocket_pacing_smooth">Smoothest</string>
+    <string name="pocket_set_perf">Performance overlay</string>
+    <string name="pocket_perf_lite">Lite</string>
+    <string name="pocket_perf_full">Full</string>
+    <string name="pocket_set_vdisplay">Virtual display</string>
+    <string name="pocket_set_vdisplay_sub">Apollo creates a screen that matches the handheld</string>
+    <string name="pocket_set_hdr">HDR</string>
+
+    <string name="pocket_set_hotkey">Menu button</string>
+    <string name="pocket_set_hotkey_sub">Opens settings here and the quick menu while streaming</string>
+    <string name="pocket_set_back_guide">Back acts as Xbox Guide</string>
+    <string name="pocket_set_back_guide_sub">While streaming, Back presses the Guide button</string>
+    <string name="pocket_set_home_guide">Home acts as Xbox Guide</string>
+    <string name="pocket_set_home_guide_sub">While streaming. Needs the accessibility service</string>
+    <string name="pocket_set_flip">Swap A/B and X/Y</string>
+    <string name="pocket_set_flip_sub">For Nintendo-style button labels</string>
+    <string name="pocket_set_rumble">Vibration</string>
+    <string name="pocket_set_rumble_sub">Game rumble through the handheld\'s motor</string>
+    <string name="pocket_set_deadzone">Stick deadzone</string>
+    <string name="pocket_set_gyro">Gyro aiming</string>
+    <string name="pocket_set_gyro_sub">Send the handheld\'s motion sensor to games</string>
+    <string name="pocket_set_mouse">Mouse mode</string>
+    <string name="pocket_set_mouse_sub">Hold START to drive the PC cursor with the sticks</string>
+
+    <string name="pocket_set_usb_status">USB-C link</string>
+    <string name="pocket_set_usb_auto">Auto-connect over USB-C</string>
+    <string name="pocket_set_usb_auto_sub">Find the PC as soon as the cable is plugged in</string>
+    <string name="pocket_set_usb_action">When USB-C connects</string>
+    <string name="pocket_usb_action_library">Open library</string>
+    <string name="pocket_usb_action_last">Start last game</string>
+    <string name="pocket_usb_action_nothing">Do nothing</string>
+    <string name="pocket_set_usb_tether">Tethering settings</string>
+    <string name="pocket_set_usb_tether_sub">Turn on USB tethering by hand</string>
+    <string name="pocket_set_add_pc">Add PC by address</string>
+    <string name="pocket_set_add_pc_sub">For PCs that aren\'t found automatically</string>
+
+    <string name="pocket_set_animations">Animations</string>
+    <string name="pocket_set_animations_sub">Turn off to save a little battery</string>
+    <string name="pocket_set_language">Language</string>
+    <string name="pocket_set_language_sub">English, العربية and more</string>
+    <string name="pocket_set_profiles">Profiles</string>
+    <string name="pocket_set_profiles_sub">Save different settings per game or place</string>
+    <string name="pocket_set_rp6">Retroid Pocket 6 defaults</string>
+    <string name="pocket_set_rp6_sub">Reset to the tuned settings for this handheld</string>
+    <string name="pocket_rp6_confirm">This sets 1080p at 120 FPS, HEVC, Back as Guide and the other recommended options. Your PCs and pairing stay as they are.</string>
+    <string name="pocket_rp6_applied">Retroid Pocket 6 settings applied</string>
+    <string name="pocket_set_advanced">Advanced settings</string>
+    <string name="pocket_set_advanced_sub">Every Artemis option: audio, input, codecs, overlays…</string>
+    <string name="pocket_set_about">Version</string>
+    <string name="pocket_about_sub">Artemis Pocket, based on Artemis and Moonlight</string>
+
+    <string name="pocket_capture_title">Press the button to use</string>
+    <string name="pocket_capture_sub">For example M1 or M2 on the back. Map them in Retroid\'s handheld settings to a button the games don\'t use first.</string>
+    <string name="pocket_hotkey_assigned">Menu button: %1$s</string>
+    <string name="pocket_hotkey_cleared">Menu button cleared</string>
+    <string name="pocket_hotkey_reserved">That button is needed for menus. Pick another one.</string>
+
+    <string name="pocket_a11y_title">Allow Home as Guide</string>
+    <string name="pocket_a11y_message">Android only gives the Home button to apps through an accessibility service. In the next screen, turn on \"Artemis Pocket: Home button and keyboard capture\".\n\nIt only acts while you are streaming. To make Home act as Guide in every app, follow the Key Mapper steps in the setup guide.</string>
+    <string name="pocket_a11y_open">Open settings</string>
+
+    <!-- In-stream quick menu -->
+    <string name="pocket_menu_guide">Press Xbox Guide</string>
+    <string name="pocket_menu_settings">Stream settings</string>
+    <string name="pocket_menu_stats">Toggle performance stats</string>
+</resources>

@@ -22,6 +22,8 @@ import com.limelight.nvstream.http.HostHttpResponseException;
 import com.limelight.nvstream.http.NvApp;
 import com.limelight.nvstream.http.NvHTTP;
 import com.limelight.nvstream.jni.MoonBridge;
+import com.limelight.pocket.PocketPrefs;
+import com.limelight.pocket.UsbLink;
 import com.limelight.preferences.PreferenceConfiguration;
 
 import org.xmlpull.v1.XmlPullParserException;
@@ -102,8 +104,18 @@ public class ServerHelper {
             gameIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         }
         if(gameIntent == null) gameIntent = new Intent(parent, Game.class);
-        gameIntent.putExtra(Game.EXTRA_HOST, computer.activeAddress.address);
-        gameIntent.putExtra(Game.EXTRA_PORT, computer.activeAddress.port);
+        // Artemis Pocket: if this PC is on the other end of the USB-C cable, stream over the cable
+        String usbAddress = UsbLink.getUsbAddressFor(parent, computer.uuid);
+        if (usbAddress != null) {
+            LimeLog.info("Streaming over USB link: " + usbAddress);
+            gameIntent.putExtra(Game.EXTRA_HOST, usbAddress);
+            gameIntent.putExtra(Game.EXTRA_PORT, UsbLink.HTTP_PORT);
+        }
+        else {
+            gameIntent.putExtra(Game.EXTRA_HOST, computer.activeAddress.address);
+            gameIntent.putExtra(Game.EXTRA_PORT, computer.activeAddress.port);
+        }
+        PocketPrefs.setLastApp(parent, computer.uuid, app.getAppId(), app.getAppName());
         gameIntent.putExtra(Game.EXTRA_HTTPS_PORT, computer.httpsPort);
         gameIntent.putExtra(Game.EXTRA_APP_NAME, app.getAppName());
         gameIntent.putExtra(Game.EXTRA_APP_UUID, app.getAppUUID());

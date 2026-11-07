@@ -22,8 +22,10 @@ import com.limelight.preferences.GlPreferences;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.preferences.StreamSettings;
 import com.limelight.profiles.ProfilesManager;
-import com.limelight.ui.AdapterFragment;
-import com.limelight.ui.AdapterFragmentCallbacks;
+import com.limelight.pocket.ConsoleActivity;
+import com.limelight.pocket.PocketPrefs;
+import com.limelight.pocket.UsbLink;
+import com.limelight.pocket.ui.CarouselAdapter;
 import com.limelight.utils.Dialog;
 import com.limelight.utils.HelpLauncher;
 import com.limelight.utils.ServerHelper;
@@ -43,6 +45,14 @@ import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Handler;
+import android.os.Looper;
+import android.animation.ObjectAnimator;
+import android.animation.PropertyValuesHolder;
+import android.animation.ValueAnimator;
+import android.view.KeyEvent;
+import android.view.ViewGroup;
+import android.widget.TextView;
 import android.provider.Settings;
 import android.text.InputFilter;
 import android.text.InputType;
@@ -62,7 +72,8 @@ import android.widget.RelativeLayout;
 import android.widget.Toast;
 import android.widget.AdapterView.AdapterContextMenuInfo;
 
-import androidx.appcompat.app.AppCompatActivity;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.preference.PreferenceManager;
 
 import org.xmlpull.v1.XmlPullParserException;
@@ -70,8 +81,25 @@ import org.xmlpull.v1.XmlPullParserException;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-public class PcView extends AppCompatActivity implements AdapterFragmentCallbacks {
-    private RelativeLayout noPcFoundLayout;
+public class PcView extends ConsoleActivity implements CarouselAdapter.Listener {
+    private View noPcFoundLayout;
+    private RecyclerView pcCarousel;
+    private CarouselAdapter carouselAdapter;
+    private int contextPosition = -1;
+
+    // USB-C link state
+    private static final int USB_IDLE = 0;
+    private static final int USB_SEARCHING = 1;
+    private static final int USB_COUNTDOWN = 2;
+    private static final int USB_NOT_FOUND = 3;
+    private static final int USB_NEEDS_PAIR = 4;
+    private final Handler usbHandler = new Handler(Looper.getMainLooper());
+    private boolean usbLinkWasUp;
+    private int usbState = USB_IDLE;
+    private int usbCountdown;
+    private Thread usbThread;
+    private ComputerDetails usbComputer;
+    private ObjectAnimator usbPulse;
     private PcGridAdapter pcGridAdapter;
     private ShortcutHelper shortcutHelper;
     private ComputerManagerService.ComputerManagerBinder managerBinder;
@@ -153,6 +181,20 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
         // Set the correct layout for the PC grid
         pcGridAdapter.updateLayoutWithPreferences(this, PreferenceConfiguration.readPreferences(this));
 
+        // Console carousel of PCs
+        pcCarousel = findViewById(R.id.pocketPcCarousel);
+        pcCarousel.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        pcCarousel.setItemAnimator(null);
+        carouselAdapter = new CarouselAdapter(pcGridAdapter, this);
+        pcCarousel.setAdapter(carouselAdapter);
+
+        setHints(hintA(this, R.string.pocket_hint_open),
+                hintY(this, R.string.pocket_hint_options),
+                hintX(this, R.string.pocket_hint_add_pc),
+                hintStart(this, R.string.pocket_hint_settings));
+        ConsoleActivity.reveal(findViewById(R.id.pocketHero), 60);
+        ConsoleActivity.reveal(pcCarousel, 140);
+
         // Setup the list view
         ImageButton settingsButton = findViewById(R.id.settingsButton);
         ImageButton addComputerButton = findViewById(R.id.manuallyAddPc);
@@ -162,7 +204,7 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
         settingsButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                startActivity(new Intent(PcView.this, StreamSettings.class));
+                openQuickSettings();
             }
         });
         addComputerButton.setOnClickListener(new OnClickListener() {
@@ -175,7 +217,7 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
         helpButton.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View v) {
-                HelpLauncher.launchSetupGuide(PcView.this);
+                com.limelight.pocket.QuickSettingsActivity.showUsbHelp(PcView.this);
             }
         });
         profilesButton.setOnClickListener(new OnClickListener() {
@@ -192,10 +234,6 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
             helpButton.setVisibility(View.GONE);
         }
 
-        getFragmentManager().beginTransaction()
-            .replace(R.id.pcFragmentContainer, new AdapterFragment())
-            .commitAllowingStateLoss();
-
         noPcFoundLayout = findViewById(R.id.no_pc_found_layout);
         if (pcGridAdapter.getCount() == 0) {
             noPcFoundLayout.setVisibility(View.VISIBLE);
@@ -204,6 +242,9 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
             noPcFoundLayout.setVisibility(View.INVISIBLE);
         }
         pcGridAdapter.notifyDataSetChanged();
+        updateHero(carouselAdapter.getFocusedPosition());
+        renderUsbOverlay();
+        pcCarousel.post(this::focusFirstPcIfNeeded);
     }
 
     @Override
@@ -386,6 +427,11 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
 
         inForeground = false;
         stopComputerUpdates(false);
+        if (usbState != USB_IDLE) {
+            // Interrupted (not finished or cancelled): try again when we're back
+            usbLinkWasUp = false;
+        }
+        cancelUsbFlow(false);
     }
 
     @Override
@@ -402,8 +448,15 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
         // Call superclass
         super.onCreateContextMenu(menu, v, menuInfo);
 
-        AdapterContextMenuInfo info = (AdapterContextMenuInfo) menuInfo;
-        ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(info.position);
+        int position = contextPosition;
+        if (menuInfo instanceof AdapterContextMenuInfo) {
+            position = ((AdapterContextMenuInfo) menuInfo).position;
+        }
+        if (position < 0 || position >= pcGridAdapter.getCount()) {
+            return;
+        }
+        contextPosition = position;
+        ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(position);
 
         // Add a header with PC status details
         menu.clearHeader();
@@ -731,8 +784,14 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
 
     @Override
     public boolean onContextItemSelected(MenuItem item) {
-        AdapterContextMenuInfo info = (AdapterContextMenuInfo) item.getMenuInfo();
-        final ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(info.position);
+        int position = contextPosition;
+        if (item.getMenuInfo() instanceof AdapterContextMenuInfo) {
+            position = ((AdapterContextMenuInfo) item.getMenuInfo()).position;
+        }
+        if (position < 0 || position >= pcGridAdapter.getCount()) {
+            return super.onContextItemSelected(item);
+        }
+        final ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(position);
         switch (item.getItemId()) {
             case PAIR_ID:
                 doPair(computer.details, null, null);
@@ -847,6 +906,7 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
                     // Show the "Discovery in progress" view
                     noPcFoundLayout.setVisibility(View.VISIBLE);
                 }
+                updateHero(carouselAdapter != null ? carouselAdapter.getFocusedPosition() : -1);
 
                 break;
             }
@@ -880,35 +940,438 @@ public class PcView extends AppCompatActivity implements AdapterFragmentCallback
 
         // Notify the view that the data has changed
         pcGridAdapter.notifyDataSetChanged();
+        updateHero(carouselAdapter != null ? carouselAdapter.getFocusedPosition() : -1);
+        if (pcCarousel != null) {
+            pcCarousel.post(this::focusFirstPcIfNeeded);
+        }
+    }
+
+    // ---- Console carousel ------------------------------------------------------------
+
+    @Override
+    public void onItemClicked(int pos, View itemView) {
+        if (pos < 0 || pos >= pcGridAdapter.getCount()) {
+            return;
+        }
+        ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(pos);
+        if (computer.details.state == ComputerDetails.State.UNKNOWN ||
+            computer.details.state == ComputerDetails.State.OFFLINE) {
+            // Open the context menu if a PC is offline or refreshing
+            onItemOptions(pos, itemView);
+        } else if (computer.details.pairState != PairState.PAIRED) {
+            // Pair an unpaired machine by default
+            doPair(computer.details, null, null);
+        } else {
+            doAppList(computer.details, false, false);
+        }
     }
 
     @Override
-    public int getAdapterFragmentLayoutId() {
-        return R.layout.pc_grid_view;
+    public void onItemOptions(int pos, View itemView) {
+        if (pos < 0 || pos >= pcGridAdapter.getCount() || itemView == null) {
+            return;
+        }
+        contextPosition = pos;
+        registerForContextMenu(itemView);
+        openContextMenu(itemView);
+        unregisterForContextMenu(itemView);
     }
 
     @Override
-    public void receiveAbsListView(AbsListView listView) {
-        listView.setAdapter(pcGridAdapter);
-        listView.setOnItemClickListener(new OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> arg0, View arg1, int pos,
-                                    long id) {
-                ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(pos);
-                if (computer.details.state == ComputerDetails.State.UNKNOWN ||
-                    computer.details.state == ComputerDetails.State.OFFLINE) {
-                    // Open the context menu if a PC is offline or refreshing
-                    openContextMenu(arg1);
-                } else if (computer.details.pairState != PairState.PAIRED) {
-                    // Pair an unpaired machine by default
-                    doPair(computer.details, null, null);
-                } else {
-                    doAppList(computer.details, false, false);
+    public void onItemFocused(int pos, View itemView) {
+        updateHero(pos);
+    }
+
+    private void focusFirstPcIfNeeded() {
+        if (pcCarousel == null || pcGridAdapter.getCount() == 0 || usbState != USB_IDLE) {
+            return;
+        }
+        View focused = getCurrentFocus();
+        if (focused != null && focused != pcCarousel && isDescendant(pcCarousel, focused)) {
+            return;
+        }
+        if (focused != null && focused != getWindow().getDecorView() && !(focused instanceof RecyclerView)) {
+            // Something else (e.g. a toolbar button) has focus, leave it alone
+            return;
+        }
+        RecyclerView.ViewHolder holder = pcCarousel.findViewHolderForAdapterPosition(0);
+        if (holder != null) {
+            holder.itemView.requestFocus();
+        }
+    }
+
+    private static boolean isDescendant(ViewGroup parent, View child) {
+        Object p = child.getParent();
+        while (p instanceof View) {
+            if (p == parent) {
+                return true;
+            }
+            p = ((View) p).getParent();
+        }
+        return false;
+    }
+
+    private void updateHero(int position) {
+        TextView title = findViewById(R.id.pocketHeroTitle);
+        TextView subtitle = findViewById(R.id.pocketHeroSubtitle);
+        if (title == null || subtitle == null || pcGridAdapter == null) {
+            return;
+        }
+        int count = pcGridAdapter.getCount();
+        if (count == 0) {
+            title.setText(R.string.pocket_brand_title);
+            subtitle.setText(R.string.pocket_hero_no_pc);
+            return;
+        }
+        if (position < 0 || position >= count) {
+            position = 0;
+        }
+        ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(position);
+        title.setText(computer.details.name);
+        subtitle.setText(describeComputer(computer.details, true));
+    }
+
+    public String describeComputer(ComputerDetails details, boolean longForm) {
+        String status;
+        switch (details.state) {
+            case ONLINE:
+                if (details.pairState != PairState.PAIRED) {
+                    status = getString(R.string.pocket_status_unpaired);
+                }
+                else if (details.runningGameId != 0) {
+                    status = getString(R.string.pocket_status_ingame);
+                }
+                else {
+                    status = getString(R.string.pocket_status_online);
+                }
+                break;
+            case OFFLINE:
+                status = getString(R.string.pocket_status_offline);
+                break;
+            default:
+                status = getString(R.string.pocket_status_checking);
+                break;
+        }
+        if (details.state == ComputerDetails.State.ONLINE &&
+                UsbLink.getUsbAddressFor(this, details.uuid) != null) {
+            status += " · " + getString(R.string.pocket_status_via_usb);
+        }
+        if (longForm && details.activeAddress != null && details.state == ComputerDetails.State.ONLINE) {
+            status += " · " + details.activeAddress.address;
+        }
+        return status;
+    }
+
+    @Override
+    protected boolean onButtonX() {
+        startActivity(new Intent(PcView.this, AddComputerManually.class));
+        return true;
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (usbState != USB_IDLE) {
+            int keyCode = event.getKeyCode();
+            if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_BUTTON_B) {
+                if (event.getAction() == KeyEvent.ACTION_UP) {
+                    cancelUsbFlow(true);
+                }
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_BUTTON_A || keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                    keyCode == KeyEvent.KEYCODE_ENTER) {
+                if (event.getAction() == KeyEvent.ACTION_UP) {
+                    if (usbState == USB_COUNTDOWN) {
+                        usbCountdown = 0;
+                        usbHandler.removeCallbacks(usbCountdownTick);
+                        usbHandler.post(usbCountdownTick);
+                    }
+                    else if (usbState == USB_NEEDS_PAIR && usbComputer != null) {
+                        ComputerDetails target = usbComputer;
+                        cancelUsbFlow(false);
+                        doPair(target, null, null);
+                    }
+                }
+                return true;
+            }
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    // ---- USB-C plug & play ------------------------------------------------------------
+
+    @Override
+    protected void onStatusTick() {
+        boolean up = UsbLink.isLinkUp();
+        if (up && !usbLinkWasUp) {
+            usbLinkWasUp = true;
+            if (PocketPrefs.usbAutoConnect(this)) {
+                startUsbFlow();
+            }
+        }
+        else if (!up && usbLinkWasUp) {
+            usbLinkWasUp = false;
+            UsbLink.clearActiveHost();
+            cancelUsbFlow(false);
+        }
+        // PC states change as the link comes and goes
+        if (pcGridAdapter != null && carouselAdapter != null) {
+            updateHero(carouselAdapter.getFocusedPosition());
+        }
+    }
+
+    private void startUsbFlow() {
+        if (usbThread != null) {
+            return;
+        }
+        usbState = USB_SEARCHING;
+        usbComputer = null;
+        renderUsbOverlay();
+
+        usbThread = new Thread(() -> {
+            String found = null;
+            // Windows needs a few seconds to get its address from the handheld after plug-in
+            for (int attempt = 0; attempt < 30 && !Thread.currentThread().isInterrupted(); attempt++) {
+                UsbLink.TetherInfo info = UsbLink.findTetherInterface();
+                if (info == null) {
+                    break;
+                }
+                LimeLog.info("USB link up on " + info.describe() + ", scanning (attempt " + (attempt + 1) + ")");
+                found = UsbLink.scanForHost(info, PocketPrefs.getLastUsbIp(PcView.this));
+                if (found != null) {
+                    break;
+                }
+                if (attempt == 2) {
+                    runOnUiThread(() -> {
+                        if (usbState == USB_SEARCHING) {
+                            usbState = USB_NOT_FOUND;
+                            renderUsbOverlay();
+                        }
+                    });
+                }
+                try {
+                    Thread.sleep(2500);
+                } catch (InterruptedException e) {
+                    return;
                 }
             }
+            if (found == null || Thread.currentThread().isInterrupted()) {
+                final boolean linkGone = !UsbLink.isLinkUp();
+                runOnUiThread(() -> {
+                    usbThread = null;
+                    if (linkGone) {
+                        cancelUsbFlow(false);
+                    }
+                    else if (usbState != USB_IDLE) {
+                        usbState = USB_NOT_FOUND;
+                        renderUsbOverlay();
+                    }
+                });
+                return;
+            }
+
+            // Wait for the computer manager, then add/refresh the PC at its USB address
+            ComputerManagerService.ComputerManagerBinder binder = null;
+            for (int i = 0; i < 50 && binder == null; i++) {
+                binder = managerBinder;
+                if (binder == null) {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                }
+            }
+            if (binder == null) {
+                runOnUiThread(() -> {
+                    usbThread = null;
+                    cancelUsbFlow(false);
+                });
+                return;
+            }
+
+            ComputerDetails details = new ComputerDetails();
+            details.manualAddress = new ComputerDetails.AddressTuple(found, UsbLink.HTTP_PORT);
+            boolean ok;
+            try {
+                ok = binder.addComputerBlocking(details);
+            } catch (InterruptedException e) {
+                return;
+            } catch (RuntimeException e) {
+                e.printStackTrace();
+                ok = false;
+            }
+
+            final boolean success = ok && details.uuid != null;
+            final String usbIp = found;
+            if (success) {
+                UsbLink.setActiveHost(PcView.this, usbIp, details.uuid);
+                // Make sure this session talks to the PC over the cable
+                details.activeAddress = new ComputerDetails.AddressTuple(usbIp, UsbLink.HTTP_PORT);
+            }
+            runOnUiThread(() -> {
+                usbThread = null;
+                if (usbState == USB_IDLE) {
+                    return;
+                }
+                if (!success) {
+                    usbState = USB_NOT_FOUND;
+                    renderUsbOverlay();
+                    return;
+                }
+                usbComputer = details;
+                if (details.pairState != PairState.PAIRED) {
+                    usbState = USB_NEEDS_PAIR;
+                    renderUsbOverlay();
+                    return;
+                }
+                if (PocketPrefs.ON_CONNECT_NOTHING.equals(PocketPrefs.usbOnConnect(PcView.this))) {
+                    Toast.makeText(PcView.this, getString(R.string.pocket_usb_found, details.name), Toast.LENGTH_SHORT).show();
+                    cancelUsbFlow(false);
+                    return;
+                }
+                usbState = USB_COUNTDOWN;
+                usbCountdown = 3;
+                renderUsbOverlay();
+                usbHandler.removeCallbacks(usbCountdownTick);
+                usbHandler.postDelayed(usbCountdownTick, 1000);
+            });
         });
-        UiHelper.applyStatusBarPadding(listView);
-        registerForContextMenu(listView);
+        usbThread.setName("USB link scan");
+        usbThread.start();
+    }
+
+    private final Runnable usbCountdownTick = new Runnable() {
+        @Override
+        public void run() {
+            if (usbState != USB_COUNTDOWN) {
+                return;
+            }
+            usbCountdown--;
+            if (usbCountdown > 0) {
+                renderUsbOverlay();
+                usbHandler.postDelayed(this, 1000);
+                return;
+            }
+            ComputerDetails target = usbComputer;
+            cancelUsbFlow(false);
+            if (target != null) {
+                launchUsbTarget(target);
+            }
+        }
+    };
+
+    private void launchUsbTarget(ComputerDetails computer) {
+        if (managerBinder == null) {
+            return;
+        }
+        String action = PocketPrefs.usbOnConnect(this);
+        if (computer.runningGameId != 0) {
+            // A game is already running on the PC: jump right back in
+            ServerHelper.doStart(this, new NvApp("app", null, computer.runningGameId, false), computer, managerBinder, false);
+            return;
+        }
+        if (PocketPrefs.ON_CONNECT_LAST_GAME.equals(action)) {
+            int lastAppId = PocketPrefs.getLastAppId(this, computer.uuid);
+            if (lastAppId != 0) {
+                String lastName = PocketPrefs.getLastAppName(this, computer.uuid);
+                PreferenceConfiguration prefs = PreferenceConfiguration.readPreferences(this);
+                ServerHelper.doStart(this, new NvApp(lastName != null ? lastName : "app", null, lastAppId, false),
+                        computer, managerBinder, prefs.useVirtualDisplay);
+                return;
+            }
+        }
+        doAppList(computer, false, false);
+    }
+
+    private void cancelUsbFlow(boolean userCancelled) {
+        usbHandler.removeCallbacks(usbCountdownTick);
+        if (usbThread != null) {
+            usbThread.interrupt();
+            usbThread = null;
+        }
+        usbState = USB_IDLE;
+        usbComputer = null;
+        renderUsbOverlay();
+        if (userCancelled && pcCarousel != null) {
+            pcCarousel.post(this::focusFirstPcIfNeeded);
+        }
+    }
+
+    private void renderUsbOverlay() {
+        View overlay = findViewById(R.id.pocketUsbOverlay);
+        if (overlay == null) {
+            return;
+        }
+        if (usbState == USB_IDLE) {
+            if (overlay.getVisibility() == View.VISIBLE) {
+                overlay.animate().alpha(0f).setDuration(220)
+                        .withEndAction(() -> overlay.setVisibility(View.GONE)).start();
+            }
+            if (usbPulse != null) {
+                usbPulse.cancel();
+                usbPulse = null;
+            }
+            return;
+        }
+
+        if (overlay.getVisibility() != View.VISIBLE) {
+            overlay.setAlpha(0f);
+            overlay.setVisibility(View.VISIBLE);
+            overlay.animate().alpha(1f).setDuration(260).start();
+        }
+
+        View pulse = findViewById(R.id.pocketUsbPulse);
+        if (usbPulse == null && pulse != null && PocketPrefs.animationsEnabled(this)) {
+            usbPulse = ObjectAnimator.ofPropertyValuesHolder(pulse,
+                    PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.55f),
+                    PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.55f),
+                    PropertyValuesHolder.ofFloat(View.ALPHA, 0.9f, 0f));
+            usbPulse.setDuration(1400);
+            usbPulse.setRepeatCount(ValueAnimator.INFINITE);
+            usbPulse.start();
+        }
+
+        TextView title = findViewById(R.id.pocketUsbTitle);
+        TextView subtitle = findViewById(R.id.pocketUsbSubtitle);
+        ViewGroup hints = findViewById(R.id.pocketUsbHints);
+        String name = usbComputer != null ? usbComputer.name : "";
+        switch (usbState) {
+            case USB_SEARCHING:
+                title.setText(R.string.pocket_usb_detected);
+                subtitle.setText(R.string.pocket_usb_searching);
+                fillHintBar(this, hints, hintB(this, R.string.pocket_hint_cancel));
+                break;
+            case USB_NOT_FOUND:
+                title.setText(R.string.pocket_usb_not_found);
+                subtitle.setText(R.string.pocket_usb_not_found_help);
+                fillHintBar(this, hints, hintB(this, R.string.pocket_hint_close));
+                break;
+            case USB_NEEDS_PAIR:
+                title.setText(getString(R.string.pocket_usb_found, name));
+                subtitle.setText(R.string.pocket_usb_needs_pair);
+                fillHintBar(this, hints, hintA(this, R.string.pocket_hint_pair), hintB(this, R.string.pocket_hint_cancel));
+                break;
+            case USB_COUNTDOWN: {
+                title.setText(getString(R.string.pocket_usb_found, name));
+                String action = PocketPrefs.usbOnConnect(this);
+                String what;
+                if (usbComputer != null && usbComputer.runningGameId != 0) {
+                    what = getString(R.string.pocket_usb_resuming);
+                }
+                else if (PocketPrefs.ON_CONNECT_LAST_GAME.equals(action) && usbComputer != null &&
+                        PocketPrefs.getLastAppId(this, usbComputer.uuid) != 0) {
+                    String last = PocketPrefs.getLastAppName(this, usbComputer.uuid);
+                    what = getString(R.string.pocket_usb_starting, last != null ? last : "");
+                }
+                else {
+                    what = getString(R.string.pocket_usb_opening_library);
+                }
+                subtitle.setText(getString(R.string.pocket_usb_countdown, what, usbCountdown));
+                fillHintBar(this, hints, hintA(this, R.string.pocket_hint_go), hintB(this, R.string.pocket_hint_cancel));
+                break;
+            }
+        }
     }
 
     public static class ComputerObject {

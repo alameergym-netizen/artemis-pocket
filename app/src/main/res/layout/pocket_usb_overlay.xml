@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pocketUsbOverlay"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#EB0A0D14"
+    android:clickable="true"
+    android:focusable="false"
+    android:visibility="gone">
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:paddingStart="32dp"
+        android:paddingEnd="32dp">
+
+        <FrameLayout
+            android:layout_width="150dp"
+            android:layout_height="150dp">
+
+            <View
+                android:id="@+id/pocketUsbPulse"
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:layout_gravity="center"
+                android:background="@drawable/pocket_usb_ring" />
+
+            <View
+                android:layout_width="96dp"
+                android:layout_height="96dp"
+                android:layout_gravity="center"
+                android:background="@drawable/pocket_usb_ring" />
+
+            <ImageView
+                android:id="@+id/pocketUsbIcon"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_usb"
+                android:tint="@color/pocket_accent" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/pocketUsbTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:gravity="center"
+            android:textColor="@color/pocket_text"
+            android:textSize="26sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/pocketUsbSubtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:gravity="center"
+            android:maxWidth="520dp"
+            android:textColor="@color/pocket_text_dim"
+            android:textSize="15sp" />
+
+        <LinearLayout
+            android:id="@+id/pocketUsbHints"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="26dp"
+            android:orientation="horizontal" />
+    </LinearLayout>
+</FrameLayout>

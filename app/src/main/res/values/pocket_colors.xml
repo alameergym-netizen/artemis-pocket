@@ -1,23 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Artemis Pocket console palette -->
-    <color name="pocket_bg">#0A0D14</color>
-    <color name="pocket_bg_deep">#05070B</color>
-    <color name="pocket_surface">#161C28</color>
-    <color name="pocket_surface_high">#1F2738</color>
-    <color name="pocket_stroke">#2A3347</color>
-    <color name="pocket_accent">#5CF2D0</color>
-    <color name="pocket_accent_dim">#335CF2D0</color>
-    <color name="pocket_accent2">#8C6CFF</color>
-    <color name="pocket_text">#F2F5FA</color>
-    <color name="pocket_text_dim">#9AA4B8</color>
-    <color name="pocket_text_faint">#5F6A80</color>
-    <color name="pocket_ok">#4ADE80</color>
-    <color name="pocket_warn">#FBBF24</color>
-    <color name="pocket_off">#F87171</color>
-    <color name="pocket_btn_a">#3DDC84</color>
-    <color name="pocket_btn_b">#FF5A5F</color>
-    <color name="pocket_btn_x">#3B9BFF</color>
-    <color name="pocket_btn_y">#FFC531</color>
-    <color name="pocket_scrim">#CC0A0D14</color>
+    <!-- Artemis Pocket "Mono Glass" palette: black, white and translucent glass -->
+    <color name="pocket_bg">#000000</color>
+    <color name="pocket_bg_deep">#000000</color>
+    <color name="pocket_surface">#14FFFFFF</color>
+    <color name="pocket_surface_high">#26FFFFFF</color>
+    <color name="pocket_stroke">#24FFFFFF</color>
+    <color name="pocket_stroke_strong">#4DFFFFFF</color>
+    <color name="pocket_accent">#FFFFFF</color>
+    <color name="pocket_accent_dim">#2EFFFFFF</color>
+    <color name="pocket_accent2">#B3FFFFFF</color>
+    <color name="pocket_text">#FFFFFF</color>
+    <color name="pocket_text_dim">#A3FFFFFF</color>
+    <color name="pocket_text_faint">#5CFFFFFF</color>
+    <color name="pocket_ok">#FFFFFF</color>
+    <color name="pocket_warn">#99FFFFFF</color>
+    <color name="pocket_off">#4DFFFFFF</color>
+    <color name="pocket_btn_a">#FFFFFF</color>
+    <color name="pocket_btn_b">#FFFFFF</color>
+    <color name="pocket_btn_x">#FFFFFF</color>
+    <color name="pocket_btn_y">#FFFFFF</color>
+    <color name="pocket_scrim">#B3000000</color>
+    <color name="pocket_glass">#1AFFFFFF</color>
+    <color name="pocket_glass_dark">#99101010</color>
+    <color name="ic_launcher_bg_pocket">#000000</color>
 </resources>

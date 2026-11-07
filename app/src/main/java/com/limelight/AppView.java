@@ -19,6 +19,11 @@ import com.limelight.pocket.ConsoleActivity;
 import com.limelight.pocket.PocketPrefs;
 import com.limelight.pocket.UsbLink;
 import com.limelight.pocket.ui.CarouselAdapter;
+import com.limelight.pocket.ui.PocketUi;
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
 import com.limelight.utils.CacheHelper;
 import com.limelight.utils.Dialog;
 import com.limelight.utils.ServerHelper;
@@ -75,6 +80,8 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
     private boolean heroArtOnA = true;
     private Bitmap heroBitmap;
     private boolean initialFocusDone;
+    private boolean carouselAnimated;
+    private ObjectAnimator kenBurns;
     private String uuidString;
     private ShortcutHelper shortcutHelper;
 
@@ -381,6 +388,9 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        if (kenBurns != null) {
+            kenBurns.cancel();
+        }
 
         SpinnerDialog.closeDialogs(this);
         Dialog.closeDialogs();
@@ -754,6 +764,12 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
 
                 if (updated) {
                     appGridAdapter.notifyDataSetChanged();
+                    if (!carouselAnimated && appCarousel != null && appGridAdapter.getCount() > 0) {
+                        carouselAnimated = true;
+                        if (PocketPrefs.animationsEnabled(AppView.this)) {
+                            appCarousel.scheduleLayoutAnimation();
+                        }
+                    }
                     updateSectionTitle();
                     if (appCarousel != null) {
                         appCarousel.post(AppView.this::focusInitialGame);
@@ -898,14 +914,13 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
             return;
         }
         AppObject obj = (AppObject) appGridAdapter.getItem(position);
-        title.setText(obj.app.getAppName());
+        PocketUi.swapText(title, obj.app.getAppName());
 
         int lastAppId = computer != null ? PocketPrefs.getLastAppId(this, computer.uuid) : 0;
         if (obj.isRunning) {
             subtitle.setText(R.string.pocket_now_playing);
             subtitle.setTextColor(ContextCompat.getColor(this, R.color.pocket_bg));
             subtitle.setBackgroundResource(R.drawable.pocket_chip_usb_bg);
-            subtitle.getBackground().mutate().setTint(ContextCompat.getColor(this, R.color.pocket_accent));
         }
         else {
             subtitle.setText(obj.app.getAppId() == lastAppId ? R.string.pocket_last_played : R.string.pocket_ready_to_play);
@@ -937,33 +952,56 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
 
         incoming.setImageBitmap(bitmap);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            incoming.setRenderEffect(RenderEffect.createBlurEffect(36f, 36f, Shader.TileMode.CLAMP));
+            incoming.setRenderEffect(RenderEffect.createBlurEffect(42f, 42f, Shader.TileMode.CLAMP));
         }
-        boolean animate = PocketPrefs.animationsEnabled(this);
-        incoming.animate().cancel();
-        outgoing.animate().cancel();
-        if (animate) {
-            incoming.setScaleX(1.08f);
-            incoming.setScaleY(1.08f);
-            incoming.animate().alpha(0.55f).scaleX(1f).scaleY(1f).setDuration(450).start();
-            outgoing.animate().alpha(0f).setDuration(450).start();
+        // Mono glass theme: the backdrop art is shown in black and white unless asked otherwise
+        if (PocketPrefs.colorBackgroundArt(this)) {
+            incoming.clearColorFilter();
         }
         else {
-            incoming.setAlpha(0.55f);
+            ColorMatrix mono = new ColorMatrix();
+            mono.setSaturation(0f);
+            incoming.setColorFilter(new ColorMatrixColorFilter(mono));
+        }
+        boolean animate = PocketPrefs.animationsEnabled(this);
+        float targetAlpha = PocketPrefs.colorBackgroundArt(this) ? 0.5f : 0.42f;
+        incoming.animate().cancel();
+        outgoing.animate().cancel();
+        if (kenBurns != null) {
+            kenBurns.cancel();
+            kenBurns = null;
+        }
+        if (animate) {
+            incoming.setScaleX(1.12f);
+            incoming.setScaleY(1.12f);
+            incoming.animate().alpha(targetAlpha).scaleX(1.02f).scaleY(1.02f).setDuration(600)
+                    .setInterpolator(PocketUi.EASE)
+                    .withEndAction(() -> startKenBurns(incoming)).start();
+            outgoing.animate().alpha(0f).setDuration(500).start();
+        }
+        else {
+            incoming.setAlpha(targetAlpha);
             outgoing.setAlpha(0f);
         }
+    }
 
-        // Tint the background glow with the art's average colour
-        try {
-            Bitmap tiny = Bitmap.createScaledBitmap(bitmap, 1, 1, true);
-            int c = tiny.getPixel(0, 0);
-            com.limelight.pocket.ui.AuroraView aurora = findViewById(R.id.pocketAurora);
-            if (aurora != null) {
-                int a1 = Color.argb(0x55, Color.red(c), Color.green(c), Color.blue(c));
-                aurora.setColors(a1, 0x448C6CFF);
-            }
-        } catch (RuntimeException ignored) {
+    /** A very slow drift-zoom on the backdrop, like a living wallpaper. */
+    private void startKenBurns(ImageView view) {
+        if (isFinishing()) {
+            return;
         }
+        if (kenBurns != null) {
+            kenBurns.cancel();
+        }
+        kenBurns = ObjectAnimator.ofPropertyValuesHolder(view,
+                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 1.02f, 1.12f),
+                android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 1.02f, 1.12f),
+                android.animation.PropertyValuesHolder.ofFloat(View.TRANSLATION_X, 0f, -24f));
+        kenBurns.setDuration(20000);
+        kenBurns.setRepeatMode(ValueAnimator.REVERSE);
+        kenBurns.setRepeatCount(ValueAnimator.INFINITE);
+        kenBurns.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+        kenBurns.start();
     }
 
     @Override

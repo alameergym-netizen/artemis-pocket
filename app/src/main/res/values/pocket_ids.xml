@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="pocket_blur_animator" type="id" />
+    <item name="pocket_blur_radius" type="id" />
+</resources>

@@ -41,6 +41,12 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class AddComputerManually extends AppCompatActivity {
+
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        // Artemis Pocket: honour the interface size setting
+        super.attachBaseContext(com.limelight.pocket.ui.PocketUi.wrapWithUiScale(newBase));
+    }
     private TextView hostText;
     private ComputerManagerService.ComputerManagerBinder managerBinder;
     private final LinkedBlockingQueue<String> computersToAdd = new LinkedBlockingQueue<>();

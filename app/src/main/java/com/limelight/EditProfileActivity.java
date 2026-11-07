@@ -29,6 +29,12 @@ import java.util.Map;
 import java.util.UUID;
 
 public class EditProfileActivity extends AppCompatActivity {
+
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        // Artemis Pocket: honour the interface size setting
+        super.attachBaseContext(com.limelight.pocket.ui.PocketUi.wrapWithUiScale(newBase));
+    }
     private String profileUuid;
     private SettingsProfile currentProfile;
     private InMemorySharedPreferences inMemoryPrefs;

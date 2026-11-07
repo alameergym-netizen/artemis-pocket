@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:color="@color/pocket_bg" android:state_focused="true" />
-    <item android:color="@color/pocket_text" android:state_selected="true" />
-    <item android:color="@color/pocket_text_dim" />
+    <item android:color="#FF000000" android:state_focused="true" />
+    <item android:color="#FFFFFFFF" android:state_selected="true" />
+    <item android:color="#A3FFFFFF" />
 </selector>

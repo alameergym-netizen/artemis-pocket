@@ -11,6 +11,13 @@ import java.util.List;
 
 public class KeyboardAccessibilityService extends AccessibilityService {
 
+    /** Artemis Pocket: the button tester listens here to show what the service receives. */
+    public interface KeyTestListener {
+        void onServiceKeyEvent(KeyEvent event);
+    }
+
+    public static volatile KeyTestListener keyTestListener;
+
     //不屏蔽的按键列表
     private final static List BLACKLIST_KEYS = Arrays.asList(
             KeyEvent.KEYCODE_VOLUME_UP,
@@ -20,6 +27,13 @@ public class KeyboardAccessibilityService extends AccessibilityService {
 
     @Override
     public boolean onKeyEvent(KeyEvent event) {
+        KeyTestListener test = keyTestListener;
+        if (test != null) {
+            test.onServiceKeyEvent(event);
+            // Keep Home inside the tester instead of leaving to the launcher
+            return event.getKeyCode() == KeyEvent.KEYCODE_HOME;
+        }
+
         int action = event.getAction();
         int keyCode = event.getKeyCode();
 //        Toast.makeText(getApplicationContext(),"scancode:"+event.getScanCode()+",code:"+event.getKeyCode(),Toast.LENGTH_LONG).show();

@@ -164,6 +164,11 @@
             android:taskAffinity=""
             android:theme="@style/ExternalDisplayControllerTheme"/>
         <activity
+            android:name=".pocket.ButtonTestActivity"
+            android:screenOrientation="sensorLandscape"
+            android:enableOnBackInvokedCallback="false"
+            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
+        <activity
             android:name=".pocket.QuickSettingsActivity"
             android:resizeableActivity="true"
             android:screenOrientation="sensorLandscape"

@@ -24,6 +24,17 @@ public final class PocketPrefs {
     public static final String KEY_PRESET = "pocket_preset"; // battery | balanced | quality | custom
     public static final String KEY_ANIMATIONS = "pocket_animations";
     public static final String KEY_FIRST_RUN_DONE = "pocket_first_run_done_v1";
+    public static final String KEY_UI_SCALE = "pocket_ui_scale";
+    public static final String KEY_HAPTICS = "pocket_nav_haptics";
+    public static final String KEY_COLOR_ART = "pocket_color_background_art";
+    public static final String KEY_AUTO_BATTERY = "pocket_auto_battery_saver";
+    public static final String KEY_OPEN_LAST_PC = "pocket_open_last_pc";
+    public static final String KEY_SORT_RECENT = "pocket_sort_recent";
+    public static final String KEY_SHOW_LATENCY = "pocket_show_latency";
+    private static final String KEY_LAST_PC_UUID = "pocket_last_pc_uuid";
+    private static final String KEY_PLAYED_PREFIX = "pocket_played_";
+
+    public static final int DEFAULT_UI_SCALE = 90;
 
     private static final String KEY_LAST_USB_IP = "pocket_last_usb_ip";
     private static final String KEY_LAST_USB_UUID = "pocket_last_usb_uuid";
@@ -123,6 +134,47 @@ public final class PocketPrefs {
         return prefs(context).getBoolean(KEY_ANIMATIONS, true);
     }
 
+    public static int uiScalePercent(Context context) {
+        return prefs(context).getInt(KEY_UI_SCALE, DEFAULT_UI_SCALE);
+    }
+
+    public static boolean hapticsEnabled(Context context) {
+        return prefs(context).getBoolean(KEY_HAPTICS, true);
+    }
+
+    public static boolean colorBackgroundArt(Context context) {
+        return prefs(context).getBoolean(KEY_COLOR_ART, false);
+    }
+
+    public static boolean autoBatterySaver(Context context) {
+        return prefs(context).getBoolean(KEY_AUTO_BATTERY, true);
+    }
+
+    public static boolean openLastPc(Context context) {
+        return prefs(context).getBoolean(KEY_OPEN_LAST_PC, false);
+    }
+
+    public static boolean sortRecent(Context context) {
+        return prefs(context).getBoolean(KEY_SORT_RECENT, true);
+    }
+
+    public static boolean showLatency(Context context) {
+        return prefs(context).getBoolean(KEY_SHOW_LATENCY, true);
+    }
+
+    public static String getLastPcUuid(Context context) {
+        return prefs(context).getString(KEY_LAST_PC_UUID, null);
+    }
+
+    public static void setLastPcUuid(Context context, String uuid) {
+        prefs(context).edit().putString(KEY_LAST_PC_UUID, uuid).apply();
+    }
+
+    /** When a game was last started from this handheld (0 if never). */
+    public static long getLastPlayed(Context context, String pcUuid, int appId) {
+        return prefs(context).getLong(KEY_PLAYED_PREFIX + pcUuid + "_" + appId, 0);
+    }
+
     // ---- USB host memory ----------------------------------------------------------------
 
     public static String getLastUsbIp(Context context) {
@@ -149,6 +201,8 @@ public final class PocketPrefs {
         prefs(context).edit()
                 .putInt(KEY_LAST_APP_PREFIX + pcUuid + "_id", appId)
                 .putString(KEY_LAST_APP_PREFIX + pcUuid + "_name", appName)
+                .putLong(KEY_PLAYED_PREFIX + pcUuid + "_" + appId, System.currentTimeMillis())
+                .putString(KEY_LAST_PC_UUID, pcUuid)
                 .apply();
     }
 

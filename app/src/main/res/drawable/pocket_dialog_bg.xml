@@ -1,12 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
-    android:insetLeft="24dp"
-    android:insetTop="24dp"
-    android:insetRight="24dp"
-    android:insetBottom="24dp">
-    <shape android:shape="rectangle">
-        <solid android:color="#F5131926" />
-        <stroke android:width="1dp" android:color="@color/pocket_stroke" />
-        <corners android:radius="22dp" />
-    </shape>
+    android:insetLeft="20dp"
+    android:insetTop="20dp"
+    android:insetRight="20dp"
+    android:insetBottom="20dp">
+    <layer-list>
+        <item>
+            <shape android:shape="rectangle">
+                <solid android:color="#D9161616" />
+                <corners android:radius="24dp" />
+            </shape>
+        </item>
+        <item>
+            <shape android:shape="rectangle">
+                <gradient android:angle="270" android:startColor="#14FFFFFF" android:endColor="#00FFFFFF" />
+                <corners android:radius="24dp" />
+            </shape>
+        </item>
+        <item>
+            <shape android:shape="rectangle">
+                <solid android:color="@android:color/transparent" />
+                <stroke android:width="1dp" android:color="#2EFFFFFF" />
+                <corners android:radius="24dp" />
+            </shape>
+        </item>
+    </layer-list>
 </inset>

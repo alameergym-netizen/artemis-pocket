@@ -66,6 +66,8 @@ import android.content.ClipboardManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.BatteryManager;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
@@ -360,6 +362,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Read the stream preferences
         prefConfig = PreferenceConfiguration.readPreferences(this);
+        applyPocketBatterySaver();
         tombstonePrefs = Game.this.getSharedPreferences("DecoderTombstone", 0);
 
         if (prefConfig.fullScreen) {
@@ -2055,6 +2058,12 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     public boolean handleKeyDown(KeyEvent event) {
+        // Artemis Pocket keys first: handheld Home/Back buttons are often flagged as
+        // "virtual" keys, which the code below would otherwise pass straight to Android.
+        if (handlePocketKey(event, true)) {
+            return true;
+        }
+
         // Pass-through virtual navigation keys
         if ((event.getFlags() & KeyEvent.FLAG_VIRTUAL_HARD_KEY) != 0) {
             return false;
@@ -2082,10 +2091,6 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
             // Always return true, otherwise the back press will be propagated
             // up to the parent and finish the activity.
-            return true;
-        }
-
-        if (handlePocketKey(event, true)) {
             return true;
         }
 
@@ -2150,6 +2155,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     public boolean handleKeyUp(KeyEvent event) {
+        if (handlePocketKey(event, false)) {
+            return true;
+        }
+
         // Pass-through virtual navigation keys
         if ((event.getFlags() & KeyEvent.FLAG_VIRTUAL_HARD_KEY) != 0) {
             return false;
@@ -2176,10 +2185,6 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
             // Always return true, otherwise the back press will be propagated
             // up to the parent and finish the activity.
-            return true;
-        }
-
-        if (handlePocketKey(event, false)) {
             return true;
         }
 
@@ -2220,6 +2225,39 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         return true;
     }
 
+    /**
+     * Artemis Pocket: on low battery (and not charging), stream at 720p/60 with a lower bitrate
+     * so the session lasts longer. Only this session is affected; settings are untouched.
+     */
+    private void applyPocketBatterySaver() {
+        if (!PocketPrefs.autoBatterySaver(this) || prefConfig == null) {
+            return;
+        }
+        Intent battery = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        if (battery == null) {
+            return;
+        }
+        int level = battery.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+        int scale = battery.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+        int plugged = battery.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0);
+        if (level < 0 || scale <= 0 || plugged != 0) {
+            return;
+        }
+        int pct = Math.round(level * 100f / scale);
+        if (pct > 20) {
+            return;
+        }
+        if (prefConfig.width * prefConfig.height > 1280 * 720) {
+            prefConfig.width = 1280;
+            prefConfig.height = 720;
+        }
+        if (prefConfig.fps > 60) {
+            prefConfig.fps = 60;
+        }
+        prefConfig.bitrate = Math.min(prefConfig.bitrate, 15000);
+        Toast.makeText(this, getString(R.string.pocket_battery_saver_on, pct), Toast.LENGTH_LONG).show();
+    }
+
     /** Artemis Pocket: tap the Xbox Guide button on the PC (from the quick menu). */
     public void pressGuideButton() {
         if (controllerHandler == null) {
@@ -2258,6 +2296,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
 
         int keyCode = event.getKeyCode();
+        int source = event.getSource();
+        if (keyCode == KeyEvent.KEYCODE_BACK &&
+                (source == InputDevice.SOURCE_MOUSE || source == InputDevice.SOURCE_MOUSE_RELATIVE)) {
+            return false;
+        }
         boolean guideKey = (keyCode == KeyEvent.KEYCODE_BACK && prefConfig.backAsGuide) ||
                 (keyCode == KeyEvent.KEYCODE_HOME && pocketHomeAsGuide) ||
                 // Guide injected by a remapper (e.g. Key Mapper) from a non-controller device

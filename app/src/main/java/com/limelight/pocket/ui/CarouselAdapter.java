@@ -28,7 +28,8 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         void onItemFocused(int position, View itemView);
     }
 
-    private static final float FOCUS_SCALE = 1.10f;
+    private static final float FOCUS_SCALE = 1.12f;
+    private static final float DIM_ALPHA = 0.55f;
 
     private final BaseAdapter source;
     private final Listener listener;
@@ -130,7 +131,13 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
             applyFocus(frame, hasFocus, true);
             if (hasFocus && pos != RecyclerView.NO_POSITION) {
                 focusedPosition = pos;
+                PocketUi.tick(frame.getContext());
+                PocketUi.shine(frame.getChildAt(0));
                 listener.onItemFocused(pos, frame.getChildAt(0));
+            }
+            // Apple TV style: everything that isn't focused steps back a little
+            if (frame.getParent() instanceof ViewGroup) {
+                refreshDimming((ViewGroup) frame.getParent());
             }
         });
 
@@ -141,6 +148,9 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
 
         // Restore the focus look instantly after a rebind (the PC list refreshes every few seconds)
         applyFocus(frame, frame.hasFocus(), false);
+        if (frame.getParent() instanceof ViewGroup) {
+            frame.setAlpha(((ViewGroup) frame.getParent()).hasFocus() && !frame.hasFocus() ? DIM_ALPHA : 1f);
+        }
     }
 
     @Override
@@ -154,6 +164,24 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         return source.getCount();
     }
 
+    /** Dims the cards that aren't focused while the row has focus; full brightness otherwise. */
+    public static void refreshDimming(final ViewGroup list) {
+        list.post(() -> {
+            boolean rowHasFocus = list.hasFocus();
+            boolean animate = PocketPrefs.animationsEnabled(list.getContext());
+            for (int i = 0; i < list.getChildCount(); i++) {
+                View child = list.getChildAt(i);
+                float target = rowHasFocus && !child.hasFocus() ? DIM_ALPHA : 1f;
+                if (animate) {
+                    child.animate().alpha(target).setDuration(260).start();
+                }
+                else {
+                    child.setAlpha(target);
+                }
+            }
+        });
+    }
+
     static void applyFocus(FrameLayout frame, boolean focused, boolean animate) {
         View content = frame.getChildCount() > 0 ? frame.getChildAt(0) : null;
         if (content != null) {
@@ -165,21 +193,34 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         }
 
         float scale = focused ? FOCUS_SCALE : 1.0f;
-        float z = focused ? frame.getResources().getDisplayMetrics().density * 12 : 0f;
-        if (animate && PocketPrefs.animationsEnabled(frame.getContext())) {
+        boolean animated = animate && PocketPrefs.animationsEnabled(frame.getContext());
+        if (animated) {
             frame.animate()
                     .scaleX(scale)
                     .scaleY(scale)
-                    .translationZ(z)
-                    .setDuration(focused ? 260 : 180)
-                    .setInterpolator(new OvershootInterpolator(focused ? 1.6f : 0f))
+                    .setDuration(focused ? 380 : 240)
+                    .setInterpolator(focused ? new OvershootInterpolator(1.15f) : PocketUi.EASE)
                     .start();
         }
         else {
-            frame.animate().cancel();
             frame.setScaleX(scale);
             frame.setScaleY(scale);
-            frame.setTranslationZ(z);
+        }
+
+        // Soft white glow under opaque cards (box art)
+        View glow = content != null ? content.findViewWithTag("glow_target") : null;
+        if (glow != null) {
+            float z = focused ? frame.getResources().getDisplayMetrics().density * 18 : 0f;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                glow.setOutlineAmbientShadowColor(0xFFFFFFFF);
+                glow.setOutlineSpotShadowColor(0xFFFFFFFF);
+            }
+            if (animated) {
+                glow.animate().translationZ(z).setDuration(300).start();
+            }
+            else {
+                glow.setTranslationZ(z);
+            }
         }
     }
 }

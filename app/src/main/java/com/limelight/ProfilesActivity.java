@@ -16,6 +16,12 @@ import com.limelight.profiles.ProfilesManager;
 import com.limelight.utils.UiHelper;
 
 public class ProfilesActivity extends AppCompatActivity implements ProfilesManager.ProfileChangeListener {
+
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        // Artemis Pocket: honour the interface size setting
+        super.attachBaseContext(com.limelight.pocket.ui.PocketUi.wrapWithUiScale(newBase));
+    }
     private ProfilesAdapter adapter;
     private RecyclerView recyclerView;
     private View emptyState;

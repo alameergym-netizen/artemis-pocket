@@ -113,10 +113,19 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
         loader.freeCacheMemory();
     }
 
-    private static void sortList(List<AppView.AppObject> list) {
+    private void sortList(List<AppView.AppObject> list) {
+        final boolean recentFirst = com.limelight.pocket.PocketPrefs.sortRecent(context);
         Collections.sort(list, new Comparator<AppView.AppObject>() {
             @Override
             public int compare(AppView.AppObject lhs, AppView.AppObject rhs) {
+                if (recentFirst) {
+                    // Artemis Pocket: games you played recently come first
+                    long l = com.limelight.pocket.PocketPrefs.getLastPlayed(context, computer.uuid, lhs.app.getAppId());
+                    long r = com.limelight.pocket.PocketPrefs.getLastPlayed(context, computer.uuid, rhs.app.getAppId());
+                    if (l != r) {
+                        return Long.compare(r, l);
+                    }
+                }
                 int lIndex = lhs.app.getAppIndex();
                 int rIndex = rhs.app.getAppIndex();
                 if (lIndex == rIndex) {

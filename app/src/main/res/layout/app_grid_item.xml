@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Artemis Pocket: console game card (3:4 box art). IDs grid_* are used by the upstream adapter. -->
+<!-- Artemis Pocket: game card (3:4 box art). IDs grid_* are used by the upstream adapter. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="144dp"
-    android:layout_height="192dp">
+    android:layout_width="108dp"
+    android:layout_height="144dp">
 
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        app:cardBackgroundColor="@color/pocket_surface"
-        app:cardCornerRadius="16dp"
+        android:tag="glow_target"
+        app:cardBackgroundColor="#1AFFFFFF"
+        app:cardCornerRadius="14dp"
         app:cardElevation="0dp"
         app:cardPreventCornerOverlap="false">
 
@@ -27,15 +28,15 @@
             android:layout_gravity="bottom"
             android:background="@drawable/pocket_bottom_scrim"
             android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
             android:gravity="center"
             android:maxLines="3"
-            android:paddingStart="10dp"
-            android:paddingTop="28dp"
-            android:paddingEnd="10dp"
-            android:paddingBottom="12dp"
+            android:paddingStart="8dp"
+            android:paddingTop="22dp"
+            android:paddingEnd="8dp"
+            android:paddingBottom="10dp"
             android:textColor="@color/pocket_text"
-            android:textSize="15sp"
-            android:textStyle="bold" />
+            android:textSize="12sp" />
 
         <RelativeLayout
             android:id="@+id/grid_mask"
@@ -44,11 +45,20 @@
 
             <ImageView
                 android:id="@+id/grid_overlay"
-                android:layout_width="52dp"
-                android:layout_height="52dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
                 android:layout_centerInParent="true"
                 android:importantForAccessibility="no" />
         </RelativeLayout>
+
+        <View
+            android:layout_width="34dp"
+            android:layout_height="match_parent"
+            android:background="@drawable/pocket_shine"
+            android:rotation="14"
+            android:scaleY="1.4"
+            android:tag="shine"
+            android:visibility="invisible" />
     </androidx.cardview.widget.CardView>
 
     <View

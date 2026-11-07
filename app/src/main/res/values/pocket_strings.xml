@@ -164,4 +164,41 @@
     <string name="pocket_menu_guide">Press Xbox Guide</string>
     <string name="pocket_menu_settings">Stream settings</string>
     <string name="pocket_menu_stats">Toggle performance stats</string>
+
+    <!-- v2: mono glass, scale, extras -->
+    <string name="pocket_hint_turn_on">Turn on</string>
+    <string name="pocket_hint_not_now">Not now</string>
+    <string name="pocket_usb_cable_title">USB-C cable connected</string>
+    <string name="pocket_usb_cable_sub">Turn on USB tethering to stream over the cable. Press A to open the setting, switch it on, then come back.</string>
+    <string name="pocket_usb_cable_unsupported">This handheld\'s Android hides USB tethering. Run ArtemisPocket-ADB-Tether.bat on the PC to switch it on, or press A to look for the setting.</string>
+    <string name="pocket_set_tether_support">USB tethering on this handheld</string>
+    <string name="pocket_set_tether_support_sub">Whether Android allows networking over the cable</string>
+    <string name="pocket_tether_supported">Supported</string>
+    <string name="pocket_tether_unsupported">Hidden by the ROM · use ADB</string>
+    <string name="pocket_tether_unknown">Unknown</string>
+    <string name="pocket_set_ui_scale">Interface size</string>
+    <string name="pocket_set_ui_scale_sub">Make everything smaller or bigger</string>
+    <string name="pocket_set_haptics">Navigation haptics</string>
+    <string name="pocket_set_haptics_sub">A light tick when moving between items</string>
+    <string name="pocket_set_color_art">Colour game backdrops</string>
+    <string name="pocket_set_color_art_sub">Off keeps the whole interface black and white</string>
+    <string name="pocket_header_library">Library</string>
+    <string name="pocket_header_device">Handheld</string>
+    <string name="pocket_set_sort_recent">Recently played first</string>
+    <string name="pocket_set_sort_recent_sub">Games you played last move to the front</string>
+    <string name="pocket_set_open_last">Open last PC on launch</string>
+    <string name="pocket_set_open_last_sub">Skip the PC list and go straight to your games</string>
+    <string name="pocket_set_latency">Show ping on the home screen</string>
+    <string name="pocket_set_latency_sub">Round-trip time to the selected PC</string>
+    <string name="pocket_set_auto_battery">Auto battery saver</string>
+    <string name="pocket_set_auto_battery_sub">Below 20% (not charging): 720p, 60 FPS, 15 Mbps</string>
+    <string name="pocket_battery_saver_on">Battery %1$d%% · streaming at 720p to save power</string>
+    <string name="pocket_set_button_test">Button tester</string>
+    <string name="pocket_set_button_test_sub">See what each button sends: M1, M2, Home, Back…</string>
+    <string name="pocket_button_test_help">Press any button. Volume stays normal. Press B twice to leave.</string>
+    <string name="pocket_button_test_waiting">Press a button…</string>
+    <string name="pocket_button_test_exit">Press twice to exit</string>
+    <string name="pocket_button_test_via_service">Seen by the accessibility service (Home works while streaming)</string>
+    <string name="pocket_button_test_service_on">Accessibility service: ON · Home can act as Guide while streaming</string>
+    <string name="pocket_button_test_service_off">Accessibility service: OFF · turn on \"Artemis Pocket: Home button and keyboard capture\" for Home as Guide</string>
 </resources>

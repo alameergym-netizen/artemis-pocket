@@ -30,6 +30,7 @@ import com.limelight.ProfilesActivity;
 import com.limelight.R;
 import com.limelight.preferences.AddComputerManually;
 import com.limelight.preferences.StreamSettings;
+import com.limelight.pocket.ui.PocketUi;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -77,21 +78,24 @@ public class QuickSettingsActivity extends ConsoleActivity {
             final int index = i;
             TextView tab = new TextView(this);
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.MATCH_PARENT, dp(46));
-            lp.bottomMargin = dp(6);
+                    ViewGroup.LayoutParams.MATCH_PARENT, dp(36));
+            lp.bottomMargin = dp(4);
             tab.setLayoutParams(lp);
             tab.setGravity(Gravity.CENTER_VERTICAL);
-            tab.setPaddingRelative(dp(18), 0, dp(12), 0);
+            tab.setPaddingRelative(dp(14), 0, dp(10), 0);
             tab.setText(tabNames[i]);
-            tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-            tab.setTypeface(tab.getTypeface(), android.graphics.Typeface.BOLD);
+            tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+            tab.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
             tab.setTextColor(ContextCompat.getColorStateList(this, R.color.pocket_tab_text));
             tab.setBackgroundResource(R.drawable.pocket_tab_bg);
             tab.setFocusable(true);
             tab.setClickable(true);
             tab.setOnFocusChangeListener((v, hasFocus) -> {
+                if (hasFocus) {
+                    PocketUi.tick(this);
+                }
                 if (hasFocus && currentTab != index) {
-                    selectTab(index, false);
+                    selectTab(index, true);
                 }
             });
             tab.setOnClickListener(v -> {
@@ -188,8 +192,8 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 break;
         }
         rowsScroll.scrollTo(0, 0);
-        if (animate) {
-            ConsoleActivity.reveal(rowsContainer, 0);
+        if (animate && PocketPrefs.animationsEnabled(this)) {
+            rowsContainer.scheduleLayoutAnimation();
         }
     }
 
@@ -272,6 +276,10 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     refreshRows();
                 }, null);
 
+        addToggle(getString(R.string.pocket_set_auto_battery), getString(R.string.pocket_set_auto_battery_sub),
+                () -> PocketPrefs.autoBatterySaver(this),
+                value -> prefs().edit().putBoolean(PocketPrefs.KEY_AUTO_BATTERY, value).apply());
+
         addHeader(R.string.pocket_header_video);
 
         final String[] codecValues = {"forceh265", "forceav1", "neverh265", "auto"};
@@ -349,6 +357,9 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     }
                 });
 
+        addAction(getString(R.string.pocket_set_button_test), getString(R.string.pocket_set_button_test_sub), null,
+                () -> startActivity(new Intent(this, ButtonTestActivity.class)));
+
         addToggle(getString(R.string.pocket_set_flip), getString(R.string.pocket_set_flip_sub),
                 () -> prefs().getBoolean("checkbox_flip_face_buttons", false),
                 value -> prefs().edit().putBoolean("checkbox_flip_face_buttons", value).apply());
@@ -402,6 +413,18 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 },
                 () -> showUsbHelp(this));
 
+        addAction(getString(R.string.pocket_set_tether_support), getString(R.string.pocket_set_tether_support_sub),
+                () -> {
+                    switch (UsbLink.getTetheringSupport(this)) {
+                        case UsbLink.TETHER_SUPPORTED:
+                            return getString(R.string.pocket_tether_supported);
+                        case UsbLink.TETHER_UNSUPPORTED:
+                            return getString(R.string.pocket_tether_unsupported);
+                        default:
+                            return getString(R.string.pocket_tether_unknown);
+                    }
+                }, () -> showUsbHelp(this));
+
         addToggle(getString(R.string.pocket_set_usb_auto), getString(R.string.pocket_set_usb_auto_sub),
                 () -> PocketPrefs.usbAutoConnect(this),
                 value -> prefs().edit().putBoolean(PocketPrefs.KEY_USB_AUTO_CONNECT, value).apply());
@@ -417,7 +440,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 () -> showUsbHelp(this));
 
         addAction(getString(R.string.pocket_set_usb_tether), getString(R.string.pocket_set_usb_tether_sub), null,
-                this::openTetherSettings);
+                () -> UsbLink.openTetherSettings(this));
 
         addHeader(R.string.pocket_header_pcs);
 
@@ -425,25 +448,60 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 () -> startActivity(new Intent(this, AddComputerManually.class)));
     }
 
-    private void openTetherSettings() {
-        String[] actions = {"android.settings.TETHER_SETTINGS", Settings.ACTION_WIRELESS_SETTINGS};
-        for (String action : actions) {
-            try {
-                startActivity(new Intent(action));
-                return;
-            } catch (RuntimeException ignored) {
-            }
-        }
-    }
-
     // ---- System -------------------------------------------------------------------------
 
     private void buildSystemTab() {
         addHeader(R.string.pocket_header_app);
 
+        final int[] scaleValues = {75, 80, 85, 90, 100, 110, 120};
+        final String[] scaleLabels = new String[scaleValues.length];
+        for (int i = 0; i < scaleValues.length; i++) {
+            scaleLabels[i] = scaleValues[i] + "%";
+        }
+        addChoice(getString(R.string.pocket_set_ui_scale), getString(R.string.pocket_set_ui_scale_sub), scaleLabels,
+                () -> {
+                    int current = PocketPrefs.uiScalePercent(this);
+                    for (int i = 0; i < scaleValues.length; i++) {
+                        if (scaleValues[i] == current) {
+                            return i;
+                        }
+                    }
+                    return -1;
+                },
+                index -> {
+                    prefs().edit().putInt(PocketPrefs.KEY_UI_SCALE, scaleValues[index]).apply();
+                    // Rebuild this screen at the new size; the others follow when you go back
+                    getIntent().putExtra("tab", TAB_SYSTEM);
+                    rowsContainer.postDelayed(this::recreate, 350);
+                }, null);
+
         addToggle(getString(R.string.pocket_set_animations), getString(R.string.pocket_set_animations_sub),
                 () -> PocketPrefs.animationsEnabled(this),
                 value -> prefs().edit().putBoolean(PocketPrefs.KEY_ANIMATIONS, value).apply());
+
+        addToggle(getString(R.string.pocket_set_haptics), getString(R.string.pocket_set_haptics_sub),
+                () -> PocketPrefs.hapticsEnabled(this),
+                value -> prefs().edit().putBoolean(PocketPrefs.KEY_HAPTICS, value).apply());
+
+        addToggle(getString(R.string.pocket_set_color_art), getString(R.string.pocket_set_color_art_sub),
+                () -> PocketPrefs.colorBackgroundArt(this),
+                value -> prefs().edit().putBoolean(PocketPrefs.KEY_COLOR_ART, value).apply());
+
+        addHeader(R.string.pocket_header_library);
+
+        addToggle(getString(R.string.pocket_set_sort_recent), getString(R.string.pocket_set_sort_recent_sub),
+                () -> PocketPrefs.sortRecent(this),
+                value -> prefs().edit().putBoolean(PocketPrefs.KEY_SORT_RECENT, value).apply());
+
+        addToggle(getString(R.string.pocket_set_open_last), getString(R.string.pocket_set_open_last_sub),
+                () -> PocketPrefs.openLastPc(this),
+                value -> prefs().edit().putBoolean(PocketPrefs.KEY_OPEN_LAST_PC, value).apply());
+
+        addToggle(getString(R.string.pocket_set_latency), getString(R.string.pocket_set_latency_sub),
+                () -> PocketPrefs.showLatency(this),
+                value -> prefs().edit().putBoolean(PocketPrefs.KEY_SHOW_LATENCY, value).apply());
+
+        addHeader(R.string.pocket_header_device);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             addAction(getString(R.string.pocket_set_language), getString(R.string.pocket_set_language_sub), null, () -> {
@@ -486,16 +544,16 @@ public class QuickSettingsActivity extends ConsoleActivity {
         TextView header = new TextView(this);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.topMargin = rowsContainer.getChildCount() == 0 ? 0 : dp(18);
-        lp.bottomMargin = dp(8);
+        lp.topMargin = rowsContainer.getChildCount() == 0 ? 0 : dp(14);
+        lp.bottomMargin = dp(6);
         header.setLayoutParams(lp);
         header.setPaddingRelative(dp(6), 0, 0, 0);
         header.setText(text);
         header.setAllCaps(true);
         header.setLetterSpacing(0.18f);
-        header.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        header.setTypeface(header.getTypeface(), android.graphics.Typeface.BOLD);
-        header.setTextColor(ContextCompat.getColor(this, R.color.pocket_accent));
+        header.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f);
+        header.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        header.setTextColor(ContextCompat.getColor(this, R.color.pocket_text_dim));
         rowsContainer.addView(header);
     }
 
@@ -503,18 +561,22 @@ public class QuickSettingsActivity extends ConsoleActivity {
         LinearLayout row = new LinearLayout(this);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.bottomMargin = dp(8);
+        lp.bottomMargin = dp(6);
         row.setLayoutParams(lp);
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setMinimumHeight(dp(58));
-        row.setPaddingRelative(dp(18), dp(10), dp(14), dp(10));
+        row.setMinimumHeight(dp(46));
+        row.setPaddingRelative(dp(14), dp(7), dp(10), dp(7));
         row.setBackgroundResource(R.drawable.pocket_row_bg);
         row.setFocusable(true);
         row.setClickable(true);
         row.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                PocketUi.tick(this);
+            }
             if (PocketPrefs.animationsEnabled(this)) {
-                v.animate().scaleX(hasFocus ? 1.015f : 1f).scaleY(hasFocus ? 1.015f : 1f).setDuration(160).start();
+                v.animate().scaleX(hasFocus ? 1.02f : 1f).scaleY(hasFocus ? 1.02f : 1f).setDuration(220)
+                        .setInterpolator(PocketUi.EASE).start();
             }
         });
 
@@ -524,16 +586,19 @@ public class QuickSettingsActivity extends ConsoleActivity {
 
         TextView titleView = new TextView(this);
         titleView.setText(title);
-        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-        titleView.setTextColor(ContextCompat.getColor(this, R.color.pocket_text));
+        titleView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
+        titleView.setTextColor(ContextCompat.getColorStateList(this, R.color.pocket_row_text));
+        titleView.setDuplicateParentStateEnabled(true);
+        texts.setDuplicateParentStateEnabled(true);
         texts.addView(titleView);
 
         if (!TextUtils.isEmpty(subtitle)) {
             TextView sub = new TextView(this);
             sub.setText(subtitle);
-            sub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
-            sub.setTextColor(ContextCompat.getColor(this, R.color.pocket_text_dim));
-            sub.setPadding(0, dp(2), 0, 0);
+            sub.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f);
+            sub.setTextColor(ContextCompat.getColorStateList(this, R.color.pocket_row_text_dim));
+            sub.setDuplicateParentStateEnabled(true);
+            sub.setPadding(0, dp(1), 0, 0);
             texts.addView(sub);
         }
         row.addView(texts);
@@ -542,19 +607,21 @@ public class QuickSettingsActivity extends ConsoleActivity {
 
     private TextView valueText() {
         TextView value = new TextView(this);
-        value.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        value.setTypeface(value.getTypeface(), android.graphics.Typeface.BOLD);
-        value.setTextColor(ContextCompat.getColor(this, R.color.pocket_text));
+        value.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+        value.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        value.setTextColor(ContextCompat.getColorStateList(this, R.color.pocket_row_text));
+        value.setDuplicateParentStateEnabled(true);
         value.setGravity(Gravity.CENTER);
-        value.setMinWidth(dp(120));
+        value.setMinWidth(dp(96));
         return value;
     }
 
     private ImageView chevron(int res) {
         ImageView chev = new ImageView(this);
         chev.setImageResource(res);
-        chev.setColorFilter(ContextCompat.getColor(this, R.color.pocket_text_dim));
-        chev.setLayoutParams(new LinearLayout.LayoutParams(dp(22), dp(22)));
+        chev.setImageTintList(ContextCompat.getColorStateList(this, R.color.pocket_row_text_dim));
+        chev.setDuplicateParentStateEnabled(true);
+        chev.setLayoutParams(new LinearLayout.LayoutParams(dp(18), dp(18)));
         return chev;
     }
 
@@ -593,9 +660,10 @@ public class QuickSettingsActivity extends ConsoleActivity {
             setter.set(next);
             refresh.run();
             if (PocketPrefs.animationsEnabled(this)) {
-                value.setTranslationX(direction * dp(10));
-                value.setAlpha(0.3f);
-                value.animate().translationX(0).alpha(1f).setDuration(180).start();
+                PocketUi.tick(this);
+                value.setTranslationX(direction * dp(12));
+                value.setAlpha(0f);
+                value.animate().translationX(0).alpha(1f).setDuration(260).setInterpolator(PocketUi.EASE).start();
             }
         };
         row.setOnKeyListener((v, keyCode, event) -> {
@@ -621,18 +689,19 @@ public class QuickSettingsActivity extends ConsoleActivity {
     private void addToggle(String title, String subtitle, final BoolGetter getter, final BoolSetter setter) {
         LinearLayout row = newRow(title, subtitle);
         final TextView pill = new TextView(this);
-        pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        pill.setTypeface(pill.getTypeface(), android.graphics.Typeface.BOLD);
+        pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f);
+        pill.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
         pill.setGravity(Gravity.CENTER);
-        pill.setMinWidth(dp(64));
-        pill.setPadding(dp(12), dp(5), dp(12), dp(5));
+        pill.setMinWidth(dp(52));
+        pill.setPadding(dp(10), dp(4), dp(10), dp(4));
+        pill.setDuplicateParentStateEnabled(true);
         row.addView(pill);
 
         final Runnable refresh = () -> {
             boolean on = getter.get();
             pill.setText(on ? R.string.pocket_on : R.string.pocket_off);
-            pill.setBackgroundResource(on ? R.drawable.pocket_chip_usb_bg : R.drawable.pocket_chip_bg);
-            pill.setTextColor(ContextCompat.getColor(this, on ? R.color.pocket_accent : R.color.pocket_text_dim));
+            pill.setBackgroundResource(on ? R.drawable.pocket_toggle_on : R.drawable.pocket_toggle_off);
+            pill.setTextColor(ContextCompat.getColorStateList(this, on ? R.color.pocket_toggle_on_text : R.color.pocket_toggle_off_text));
         };
         refresh.run();
         rowRefreshers.add(refresh);
@@ -656,9 +725,9 @@ public class QuickSettingsActivity extends ConsoleActivity {
         if (value != null) {
             final TextView valueView = valueText();
             valueView.setMinWidth(0);
-            valueView.setTextColor(ContextCompat.getColor(this, R.color.pocket_text_dim));
-            valueView.setPaddingRelative(dp(12), 0, dp(6), 0);
-            valueView.setMaxWidth(dp(320));
+            valueView.setTextColor(ContextCompat.getColorStateList(this, R.color.pocket_row_text_dim));
+            valueView.setPaddingRelative(dp(10), 0, dp(4), 0);
+            valueView.setMaxWidth(dp(260));
             valueView.setSingleLine(true);
             valueView.setEllipsize(TextUtils.TruncateAt.END);
             row.addView(valueView);
@@ -692,10 +761,12 @@ public class QuickSettingsActivity extends ConsoleActivity {
         overlay.setAlpha(0f);
         overlay.setVisibility(View.VISIBLE);
         overlay.animate().alpha(1f).setDuration(200).start();
+        PocketUi.setBackdropBlur(findViewById(R.id.pocketMain), true);
     }
 
     private void endHotkeyCapture() {
         capturingHotkey = false;
+        PocketUi.setBackdropBlur(findViewById(R.id.pocketMain), false);
         View overlay = findViewById(R.id.pocketCaptureOverlay);
         overlay.animate().alpha(0f).setDuration(180).withEndAction(() -> overlay.setVisibility(View.GONE)).start();
         refreshRows();

@@ -25,8 +25,9 @@ public class AuroraView extends View {
     private ValueAnimator animator;
     private float phase;
 
-    private int colorA = 0x445CF2D0;
-    private int colorB = 0x558C6CFF;
+    // Mono glass: two faint white glows drifting over pure black
+    private int colorA = 0x26FFFFFF;
+    private int colorB = 0x14FFFFFF;
 
     public AuroraView(Context context) {
         super(context);
@@ -59,7 +60,7 @@ public class AuroraView extends View {
             return;
         }
         animator = ValueAnimator.ofFloat(0f, 1f);
-        animator.setDuration(24000);
+        animator.setDuration(36000);
         animator.setRepeatCount(ValueAnimator.INFINITE);
         animator.setInterpolator(new LinearInterpolator());
         animator.addUpdateListener(a -> {
@@ -95,7 +96,7 @@ public class AuroraView extends View {
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
         vignette.setShader(new LinearGradient(0, 0, 0, h,
-                new int[]{0x00000000, 0x00000000, 0xCC05070B},
+                new int[]{0x00000000, 0x00000000, 0xE6000000},
                 new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
     }
 
@@ -106,14 +107,14 @@ public class AuroraView extends View {
         if (w == 0 || h == 0) {
             return;
         }
-        canvas.drawColor(Color.rgb(10, 13, 20));
+        canvas.drawColor(Color.BLACK);
 
         double t = phase * Math.PI * 2;
-        float ax = (float) (w * (0.25 + 0.12 * Math.sin(t)));
-        float ay = (float) (h * (0.30 + 0.10 * Math.cos(t * 1.3)));
-        float bx = (float) (w * (0.78 + 0.10 * Math.cos(t * 0.8)));
-        float by = (float) (h * (0.65 + 0.12 * Math.sin(t * 1.1)));
-        float r = Math.max(w, h) * 0.55f;
+        float ax = (float) (w * (0.22 + 0.10 * Math.sin(t)));
+        float ay = (float) (h * (0.05 + 0.08 * Math.cos(t * 1.3)));
+        float bx = (float) (w * (0.82 + 0.08 * Math.cos(t * 0.8)));
+        float by = (float) (h * (0.95 + 0.06 * Math.sin(t * 1.1)));
+        float r = Math.max(w, h) * 0.6f;
 
         glowA.setShader(new RadialGradient(ax, ay, r, colorA, 0x00000000, Shader.TileMode.CLAMP));
         glowB.setShader(new RadialGradient(bx, by, r * 0.9f, colorB, 0x00000000, Shader.TileMode.CLAMP));

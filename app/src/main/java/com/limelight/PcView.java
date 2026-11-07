@@ -26,6 +26,7 @@ import com.limelight.pocket.ConsoleActivity;
 import com.limelight.pocket.PocketPrefs;
 import com.limelight.pocket.UsbLink;
 import com.limelight.pocket.ui.CarouselAdapter;
+import com.limelight.pocket.ui.PocketUi;
 import com.limelight.utils.Dialog;
 import com.limelight.utils.HelpLauncher;
 import com.limelight.utils.ServerHelper;
@@ -93,6 +94,15 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
     private static final int USB_COUNTDOWN = 2;
     private static final int USB_NOT_FOUND = 3;
     private static final int USB_NEEDS_PAIR = 4;
+    private static final int USB_NEEDS_TETHER = 5;
+    private static boolean splashShownThisProcess;
+    private static boolean autoOpenedLastPc;
+    private boolean tetherPromptDismissed;
+    private boolean cableWasConnected;
+    private boolean carouselAnimated;
+    private String latencyText;
+    private String latencyForUuid;
+    private boolean latencyProbeRunning;
     private final Handler usbHandler = new Handler(Looper.getMainLooper());
     private boolean usbLinkWasUp;
     private int usbState = USB_IDLE;
@@ -245,6 +255,41 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         updateHero(carouselAdapter.getFocusedPosition());
         renderUsbOverlay();
         pcCarousel.post(this::focusFirstPcIfNeeded);
+        playSplashIfNeeded();
+    }
+
+    private void playSplashIfNeeded() {
+        final View splash = findViewById(R.id.pocketSplash);
+        if (splash == null) {
+            return;
+        }
+        if (splashShownThisProcess || !PocketPrefs.animationsEnabled(this)) {
+            splashShownThisProcess = true;
+            splash.setVisibility(View.GONE);
+            return;
+        }
+        splashShownThisProcess = true;
+        View logo = findViewById(R.id.pocketSplashLogo);
+        final TextView text = findViewById(R.id.pocketSplashText);
+        splash.setVisibility(View.VISIBLE);
+        splash.setAlpha(1f);
+        logo.setAlpha(0f);
+        logo.setScaleX(0.8f);
+        logo.setScaleY(0.8f);
+        logo.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(650).setInterpolator(PocketUi.EASE).start();
+        text.setAlpha(0f);
+        ValueAnimator spacing = ValueAnimator.ofFloat(0.9f, 0.45f);
+        spacing.setDuration(900);
+        spacing.setStartDelay(150);
+        spacing.setInterpolator(PocketUi.EASE);
+        spacing.addUpdateListener(a -> {
+            text.setLetterSpacing((Float) a.getAnimatedValue());
+            text.setAlpha(Math.min(1f, a.getAnimatedFraction() * 1.6f));
+        });
+        spacing.start();
+        splash.animate().alpha(0f).scaleX(1.06f).scaleY(1.06f).setStartDelay(1250).setDuration(450)
+                .setInterpolator(PocketUi.EASE)
+                .withEndAction(() -> splash.setVisibility(View.GONE)).start();
     }
 
     @Override
@@ -940,7 +985,14 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
 
         // Notify the view that the data has changed
         pcGridAdapter.notifyDataSetChanged();
+        if (!carouselAnimated && pcCarousel != null && pcGridAdapter.getCount() > 0) {
+            carouselAnimated = true;
+            if (PocketPrefs.animationsEnabled(this)) {
+                pcCarousel.scheduleLayoutAnimation();
+            }
+        }
         updateHero(carouselAdapter != null ? carouselAdapter.getFocusedPosition() : -1);
+        maybeOpenLastPc(details);
         if (pcCarousel != null) {
             pcCarousel.post(this::focusFirstPcIfNeeded);
         }
@@ -1027,8 +1079,66 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             position = 0;
         }
         ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(position);
-        title.setText(computer.details.name);
-        subtitle.setText(describeComputer(computer.details, true));
+        PocketUi.swapText(title, computer.details.name);
+        String sub = describeComputer(computer.details, true);
+        if (latencyText != null && computer.details.uuid.equals(latencyForUuid)
+                && computer.details.state == ComputerDetails.State.ONLINE) {
+            sub += " · " + latencyText;
+        }
+        subtitle.setText(sub);
+        probeLatency(computer.details);
+    }
+
+    /** Measures how long a TCP handshake to the PC takes, as a rough "ping" in the hero line. */
+    private void probeLatency(final ComputerDetails details) {
+        if (latencyProbeRunning || !PocketPrefs.showLatency(this) ||
+                details.state != ComputerDetails.State.ONLINE || details.activeAddress == null) {
+            return;
+        }
+        String usb = UsbLink.getUsbAddressFor(this, details.uuid);
+        final String host = usb != null ? usb : details.activeAddress.address;
+        final int port = usb != null ? UsbLink.HTTP_PORT : details.activeAddress.port;
+        final String uuid = details.uuid;
+        latencyProbeRunning = true;
+        new Thread(() -> {
+            long best = Long.MAX_VALUE;
+            for (int i = 0; i < 3; i++) {
+                java.net.Socket socket = new java.net.Socket();
+                long start = System.nanoTime();
+                try {
+                    socket.connect(new java.net.InetSocketAddress(host, port), 800);
+                    best = Math.min(best, System.nanoTime() - start);
+                } catch (java.io.IOException ignored) {
+                } finally {
+                    try {
+                        socket.close();
+                    } catch (java.io.IOException ignored) {
+                    }
+                }
+            }
+            final long result = best;
+            runOnUiThread(() -> {
+                latencyProbeRunning = false;
+                if (result != Long.MAX_VALUE) {
+                    double ms = result / 1_000_000.0;
+                    latencyText = ms < 1 ? "<1 ms" : Math.round(ms) + " ms";
+                    latencyForUuid = uuid;
+                }
+            });
+        }, "latency probe").start();
+    }
+
+    /** Optional: jump straight into the library of the PC you used last. */
+    private void maybeOpenLastPc(ComputerDetails details) {
+        if (autoOpenedLastPc || usbState != USB_IDLE || !PocketPrefs.openLastPc(this) || !inForeground) {
+            return;
+        }
+        String last = PocketPrefs.getLastPcUuid(this);
+        if (last != null && last.equals(details.uuid) && details.state == ComputerDetails.State.ONLINE
+                && details.pairState == PairState.PAIRED) {
+            autoOpenedLastPc = true;
+            doAppList(details, false, false);
+        }
     }
 
     public String describeComputer(ComputerDetails details, boolean longForm) {
@@ -1074,6 +1184,9 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             int keyCode = event.getKeyCode();
             if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_BUTTON_B) {
                 if (event.getAction() == KeyEvent.ACTION_UP) {
+                    if (usbState == USB_NEEDS_TETHER) {
+                        tetherPromptDismissed = true;
+                    }
                     cancelUsbFlow(true);
                 }
                 return true;
@@ -1091,6 +1204,9 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
                         cancelUsbFlow(false);
                         doPair(target, null, null);
                     }
+                    else if (usbState == USB_NEEDS_TETHER) {
+                        UsbLink.openTetherSettings(this);
+                    }
                 }
                 return true;
             }
@@ -1102,7 +1218,25 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
 
     @Override
     protected void onStatusTick() {
+        boolean cable = UsbLink.isUsbCableConnected(this);
+        if (!cable && cableWasConnected) {
+            tetherPromptDismissed = false;
+        }
+        cableWasConnected = cable;
+
         boolean up = UsbLink.isLinkUp();
+        if (up && usbState == USB_NEEDS_TETHER) {
+            // Tethering just came on: hand over to the normal connect flow
+            usbState = USB_IDLE;
+        }
+        else if (!up && cable && usbState == USB_IDLE && !tetherPromptDismissed
+                && PocketPrefs.usbAutoConnect(this) && inForeground) {
+            usbState = USB_NEEDS_TETHER;
+            renderUsbOverlay();
+        }
+        else if (!cable && usbState == USB_NEEDS_TETHER) {
+            cancelUsbFlow(false);
+        }
         if (up && !usbLinkWasUp) {
             usbLinkWasUp = true;
             if (PocketPrefs.usbAutoConnect(this)) {
@@ -1303,6 +1437,7 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         if (overlay == null) {
             return;
         }
+        PocketUi.setBackdropBlur(findViewById(R.id.pocketMain), usbState != USB_IDLE);
         if (usbState == USB_IDLE) {
             if (overlay.getVisibility() == View.VISIBLE) {
                 overlay.animate().alpha(0f).setDuration(220)
@@ -1319,6 +1454,14 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             overlay.setAlpha(0f);
             overlay.setVisibility(View.VISIBLE);
             overlay.animate().alpha(1f).setDuration(260).start();
+            View panel = findViewById(R.id.pocketUsbPanel);
+            if (panel != null && PocketPrefs.animationsEnabled(this)) {
+                panel.setScaleX(0.9f);
+                panel.setScaleY(0.9f);
+                panel.setAlpha(0f);
+                panel.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(420)
+                        .setInterpolator(new android.view.animation.OvershootInterpolator(1.1f)).start();
+            }
         }
 
         View pulse = findViewById(R.id.pocketUsbPulse);
@@ -1351,6 +1494,12 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
                 title.setText(getString(R.string.pocket_usb_found, name));
                 subtitle.setText(R.string.pocket_usb_needs_pair);
                 fillHintBar(this, hints, hintA(this, R.string.pocket_hint_pair), hintB(this, R.string.pocket_hint_cancel));
+                break;
+            case USB_NEEDS_TETHER:
+                title.setText(R.string.pocket_usb_cable_title);
+                subtitle.setText(UsbLink.getTetheringSupport(this) == UsbLink.TETHER_UNSUPPORTED ?
+                        R.string.pocket_usb_cable_unsupported : R.string.pocket_usb_cable_sub);
+                fillHintBar(this, hints, hintA(this, R.string.pocket_hint_turn_on), hintB(this, R.string.pocket_hint_not_now));
                 break;
             case USB_COUNTDOWN: {
                 title.setText(getString(R.string.pocket_usb_found, name));

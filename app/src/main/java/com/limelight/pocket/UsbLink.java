@@ -1,7 +1,11 @@
 package com.limelight.pocket;
 
+import android.app.Activity;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.ConnectivityManager;
+import android.provider.Settings;
 import android.os.Build;
 
 import com.limelight.LimeLog;
@@ -183,6 +187,57 @@ public final class UsbLink {
             return null;
         } finally {
             pool.shutdownNow();
+        }
+    }
+
+    // ---- Cable / tethering state --------------------------------------------------------
+
+    /** True while the USB-C port is connected to a host (a PC), whatever mode it's in. */
+    public static boolean isUsbCableConnected(Context context) {
+        try {
+            Intent state = context.registerReceiver(null, new IntentFilter("android.hardware.usb.action.USB_STATE"));
+            if (state != null) {
+                return state.getBooleanExtra("connected", false);
+            }
+        } catch (RuntimeException ignored) {
+        }
+        return false;
+    }
+
+    public static final int TETHER_UNKNOWN = 0;
+    public static final int TETHER_SUPPORTED = 1;
+    public static final int TETHER_UNSUPPORTED = 2;
+
+    /**
+     * Asks Android whether this ROM can do USB tethering at all (it has interface patterns for it).
+     * Some handheld ROMs strip it out, which also hides the switch in Settings.
+     */
+    public static int getTetheringSupport(Context context) {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+            Object result = ConnectivityManager.class.getMethod("getTetherableUsbRegexs").invoke(cm);
+            if (result instanceof String[]) {
+                return ((String[]) result).length > 0 ? TETHER_SUPPORTED : TETHER_UNSUPPORTED;
+            }
+        } catch (Throwable ignored) {
+        }
+        return TETHER_UNKNOWN;
+    }
+
+    /** Opens the system screen with the "USB tethering" switch. */
+    public static void openTetherSettings(Activity activity) {
+        Intent[] intents = {
+                new Intent("android.settings.TETHER_SETTINGS"),
+                new Intent().setClassName("com.android.settings", "com.android.settings.Settings$TetherSettingsActivity"),
+                new Intent().setClassName("com.android.settings", "com.android.settings.TetherSettings"),
+                new Intent(Settings.ACTION_WIRELESS_SETTINGS),
+        };
+        for (Intent intent : intents) {
+            try {
+                activity.startActivity(intent);
+                return;
+            } catch (RuntimeException ignored) {
+            }
         }
     }
 

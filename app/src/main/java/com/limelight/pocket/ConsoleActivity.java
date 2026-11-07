@@ -14,6 +14,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.view.WindowManager;
 import android.text.format.DateFormat;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -30,6 +31,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.limelight.R;
+import com.limelight.pocket.ui.PocketUi;
 
 import java.util.Date;
 
@@ -58,6 +60,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     private int batteryPct = -1;
     private boolean charging;
     private boolean statusRunning;
+    private int createdWithScale;
 
     private final BroadcastReceiver batteryReceiver = new BroadcastReceiver() {
         @Override
@@ -84,14 +87,47 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     };
 
     @Override
+    protected void attachBaseContext(Context newBase) {
+        super.attachBaseContext(PocketUi.wrapWithUiScale(newBase));
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
         PocketSetup.applyFirstRunDefaults(this);
+        super.onCreate(savedInstanceState);
+        createdWithScale = PocketPrefs.uiScalePercent(this);
+        applyFullscreenWindow(this);
+    }
+
+    /** Edge-to-edge, behind the camera cutout, no system bars: the whole 1080p panel is ours. */
+    public static void applyFullscreenWindow(android.app.Activity activity) {
+        android.view.Window window = activity.getWindow();
+        WindowCompat.setDecorFitsSystemWindows(window, false);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            WindowManager.LayoutParams lp = window.getAttributes();
+            lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+            window.setAttributes(lp);
+        }
+        window.setStatusBarColor(0);
+        window.setNavigationBarColor(0);
+        hideSystemBars(activity);
+    }
+
+    public static void hideSystemBars(android.app.Activity activity) {
+        WindowInsetsControllerCompat controller =
+                WindowCompat.getInsetsController(activity.getWindow(), activity.getWindow().getDecorView());
+        controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        controller.hide(WindowInsetsCompat.Type.systemBars());
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        if (createdWithScale != 0 && createdWithScale != PocketPrefs.uiScalePercent(this)) {
+            // Interface size changed in settings: rebuild this screen at the new size
+            recreate();
+            return;
+        }
         menuHotkey = PocketPrefs.getMenuHotkey(this);
         enterImmersive();
         try {
@@ -123,10 +159,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     }
 
     protected void enterImmersive() {
-        WindowInsetsControllerCompat controller =
-                WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
-        controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-        controller.hide(WindowInsetsCompat.Type.systemBars());
+        hideSystemBars(this);
     }
 
     /** Called every couple of seconds while the screen is visible. */
@@ -239,7 +272,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             icon = R.drawable.ic_usb;
             text = R.string.pocket_link_usb;
             bg = R.drawable.pocket_chip_usb_bg;
-            color = R.color.pocket_accent;
+            color = R.color.pocket_bg;
         }
         else if (isWifiConnected(this)) {
             icon = R.drawable.ic_wifi;
@@ -260,11 +293,11 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         Drawable d = ContextCompat.getDrawable(this, icon);
         if (d != null) {
             d = d.mutate();
-            int size = dp(16);
+            int size = dp(13);
             d.setBounds(0, 0, size, size);
             d.setTint(tint);
             chip.setCompoundDrawablesRelative(d, null, null, null);
-            chip.setCompoundDrawablePadding(dp(6));
+            chip.setCompoundDrawablePadding(dp(5));
         }
     }
 
@@ -287,11 +320,11 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     }
 
     public static Hint hintStart(Context c, int label) {
-        return new Hint("☰", 0xFFE6E9F0, c.getString(label));
+        return new Hint("☰", 0xFFFFFFFF, c.getString(label));
     }
 
     public static Hint hintShoulders(Context c, int label) {
-        return new Hint("L1 R1", 0xFFE6E9F0, c.getString(label));
+        return new Hint("L1 R1", 0xFFFFFFFF, c.getString(label));
     }
 
     protected void setHints(Hint... hints) {
@@ -310,12 +343,12 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             item.setGravity(Gravity.CENTER_VERTICAL);
             LinearLayout.LayoutParams itemLp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            itemLp.setMarginStart((int) (18 * density));
+            itemLp.setMarginStart((int) (14 * density));
             item.setLayoutParams(itemLp);
 
             TextView glyph = new TextView(context);
             boolean pill = hint.glyph.length() > 1;
-            int size = (int) (22 * density);
+            int size = (int) (18 * density);
             glyph.setLayoutParams(new LinearLayout.LayoutParams(
                     pill ? ViewGroup.LayoutParams.WRAP_CONTENT : size, size));
             if (pill) {
@@ -323,8 +356,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             }
             glyph.setGravity(Gravity.CENTER);
             glyph.setText(hint.glyph);
-            glyph.setTextSize(TypedValue.COMPLEX_UNIT_SP, pill ? 10 : 12);
-            glyph.setTextColor(0xFF0A0D14);
+            glyph.setTextSize(TypedValue.COMPLEX_UNIT_SP, pill ? 8.5f : 10);
+            glyph.setTextColor(0xFF000000);
             glyph.setTypeface(glyph.getTypeface(), android.graphics.Typeface.BOLD);
             GradientDrawable bg = new GradientDrawable();
             bg.setShape(pill ? GradientDrawable.RECTANGLE : GradientDrawable.OVAL);
@@ -338,10 +371,10 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             TextView label = new TextView(context);
             LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            labelLp.setMarginStart((int) (7 * density));
+            labelLp.setMarginStart((int) (6 * density));
             label.setLayoutParams(labelLp);
             label.setText(hint.label);
-            label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+            label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
             label.setTextColor(ContextCompat.getColor(context, R.color.pocket_text_dim));
             item.addView(label);
 
@@ -368,8 +401,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             return;
         }
         view.setAlpha(0f);
-        view.setTranslationY(view.getResources().getDisplayMetrics().density * 18);
-        view.animate().alpha(1f).translationY(0).setStartDelay(delayMs).setDuration(420)
-                .setInterpolator(new android.view.animation.DecelerateInterpolator(2f)).start();
+        view.setTranslationY(view.getResources().getDisplayMetrics().density * 14);
+        view.animate().alpha(1f).translationY(0).setStartDelay(delayMs).setDuration(520)
+                .setInterpolator(PocketUi.EASE).start();
     }
 }

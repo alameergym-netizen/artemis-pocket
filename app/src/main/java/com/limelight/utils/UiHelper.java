@@ -130,6 +130,12 @@ public class UiHelper {
         // Set GameState.MODE_NONE initially for all activities
         setGameModeStatus(activity, false, false);
 
+        if (activity instanceof com.limelight.pocket.ConsoleActivity) {
+            // Artemis Pocket screens are immersive full screen and handle their own insets
+            com.limelight.pocket.ConsoleActivity.hideSystemBars(activity);
+            return;
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             // Allow this non-streaming activity to layout under notches.
             //

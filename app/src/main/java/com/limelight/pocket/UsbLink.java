@@ -103,6 +103,11 @@ public final class UsbLink {
         return findTetherInterface() != null;
     }
 
+    /** USB tethering or the ADB bridge: any way of streaming over the cable. */
+    public static boolean isAnyUsbLinkUp() {
+        return UsbBridge.isConnected() || isLinkUp();
+    }
+
     private static boolean isOnSameSubnet24(byte[] a, byte[] b) {
         return a[0] == b[0] && a[1] == b[1] && a[2] == b[2];
     }
@@ -111,6 +116,9 @@ public final class UsbLink {
     public static boolean isUsbAddress(String ip) {
         if (ip == null) {
             return false;
+        }
+        if (UsbBridge.HOST_IP.equals(ip)) {
+            return UsbBridge.isConnected();
         }
         TetherInfo info = findTetherInterface();
         if (info == null) {

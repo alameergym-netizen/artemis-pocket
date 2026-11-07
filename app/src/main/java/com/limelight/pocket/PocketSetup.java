@@ -18,10 +18,18 @@ public final class PocketSetup {
     public static void applyFirstRunDefaults(Context context) {
         SharedPreferences prefs = PocketPrefs.prefs(context);
         if (prefs.getBoolean(PocketPrefs.KEY_FIRST_RUN_DONE, false)) {
+            // v2: the ADB USB bridge tops out around 60 Mbps, so move the old 80 Mbps default down
+            if (prefs.getInt("pocket_defaults_version", 1) < 2) {
+                SharedPreferences.Editor e = prefs.edit().putInt("pocket_defaults_version", 2);
+                if (prefs.getInt(PocketPrefs.KEY_USB_BITRATE, 0) == 80000) {
+                    e.putInt(PocketPrefs.KEY_USB_BITRATE, PocketPrefs.DEFAULT_USB_BITRATE_KBPS);
+                }
+                e.apply();
+            }
             return;
         }
         applyRp6Defaults(context);
-        prefs.edit().putBoolean(PocketPrefs.KEY_FIRST_RUN_DONE, true).apply();
+        prefs.edit().putBoolean(PocketPrefs.KEY_FIRST_RUN_DONE, true).putInt("pocket_defaults_version", 2).apply();
     }
 
     public static void applyRp6Defaults(Context context) {

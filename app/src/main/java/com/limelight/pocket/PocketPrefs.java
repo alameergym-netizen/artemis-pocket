@@ -44,7 +44,7 @@ public final class PocketPrefs {
     public static final String ON_CONNECT_LAST_GAME = "last";
     public static final String ON_CONNECT_NOTHING = "nothing";
 
-    public static final int DEFAULT_USB_BITRATE_KBPS = 80000;
+    public static final int DEFAULT_USB_BITRATE_KBPS = 60000;
 
     public static SharedPreferences prefs(Context context) {
         return PreferenceManager.getDefaultSharedPreferences(context);

@@ -49,7 +49,7 @@
     <string name="pocket_usb_status_off">Not connected</string>
     <string name="pocket_usb_help_title">USB-C streaming setup</string>
     <string name="pocket_usb_help_sub">One-time steps on the handheld and the PC</string>
-    <string name="pocket_usb_help_body">Streaming over the cable needs no Wi-Fi and no internet. The cable becomes a private network between the handheld and your PC.\n\nON THE PC (once)\n1. Install Apollo (or Sunshine) and make sure it is running.\n2. Download the pc-setup folder from the Artemis Pocket GitHub page and double-click ArtemisPocket-USB-Setup.bat. It opens the firewall for the USB network and stops Windows from using the handheld for internet.\n\nON THE RETROID (once)\n3. Settings → About device → tap Build number 7 times.\n4. Settings → System → Developer options → Default USB configuration → USB tethering.\n\nEVERY TIME\n5. Open Artemis Pocket and plug the cable into the PC. It finds the PC on its own. The first time, pair with the PIN in Apollo\'s web page.\n\nTips: use a USB 3 port and cable. The handheld charges from the PC while you play, but more slowly than from a wall charger.</string>
+    <string name="pocket_usb_help_body">Streaming over the cable needs no Wi-Fi and no internet.\n\nRETROID POCKET (USB tethering is turned off on its Android, so we use the USB bridge)\nOn the handheld, once:\n1. Settings → About device → tap Build number 7 times.\n2. Settings → System → Developer options → turn on USB debugging.\nOn the PC, once:\n3. Install Apollo (or Sunshine).\n4. Get ArtemisPocket-PC-Tools from the Artemis Pocket GitHub page and double-click ArtemisPocket-USB-Bridge.bat. It downloads ADB if needed and can start with Windows.\nEvery time:\n5. Plug the cable in (allow USB debugging the first time) and open Artemis Pocket. It finds the PC on its own. The first time, pair with the PIN in Apollo\'s web page.\n\nOTHER HANDHELDS WITH USB TETHERING\nTurn on USB tethering (Settings → Network → Hotspot &amp; tethering) and run ArtemisPocket-USB-Setup.bat on the PC once.\n\nTips: the bridge carries up to about 60 Mbps; lower the USB-C bitrate if the picture stutters. The handheld charges from the PC while you play.</string>
 
     <!-- Library -->
     <string name="pocket_library">Library</string>
@@ -170,11 +170,11 @@
     <string name="pocket_hint_not_now">Not now</string>
     <string name="pocket_usb_cable_title">USB-C cable connected</string>
     <string name="pocket_usb_cable_sub">Turn on USB tethering to stream over the cable. Press A to open the setting, switch it on, then come back.</string>
-    <string name="pocket_usb_cable_unsupported">This handheld\'s Android hides USB tethering. Run ArtemisPocket-ADB-Tether.bat on the PC to switch it on, or press A to look for the setting.</string>
+    <string name="pocket_usb_cable_unsupported">This handheld\'s Android has USB tethering turned off. Run ArtemisPocket-USB-Bridge on the PC (USB debugging on) and the stream goes through the cable anyway. Press A for the steps.</string>
     <string name="pocket_set_tether_support">USB tethering on this handheld</string>
     <string name="pocket_set_tether_support_sub">Whether Android allows networking over the cable</string>
     <string name="pocket_tether_supported">Supported</string>
-    <string name="pocket_tether_unsupported">Hidden by the ROM · use ADB</string>
+    <string name="pocket_tether_unsupported">Turned off by the ROM · use the USB bridge</string>
     <string name="pocket_tether_unknown">Unknown</string>
     <string name="pocket_set_ui_scale">Interface size</string>
     <string name="pocket_set_ui_scale_sub">Make everything smaller or bigger</string>
@@ -201,4 +201,5 @@
     <string name="pocket_button_test_via_service">Seen by the accessibility service (Home works while streaming)</string>
     <string name="pocket_button_test_service_on">Accessibility service: ON · Home can act as Guide while streaming</string>
     <string name="pocket_button_test_service_off">Accessibility service: OFF · turn on \"Artemis Pocket: Home button and keyboard capture\" for Home as Guide</string>
+    <string name="pocket_usb_status_bridge">Connected · ADB bridge</string>
 </resources>

@@ -25,6 +25,7 @@ import com.limelight.profiles.ProfilesManager;
 import com.limelight.pocket.ConsoleActivity;
 import com.limelight.pocket.PocketPrefs;
 import com.limelight.pocket.UsbLink;
+import com.limelight.pocket.UsbBridge;
 import com.limelight.pocket.ui.CarouselAdapter;
 import com.limelight.pocket.ui.PocketUi;
 import com.limelight.utils.Dialog;
@@ -99,6 +100,7 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
     private static boolean autoOpenedLastPc;
     private boolean tetherPromptDismissed;
     private boolean cableWasConnected;
+    private int cableTicks;
     private boolean carouselAnimated;
     private String latencyText;
     private String latencyForUuid;
@@ -1205,7 +1207,12 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
                         doPair(target, null, null);
                     }
                     else if (usbState == USB_NEEDS_TETHER) {
-                        UsbLink.openTetherSettings(this);
+                        if (UsbLink.getTetheringSupport(this) == UsbLink.TETHER_UNSUPPORTED) {
+                            com.limelight.pocket.QuickSettingsActivity.showUsbHelp(this);
+                        }
+                        else {
+                            UsbLink.openTetherSettings(this);
+                        }
                     }
                 }
                 return true;
@@ -1223,13 +1230,14 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             tetherPromptDismissed = false;
         }
         cableWasConnected = cable;
+        cableTicks = cable ? cableTicks + 1 : 0;
 
-        boolean up = UsbLink.isLinkUp();
+        boolean up = UsbLink.isAnyUsbLinkUp();
         if (up && usbState == USB_NEEDS_TETHER) {
-            // Tethering just came on: hand over to the normal connect flow
+            // Tethering or the ADB bridge just came up: hand over to the normal connect flow
             usbState = USB_IDLE;
         }
-        else if (!up && cable && usbState == USB_IDLE && !tetherPromptDismissed
+        else if (!up && cable && cableTicks >= 3 && usbState == USB_IDLE && !tetherPromptDismissed
                 && PocketPrefs.usbAutoConnect(this) && inForeground) {
             usbState = USB_NEEDS_TETHER;
             renderUsbOverlay();
@@ -1264,10 +1272,17 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
 
         usbThread = new Thread(() -> {
             String found = null;
+            if (UsbBridge.ensureConnected()) {
+                // ADB bridge: the PC is reachable at 127.0.0.1 through the cable
+                found = UsbBridge.HOST_IP;
+            }
             // Windows needs a few seconds to get its address from the handheld after plug-in
-            for (int attempt = 0; attempt < 30 && !Thread.currentThread().isInterrupted(); attempt++) {
+            for (int attempt = 0; found == null && attempt < 30 && !Thread.currentThread().isInterrupted(); attempt++) {
                 UsbLink.TetherInfo info = UsbLink.findTetherInterface();
                 if (info == null) {
+                    if (UsbBridge.ensureConnected()) {
+                        found = UsbBridge.HOST_IP;
+                    }
                     break;
                 }
                 LimeLog.info("USB link up on " + info.describe() + ", scanning (attempt " + (attempt + 1) + ")");

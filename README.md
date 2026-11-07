@@ -22,16 +22,16 @@ It installs next to the official Artemis (`com.artemispocket`).
 
 ## USB-C streaming setup (once)
 
-**PC**
-1. Install [Apollo](https://github.com/ClassicOldSong/Apollo/releases) (or Sunshine).
-2. Download the [`pc-setup`](pc-setup) folder and double-click `ArtemisPocket-USB-Setup.bat`.
-   It opens the streaming ports for the USB network and stops Windows from using the handheld for internet.
+**Retroid Pocket (USB tethering is turned off in its Android) — USB bridge**
+1. Handheld: Settings → About device → tap *Build number* 7 times, then Developer options → **USB debugging** on.
+2. PC: install [Apollo](https://github.com/ClassicOldSong/Apollo/releases), download the [`pc-setup`](pc-setup) folder and
+   double-click **`ArtemisPocket-USB-Bridge.bat`**. It downloads ADB if needed, can start with Windows, and needs no admin rights.
+3. Plug the cable in, allow USB debugging, open Artemis Pocket. First time only, pair with the PIN in Apollo's web page.
 
-**Retroid**
-3. Settings → About device → tap *Build number* 7 times.
-4. Settings → System → Developer options → *Default USB configuration* → **USB tethering**.
+The bridge uses `adb reverse` for Apollo's TCP ports and relays the stream's UDP packets (video/control/audio)
+through a single ADB tunnel. Roughly 60 Mbps is comfortable.
 
-**Every time**: open Artemis Pocket and plug the cable into the PC. First time only, pair with the PIN in Apollo's web page.
+**Handhelds with USB tethering**: turn on USB tethering and run `ArtemisPocket-USB-Setup.bat` on the PC once.
 
 ## Home button as Guide in every app
 

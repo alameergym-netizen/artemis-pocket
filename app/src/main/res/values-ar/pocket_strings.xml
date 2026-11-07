@@ -46,7 +46,7 @@
     <string name="pocket_usb_status_off">غير متصل</string>
     <string name="pocket_usb_help_title">إعداد الستريم عبر USB-C</string>
     <string name="pocket_usb_help_sub">خطوات مرة وحدة على الجهاز والكمبيوتر</string>
-    <string name="pocket_usb_help_body">الستريم عبر الكيبل ما بيحتاج واي فاي ولا إنترنت. الكيبل بصير شبكة خاصة بين الجهاز والكمبيوتر.\n\nعلى الكمبيوتر (مرة وحدة)\n1. نزّل Apollo (أو Sunshine) وتأكد إنو شغّال.\n2. نزّل مجلد pc-setup من صفحة Artemis Pocket على GitHub واعمل دبل كليك على ArtemisPocket-USB-Setup.bat. بيفتح الفايروول لشبكة الـ USB وبيمنع ويندوز يستخدم الجهاز للإنترنت.\n\nعلى الريترويد (مرة وحدة)\n3. الإعدادات ← حول الجهاز ← اضغط على رقم الإصدار (Build number) ٧ مرات.\n4. الإعدادات ← النظام ← خيارات المطوّر ← Default USB configuration ← USB tethering.\n\nكل مرة\n5. افتح Artemis Pocket واشبك الكيبل بالكمبيوتر، وهو بيلاقي الكمبيوتر لحاله. أول مرة اعمل اقتران بالرمز من صفحة Apollo.\n\nنصائح: استخدم منفذ وكيبل USB 3. الجهاز بيشحن من الكمبيوتر وإنت بتلعب، بس أبطأ من شاحن الحيط.</string>
+    <string name="pocket_usb_help_body">الستريم عبر الكيبل ما بيحتاج واي فاي ولا إنترنت.\n\nRETROID POCKET (أندرويد فيه الـ USB tethering معطّل، فبنستخدم جسر USB)\nعلى الجهاز، مرة وحدة:\n1. الإعدادات ← حول الجهاز ← اضغط على رقم الإصدار (Build number) ٧ مرات.\n2. الإعدادات ← النظام ← خيارات المطوّر ← فعّل USB debugging.\nعلى الكمبيوتر، مرة وحدة:\n3. نزّل Apollo (أو Sunshine).\n4. نزّل ArtemisPocket-PC-Tools من صفحة Artemis Pocket على GitHub واعمل دبل كليك على ArtemisPocket-USB-Bridge.bat. بينزّل ADB لحاله إذا لزم، وبيقدر يشتغل مع ويندوز تلقائياً.\nكل مرة:\n5. اشبك الكيبل (أول مرة اسمح بالـ USB debugging) وافتح Artemis Pocket، وهو بيلاقي الكمبيوتر لحاله. أول مرة اعمل اقتران بالرمز من صفحة Apollo.\n\nأجهزة ثانية فيها USB tethering\nشغّل USB tethering (الإعدادات ← الشبكة ← نقطة الاتصال والتيثرنج) وشغّل ArtemisPocket-USB-Setup.bat على الكمبيوتر مرة وحدة.\n\nنصائح: الجسر بيحمل لحد تقريباً 60 Mbps، نزّل البت ريت تبع USB-C إذا الصورة بتقطّع. الجهاز بيشحن من الكمبيوتر وإنت بتلعب.</string>
 
     <string name="pocket_library">المكتبة</string>
     <string name="pocket_library_count">المكتبة · %1$d</string>
@@ -163,11 +163,11 @@
     <string name="pocket_hint_not_now">مش هلّق</string>
     <string name="pocket_usb_cable_title">انشبك كيبل USB-C</string>
     <string name="pocket_usb_cable_sub">شغّل USB tethering عشان تعمل ستريم عبر الكيبل. اضغط A يفتحلك الإعداد، شغّله وارجع.</string>
-    <string name="pocket_usb_cable_unsupported">أندرويد بهالجهاز مخبّي USB tethering. شغّل ArtemisPocket-ADB-Tether.bat على الكمبيوتر يشغّله، أو اضغط A تدوّر على الإعداد.</string>
+    <string name="pocket_usb_cable_unsupported">أندرويد بهالجهاز معطّل الـ USB tethering. شغّل ArtemisPocket-USB-Bridge على الكمبيوتر (مع USB debugging) والستريم بيمشي عبر الكيبل. اضغط A للخطوات.</string>
     <string name="pocket_set_tether_support">USB tethering على هالجهاز</string>
     <string name="pocket_set_tether_support_sub">إذا أندرويد بيسمح بشبكة عبر الكيبل</string>
     <string name="pocket_tether_supported">مدعوم</string>
-    <string name="pocket_tether_unsupported">مخفي بالنظام · استخدم ADB</string>
+    <string name="pocket_tether_unsupported">معطّل بالنظام · استخدم جسر USB</string>
     <string name="pocket_tether_unknown">غير معروف</string>
     <string name="pocket_set_ui_scale">حجم الواجهة</string>
     <string name="pocket_set_ui_scale_sub">صغّر أو كبّر كل شي</string>
@@ -194,4 +194,5 @@
     <string name="pocket_button_test_via_service">وصل لخدمة إمكانية الوصول (Home بيشتغل أثناء الستريم)</string>
     <string name="pocket_button_test_service_on">خدمة إمكانية الوصول: شغّالة · Home بيشتغل كـ Guide أثناء الستريم</string>
     <string name="pocket_button_test_service_off">خدمة إمكانية الوصول: طافية · فعّل \"Artemis Pocket: Home button and keyboard capture\" عشان Home يصير Guide</string>
+    <string name="pocket_usb_status_bridge">متصل · جسر ADB</string>
 </resources>

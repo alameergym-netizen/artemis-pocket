@@ -79,6 +79,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     private final Runnable statusTick = new Runnable() {
         @Override
         public void run() {
+            // Look for the PC's ADB USB bridge in the background
+            UsbBridge.probeAsync();
             updateClock();
             updateLinkChip();
             onStatusTick();
@@ -268,7 +270,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         int text;
         int bg;
         int color;
-        if (UsbLink.isLinkUp()) {
+        if (UsbLink.isAnyUsbLinkUp()) {
             icon = R.drawable.ic_usb;
             text = R.string.pocket_link_usb;
             bg = R.drawable.pocket_chip_usb_bg;

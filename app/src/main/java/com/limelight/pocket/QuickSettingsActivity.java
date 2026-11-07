@@ -405,6 +405,9 @@ public class QuickSettingsActivity extends ConsoleActivity {
 
         addAction(getString(R.string.pocket_set_usb_status), null,
                 () -> {
+                    if (UsbBridge.isConnected()) {
+                        return getString(R.string.pocket_usb_status_bridge);
+                    }
                     UsbLink.TetherInfo info = UsbLink.findTetherInterface();
                     if (info == null) {
                         return getString(R.string.pocket_usb_status_off);

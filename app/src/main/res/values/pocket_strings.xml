@@ -202,4 +202,91 @@
     <string name="pocket_button_test_service_on">Accessibility service: ON · Home can act as Guide while streaming</string>
     <string name="pocket_button_test_service_off">Accessibility service: OFF · turn on \"Artemis Pocket: Home button and keyboard capture\" for Home as Guide</string>
     <string name="pocket_usb_status_bridge">Connected · ADB bridge</string>
+
+    <!-- v3: buttons, radial menu, focus style, turbo -->
+    <string name="pocket_tab_buttons">Buttons</string>
+    <string name="pocket_act_none">Nothing</string>
+    <string name="pocket_act_default">Default</string>
+    <string name="pocket_act_guide">Xbox Guide button</string>
+    <string name="pocket_act_gamebar">Xbox Game Bar (Win+G)</string>
+    <string name="pocket_act_radial">Radial menu</string>
+    <string name="pocket_act_quickmenu">Quick menu</string>
+    <string name="pocket_act_view">View / Select button</string>
+    <string name="pocket_act_start">Menu / Start button</string>
+    <string name="pocket_act_esc">Esc</string>
+    <string name="pocket_act_alttab">Switch window (Alt+Tab)</string>
+    <string name="pocket_act_win">Windows key</string>
+    <string name="pocket_act_altf4">Close window (Alt+F4)</string>
+    <string name="pocket_act_altenter">Full screen (Alt+Enter)</string>
+    <string name="pocket_act_taskmgr">Task Manager</string>
+    <string name="pocket_act_desktop">Show desktop (Win+D)</string>
+    <string name="pocket_act_screenshot">Screenshot (Game Bar)</string>
+    <string name="pocket_act_record">Record last 30 s (Game Bar)</string>
+    <string name="pocket_act_playpause">Media play / pause</string>
+    <string name="pocket_act_volup">PC volume up</string>
+    <string name="pocket_act_voldown">PC volume down</string>
+    <string name="pocket_act_mute">Mute PC</string>
+    <string name="pocket_act_stats">Performance stats</string>
+    <string name="pocket_act_keyboard">On-screen keyboard</string>
+    <string name="pocket_act_mouse">Mouse mode on / off</string>
+    <string name="pocket_act_androidhome">Android home screen</string>
+    <string name="pocket_act_disconnect">Disconnect (keep game running)</string>
+    <string name="pocket_act_quit">Quit game</string>
+    <string name="pocket_short_guide">Guide</string>
+    <string name="pocket_short_gamebar">Game Bar</string>
+    <string name="pocket_short_quickmenu">Menu</string>
+    <string name="pocket_short_taskmgr">Task Manager</string>
+    <string name="pocket_short_screenshot">Screenshot</string>
+    <string name="pocket_short_record">Record clip</string>
+    <string name="pocket_short_desktop">Desktop</string>
+    <string name="pocket_short_altf4">Close</string>
+    <string name="pocket_short_altenter">Full screen</string>
+    <string name="pocket_short_playpause">Play / Pause</string>
+    <string name="pocket_short_volup">Volume +</string>
+    <string name="pocket_short_voldown">Volume −</string>
+    <string name="pocket_short_stats">Stats</string>
+    <string name="pocket_short_keyboard">Keyboard</string>
+    <string name="pocket_short_mouse">Mouse</string>
+    <string name="pocket_short_androidhome">Android</string>
+    <string name="pocket_short_disconnect">Disconnect</string>
+    <string name="pocket_short_quit">Quit game</string>
+    <string name="pocket_button_back">Back</string>
+    <string name="pocket_button_home">Home</string>
+    <string name="pocket_button_menu">Menu button</string>
+    <string name="pocket_gesture_tap">Press</string>
+    <string name="pocket_gesture_double">Double press</string>
+    <string name="pocket_gesture_hold">Hold</string>
+    <string name="pocket_header_back">Back button</string>
+    <string name="pocket_header_home">Home button</string>
+    <string name="pocket_header_menu_button">Menu button (M1 / M2…)</string>
+    <string name="pocket_header_radial">Radial menu</string>
+    <string name="pocket_header_more_buttons">More</string>
+    <string name="pocket_set_home_service">Home button access</string>
+    <string name="pocket_set_home_service_sub">Android only lets apps see Home through this service</string>
+    <string name="pocket_service_on">On</string>
+    <string name="pocket_service_off">Off · press to turn on</string>
+    <string name="pocket_set_feedback">Show what a button did</string>
+    <string name="pocket_set_feedback_sub">A small label at the top of the stream</string>
+    <string name="pocket_set_buttons_reset">Reset buttons and radial menu</string>
+    <string name="pocket_buttons_reset_done">Buttons reset</string>
+    <string name="pocket_set_focus_style">Selection style</string>
+    <string name="pocket_set_focus_style_sub">How the selected card is shown</string>
+    <string name="pocket_focus_ring_zoom">Outline + zoom</string>
+    <string name="pocket_focus_ring">Outline</string>
+    <string name="pocket_focus_zoom">Zoom</string>
+    <string name="pocket_set_turbo">Turbo low latency</string>
+    <string name="pocket_set_turbo_sub">Snapdragon low-latency decoding, lowest-latency pacing, drops late frames</string>
+    <string-array name="pocket_radial_positions">
+        <item>Up</item>
+        <item>Up right</item>
+        <item>Right</item>
+        <item>Down right</item>
+        <item>Down</item>
+        <item>Down left</item>
+        <item>Left</item>
+        <item>Up left</item>
+    </string-array>
+    <string name="pocket_set_guide_help">Guide does nothing on the PC?</string>
+    <string name="pocket_set_guide_help_sub">What the Xbox button opens on Windows</string>
+    <string name="pocket_guide_help_body">The Guide (Xbox) button goes to the PC as a controller button. Steam Big Picture and Xbox-app games react to it.\n\nThe Windows Game Bar only opens from Guide when \"Open Xbox Game Bar using this button on a controller\" is on (Windows Settings → Gaming → Xbox Game Bar), and with some virtual controllers it doesn\'t react at all.\n\nIf you want the Game Bar every time, set the button to \"Xbox Game Bar (Win+G)\" instead: it sends the keyboard shortcut, which always works.\n\nTurn on \"Show what a button did\" to see each press confirmed at the top of the stream.</string>
 </resources>

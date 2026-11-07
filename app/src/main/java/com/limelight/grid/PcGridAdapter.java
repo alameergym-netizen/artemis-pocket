@@ -117,24 +117,6 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
                 color = R.color.pocket_text_faint;
             }
             dotView.setColorFilter(ContextCompat.getColor(context, color));
-            // Online PCs get a gently "breathing" status light
-            dotView.animate().cancel();
-            if (obj.details.state == ComputerDetails.State.ONLINE &&
-                    com.limelight.pocket.PocketPrefs.animationsEnabled(context)) {
-                if (dotView.getTag() == null) {
-                    android.animation.ObjectAnimator breathe = android.animation.ObjectAnimator.ofFloat(dotView, View.ALPHA, 1f, 0.35f);
-                    breathe.setDuration(1600);
-                    breathe.setRepeatMode(android.animation.ValueAnimator.REVERSE);
-                    breathe.setRepeatCount(android.animation.ValueAnimator.INFINITE);
-                    breathe.start();
-                    dotView.setTag(breathe);
-                }
-            }
-            else if (dotView.getTag() instanceof android.animation.ObjectAnimator) {
-                ((android.animation.ObjectAnimator) dotView.getTag()).cancel();
-                dotView.setTag(null);
-                dotView.setAlpha(1f);
-            }
         }
         txtView.setAlpha(1.0f);
     }

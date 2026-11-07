@@ -49,9 +49,10 @@ public class QuickSettingsActivity extends ConsoleActivity {
     private interface TextGetter { String get(); }
 
     private static final int TAB_STREAM = 0;
-    private static final int TAB_CONTROLS = 1;
-    private static final int TAB_CONNECTION = 2;
-    private static final int TAB_SYSTEM = 3;
+    private static final int TAB_BUTTONS = 1;
+    private static final int TAB_CONTROLS = 2;
+    private static final int TAB_CONNECTION = 3;
+    private static final int TAB_SYSTEM = 4;
 
     private static final int[] BITRATES_MBPS = {5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 100, 120, 150};
     private static final int[] DEADZONES = {0, 2, 3, 4, 5, 6, 8, 10, 15, 20};
@@ -72,7 +73,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
         rowsScroll = findViewById(R.id.pocketRowsScroll);
 
         LinearLayout tabBar = findViewById(R.id.pocketTabs);
-        int[] tabNames = {R.string.pocket_tab_stream, R.string.pocket_tab_controls,
+        int[] tabNames = {R.string.pocket_tab_stream, R.string.pocket_tab_buttons, R.string.pocket_tab_controls,
                 R.string.pocket_tab_connection, R.string.pocket_tab_system};
         for (int i = 0; i < tabNames.length; i++) {
             final int index = i;
@@ -180,6 +181,9 @@ public class QuickSettingsActivity extends ConsoleActivity {
             case TAB_STREAM:
                 buildStreamTab();
                 break;
+            case TAB_BUTTONS:
+                buildButtonsTab();
+                break;
             case TAB_CONTROLS:
                 buildControlsTab();
                 break;
@@ -193,7 +197,8 @@ public class QuickSettingsActivity extends ConsoleActivity {
         }
         rowsScroll.scrollTo(0, 0);
         if (animate && PocketPrefs.animationsEnabled(this)) {
-            rowsContainer.scheduleLayoutAnimation();
+            rowsContainer.setAlpha(0f);
+            rowsContainer.animate().alpha(1f).setDuration(140).start();
         }
     }
 
@@ -276,6 +281,15 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     refreshRows();
                 }, null);
 
+        addToggle(getString(R.string.pocket_set_turbo), getString(R.string.pocket_set_turbo_sub),
+                () -> prefs().getBoolean("checkbox_ultra_low_latency", false)
+                        && "latency".equals(prefs().getString("frame_pacing", "balanced")),
+                value -> prefs().edit()
+                        .putBoolean("checkbox_ultra_low_latency", value)
+                        .putBoolean("pref_low_latency_frame_balance", value)
+                        .putString("frame_pacing", value ? "latency" : "balanced")
+                        .apply());
+
         addToggle(getString(R.string.pocket_set_auto_battery), getString(R.string.pocket_set_auto_battery_sub),
                 () -> PocketPrefs.autoBatterySaver(this),
                 value -> prefs().edit().putBoolean(PocketPrefs.KEY_AUTO_BATTERY, value).apply());
@@ -334,31 +348,111 @@ public class QuickSettingsActivity extends ConsoleActivity {
 
     // ---- Controls -----------------------------------------------------------------------
 
-    private void buildControlsTab() {
-        addHeader(R.string.pocket_header_buttons);
+    // ---- Buttons ------------------------------------------------------------------------
 
+    private void buildButtonsTab() {
+        addButtonSection(ButtonActions.BUTTON_BACK, R.string.pocket_header_back);
+
+        addHeader(R.string.pocket_header_home);
+        addAction(getString(R.string.pocket_set_home_service), getString(R.string.pocket_set_home_service_sub),
+                () -> getString(isAccessibilityServiceEnabled(this) ? R.string.pocket_service_on : R.string.pocket_service_off),
+                this::showAccessibilityPrompt);
+        addGestureRows(ButtonActions.BUTTON_HOME);
+
+        addHeader(R.string.pocket_header_menu_button);
         addAction(getString(R.string.pocket_set_hotkey), getString(R.string.pocket_set_hotkey_sub),
                 () -> {
                     String name = PocketPrefs.describeHotkey(PocketPrefs.getMenuHotkey(this));
                     return name != null ? name : getString(R.string.pocket_not_set);
                 },
                 this::startHotkeyCapture);
+        addGestureRows(ButtonActions.BUTTON_MENU);
 
-        addToggle(getString(R.string.pocket_set_back_guide), getString(R.string.pocket_set_back_guide_sub),
-                () -> prefs().getBoolean(PocketPrefs.KEY_BACK_AS_GUIDE, false),
-                value -> prefs().edit().putBoolean(PocketPrefs.KEY_BACK_AS_GUIDE, value).apply());
+        addHeader(R.string.pocket_header_radial);
+        String[] positions = getResources().getStringArray(R.array.pocket_radial_positions);
+        for (int i = 0; i < ButtonActions.RADIAL_SLOTS; i++) {
+            final int slot = i;
+            addAction(positions[i], null,
+                    () -> getString(ButtonActions.getRadial(this, slot).label),
+                    () -> pickAction(getString(R.string.pocket_header_radial) + " · " + positions[slot],
+                            PocketAction.forRadial(), ButtonActions.getRadial(this, slot),
+                            action -> ButtonActions.setRadial(this, slot, action)));
+        }
 
-        addToggle(getString(R.string.pocket_set_home_guide), getString(R.string.pocket_set_home_guide_sub),
-                () -> PocketPrefs.homeAsGuide(this),
-                value -> {
-                    prefs().edit().putBoolean(PocketPrefs.KEY_HOME_AS_GUIDE, value).apply();
-                    if (value && !isAccessibilityServiceEnabled(this)) {
-                        showAccessibilityPrompt();
-                    }
-                });
-
+        addHeader(R.string.pocket_header_more_buttons);
+        addAction(getString(R.string.pocket_set_guide_help), getString(R.string.pocket_set_guide_help_sub), null,
+                () -> new AlertDialog.Builder(this)
+                        .setTitle(R.string.pocket_set_guide_help)
+                        .setMessage(R.string.pocket_guide_help_body)
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show());
+        addToggle(getString(R.string.pocket_set_feedback), getString(R.string.pocket_set_feedback_sub),
+                () -> PocketPrefs.actionFeedback(this),
+                value -> prefs().edit().putBoolean(PocketPrefs.KEY_ACTION_FEEDBACK, value).apply());
         addAction(getString(R.string.pocket_set_button_test), getString(R.string.pocket_set_button_test_sub), null,
                 () -> startActivity(new Intent(this, ButtonTestActivity.class)));
+        addAction(getString(R.string.pocket_set_buttons_reset), null, null, () -> {
+            SharedPreferences.Editor e = prefs().edit();
+            for (String key : prefs().getAll().keySet()) {
+                if (key.startsWith("pocket_btn_") || key.startsWith("pocket_radial_")) {
+                    e.remove(key);
+                }
+            }
+            e.apply();
+            refreshRows();
+            Toast.makeText(this, R.string.pocket_buttons_reset_done, Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    private void addButtonSection(int button, int header) {
+        addHeader(header);
+        addGestureRows(button);
+    }
+
+    private void addGestureRows(final int button) {
+        for (int g = 0; g < 3; g++) {
+            final int gesture = g;
+            addAction(getString(ButtonActions.gestureLabel(gesture)), null,
+                    () -> getString(ButtonActions.get(this, button, gesture).label),
+                    () -> pickAction(getString(ButtonActions.buttonLabel(button)) + " · " + getString(ButtonActions.gestureLabel(gesture)),
+                            PocketAction.forButtons(), ButtonActions.get(this, button, gesture),
+                            action -> {
+                                ButtonActions.set(this, button, gesture, action);
+                                if (button == ButtonActions.BUTTON_HOME && ButtonActions.homeIsUsed(this)
+                                        && !isAccessibilityServiceEnabled(this)) {
+                                    showAccessibilityPrompt();
+                                }
+                            }));
+        }
+    }
+
+    private interface ActionPicked { void picked(PocketAction action); }
+
+    private void pickAction(String title, final java.util.List<PocketAction> actions, PocketAction current,
+                            final ActionPicked picked) {
+        String[] labels = new String[actions.size()];
+        int checked = -1;
+        for (int i = 0; i < actions.size(); i++) {
+            labels[i] = getString(actions.get(i).label);
+            if (actions.get(i) == current) {
+                checked = i;
+            }
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(title)
+                .setSingleChoiceItems(labels, checked, (dialog, which) -> {
+                    picked.picked(actions.get(which));
+                    dialog.dismiss();
+                    refreshRows();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    // ---- Controls -----------------------------------------------------------------------
+
+    private void buildControlsTab() {
+        addHeader(R.string.pocket_header_buttons);
 
         addToggle(getString(R.string.pocket_set_flip), getString(R.string.pocket_set_flip_sub),
                 () -> prefs().getBoolean("checkbox_flip_face_buttons", false),
@@ -478,6 +572,13 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     rowsContainer.postDelayed(this::recreate, 350);
                 }, null);
 
+        final String[] focusValues = {PocketPrefs.FOCUS_RING_ZOOM, PocketPrefs.FOCUS_RING, PocketPrefs.FOCUS_ZOOM};
+        final String[] focusLabels = {getString(R.string.pocket_focus_ring_zoom), getString(R.string.pocket_focus_ring),
+                getString(R.string.pocket_focus_zoom)};
+        addChoice(getString(R.string.pocket_set_focus_style), getString(R.string.pocket_set_focus_style_sub), focusLabels,
+                () -> indexOf(focusValues, PocketPrefs.focusStyle(this)),
+                index -> prefs().edit().putString(PocketPrefs.KEY_FOCUS_STYLE, focusValues[index]).apply(), null);
+
         addToggle(getString(R.string.pocket_set_animations), getString(R.string.pocket_set_animations_sub),
                 () -> PocketPrefs.animationsEnabled(this),
                 value -> prefs().edit().putBoolean(PocketPrefs.KEY_ANIMATIONS, value).apply());
@@ -577,10 +678,6 @@ public class QuickSettingsActivity extends ConsoleActivity {
             if (hasFocus) {
                 PocketUi.tick(this);
             }
-            if (PocketPrefs.animationsEnabled(this)) {
-                v.animate().scaleX(hasFocus ? 1.02f : 1f).scaleY(hasFocus ? 1.02f : 1f).setDuration(220)
-                        .setInterpolator(PocketUi.EASE).start();
-            }
         });
 
         LinearLayout texts = new LinearLayout(this);
@@ -662,12 +759,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
             }
             setter.set(next);
             refresh.run();
-            if (PocketPrefs.animationsEnabled(this)) {
-                PocketUi.tick(this);
-                value.setTranslationX(direction * dp(12));
-                value.setAlpha(0f);
-                value.animate().translationX(0).alpha(1f).setDuration(260).setInterpolator(PocketUi.EASE).start();
-            }
+            PocketUi.tick(this);
         };
         row.setOnKeyListener((v, keyCode, event) -> {
             boolean rtl = v.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
@@ -712,12 +804,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
         row.setOnClickListener(v -> {
             setter.set(!getter.get());
             refresh.run();
-            if (PocketPrefs.animationsEnabled(this)) {
-                pill.setScaleX(0.85f);
-                pill.setScaleY(0.85f);
-                pill.animate().scaleX(1f).scaleY(1f).setDuration(200)
-                        .setInterpolator(new android.view.animation.OvershootInterpolator(2f)).start();
-            }
+            PocketUi.tick(this);
         });
         rowsContainer.addView(row);
     }

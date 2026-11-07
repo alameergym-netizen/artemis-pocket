@@ -195,17 +195,15 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
 
         // Console carousel of PCs
         pcCarousel = findViewById(R.id.pocketPcCarousel);
-        pcCarousel.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        pcCarousel.setLayoutManager(new com.limelight.pocket.ui.AnchoredLayoutManager(this));
         pcCarousel.setItemAnimator(null);
-        carouselAdapter = new CarouselAdapter(pcGridAdapter, this);
+        carouselAdapter = new CarouselAdapter(pcGridAdapter, this, 20);
         pcCarousel.setAdapter(carouselAdapter);
 
         setHints(hintA(this, R.string.pocket_hint_open),
                 hintY(this, R.string.pocket_hint_options),
                 hintX(this, R.string.pocket_hint_add_pc),
                 hintStart(this, R.string.pocket_hint_settings));
-        ConsoleActivity.reveal(findViewById(R.id.pocketHero), 60);
-        ConsoleActivity.reveal(pcCarousel, 140);
 
         // Setup the list view
         ImageButton settingsButton = findViewById(R.id.settingsButton);
@@ -257,41 +255,6 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         updateHero(carouselAdapter.getFocusedPosition());
         renderUsbOverlay();
         pcCarousel.post(this::focusFirstPcIfNeeded);
-        playSplashIfNeeded();
-    }
-
-    private void playSplashIfNeeded() {
-        final View splash = findViewById(R.id.pocketSplash);
-        if (splash == null) {
-            return;
-        }
-        if (splashShownThisProcess || !PocketPrefs.animationsEnabled(this)) {
-            splashShownThisProcess = true;
-            splash.setVisibility(View.GONE);
-            return;
-        }
-        splashShownThisProcess = true;
-        View logo = findViewById(R.id.pocketSplashLogo);
-        final TextView text = findViewById(R.id.pocketSplashText);
-        splash.setVisibility(View.VISIBLE);
-        splash.setAlpha(1f);
-        logo.setAlpha(0f);
-        logo.setScaleX(0.8f);
-        logo.setScaleY(0.8f);
-        logo.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(650).setInterpolator(PocketUi.EASE).start();
-        text.setAlpha(0f);
-        ValueAnimator spacing = ValueAnimator.ofFloat(0.9f, 0.45f);
-        spacing.setDuration(900);
-        spacing.setStartDelay(150);
-        spacing.setInterpolator(PocketUi.EASE);
-        spacing.addUpdateListener(a -> {
-            text.setLetterSpacing((Float) a.getAnimatedValue());
-            text.setAlpha(Math.min(1f, a.getAnimatedFraction() * 1.6f));
-        });
-        spacing.start();
-        splash.animate().alpha(0f).scaleX(1.06f).scaleY(1.06f).setStartDelay(1250).setDuration(450)
-                .setInterpolator(PocketUi.EASE)
-                .withEndAction(() -> splash.setVisibility(View.GONE)).start();
     }
 
     @Override
@@ -987,12 +950,6 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
 
         // Notify the view that the data has changed
         pcGridAdapter.notifyDataSetChanged();
-        if (!carouselAnimated && pcCarousel != null && pcGridAdapter.getCount() > 0) {
-            carouselAnimated = true;
-            if (PocketPrefs.animationsEnabled(this)) {
-                pcCarousel.scheduleLayoutAnimation();
-            }
-        }
         updateHero(carouselAdapter != null ? carouselAdapter.getFocusedPosition() : -1);
         maybeOpenLastPc(details);
         if (pcCarousel != null) {
@@ -1468,14 +1425,13 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         if (overlay.getVisibility() != View.VISIBLE) {
             overlay.setAlpha(0f);
             overlay.setVisibility(View.VISIBLE);
-            overlay.animate().alpha(1f).setDuration(260).start();
+            overlay.animate().alpha(1f).setDuration(180).start();
             View panel = findViewById(R.id.pocketUsbPanel);
             if (panel != null && PocketPrefs.animationsEnabled(this)) {
-                panel.setScaleX(0.9f);
-                panel.setScaleY(0.9f);
-                panel.setAlpha(0f);
-                panel.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(420)
-                        .setInterpolator(new android.view.animation.OvershootInterpolator(1.1f)).start();
+                panel.setScaleX(0.97f);
+                panel.setScaleY(0.97f);
+                panel.animate().scaleX(1f).scaleY(1f).setDuration(200)
+                        .setInterpolator(PocketUi.EASE).start();
             }
         }
 

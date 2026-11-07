@@ -403,8 +403,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             return;
         }
         view.setAlpha(0f);
-        view.setTranslationY(view.getResources().getDisplayMetrics().density * 14);
-        view.animate().alpha(1f).translationY(0).setStartDelay(delayMs).setDuration(520)
+        view.animate().alpha(1f).setStartDelay(delayMs).setDuration(180)
                 .setInterpolator(PocketUi.EASE).start();
     }
 }

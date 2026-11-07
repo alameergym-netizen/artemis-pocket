@@ -764,12 +764,6 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
 
                 if (updated) {
                     appGridAdapter.notifyDataSetChanged();
-                    if (!carouselAnimated && appCarousel != null && appGridAdapter.getCount() > 0) {
-                        carouselAnimated = true;
-                        if (PocketPrefs.animationsEnabled(AppView.this)) {
-                            appCarousel.scheduleLayoutAnimation();
-                        }
-                    }
                     updateSectionTitle();
                     if (appCarousel != null) {
                         appCarousel.post(AppView.this::focusInitialGame);
@@ -789,14 +783,12 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         if (appCarousel == null) {
             return;
         }
-        appCarousel.setLayoutManager(new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        appCarousel.setLayoutManager(new com.limelight.pocket.ui.AnchoredLayoutManager(this));
         appCarousel.setItemAnimator(null);
-        carouselAdapter = new CarouselAdapter(appGridAdapter, this);
+        carouselAdapter = new CarouselAdapter(appGridAdapter, this, 14);
         appCarousel.setAdapter(carouselAdapter);
         updateSectionTitle();
         updateHints();
-        ConsoleActivity.reveal(findViewById(R.id.pocketHero), 40);
-        ConsoleActivity.reveal(appCarousel, 120);
         appCarousel.post(this::focusInitialGame);
     }
 
@@ -967,17 +959,11 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         float targetAlpha = PocketPrefs.colorBackgroundArt(this) ? 0.5f : 0.42f;
         incoming.animate().cancel();
         outgoing.animate().cancel();
-        if (kenBurns != null) {
-            kenBurns.cancel();
-            kenBurns = null;
-        }
+        incoming.setScaleX(1.04f);
+        incoming.setScaleY(1.04f);
         if (animate) {
-            incoming.setScaleX(1.12f);
-            incoming.setScaleY(1.12f);
-            incoming.animate().alpha(targetAlpha).scaleX(1.02f).scaleY(1.02f).setDuration(600)
-                    .setInterpolator(PocketUi.EASE)
-                    .withEndAction(() -> startKenBurns(incoming)).start();
-            outgoing.animate().alpha(0f).setDuration(500).start();
+            incoming.animate().alpha(targetAlpha).setDuration(260).setInterpolator(PocketUi.EASE).start();
+            outgoing.animate().alpha(0f).setDuration(260).start();
         }
         else {
             incoming.setAlpha(targetAlpha);

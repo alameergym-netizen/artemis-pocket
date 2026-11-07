@@ -18,18 +18,22 @@ public final class PocketSetup {
     public static void applyFirstRunDefaults(Context context) {
         SharedPreferences prefs = PocketPrefs.prefs(context);
         if (prefs.getBoolean(PocketPrefs.KEY_FIRST_RUN_DONE, false)) {
+            int version = prefs.getInt("pocket_defaults_version", 1);
+            SharedPreferences.Editor e = prefs.edit();
             // v2: the ADB USB bridge tops out around 60 Mbps, so move the old 80 Mbps default down
-            if (prefs.getInt("pocket_defaults_version", 1) < 2) {
-                SharedPreferences.Editor e = prefs.edit().putInt("pocket_defaults_version", 2);
-                if (prefs.getInt(PocketPrefs.KEY_USB_BITRATE, 0) == 80000) {
-                    e.putInt(PocketPrefs.KEY_USB_BITRATE, PocketPrefs.DEFAULT_USB_BITRATE_KBPS);
-                }
-                e.apply();
+            if (version < 2 && prefs.getInt(PocketPrefs.KEY_USB_BITRATE, 0) == 80000) {
+                e.putInt(PocketPrefs.KEY_USB_BITRATE, PocketPrefs.DEFAULT_USB_BITRATE_KBPS);
             }
+            // v3: Back/Home are now handled by Button actions; Snapdragon 8 Gen 2 low-latency decoding
+            if (version < 3) {
+                e.putBoolean("checkbox_back_as_guide", false);
+                e.putBoolean("checkbox_ultra_low_latency", true);
+            }
+            e.putInt("pocket_defaults_version", 3).apply();
             return;
         }
         applyRp6Defaults(context);
-        prefs.edit().putBoolean(PocketPrefs.KEY_FIRST_RUN_DONE, true).putInt("pocket_defaults_version", 2).apply();
+        prefs.edit().putBoolean(PocketPrefs.KEY_FIRST_RUN_DONE, true).putInt("pocket_defaults_version", 3).apply();
     }
 
     public static void applyRp6Defaults(Context context) {
@@ -40,13 +44,14 @@ public final class PocketSetup {
         // Video
         e.putString("video_format", "forceh265");           // HEVC: lowest decode latency on Adreno 740
         e.putString("frame_pacing", "balanced");
+        e.putBoolean("checkbox_ultra_low_latency", true);     // made for Snapdragon 8 Gen 2
         e.putBoolean("checkbox_enforce_display_mode", true); // keep the panel at 120 Hz while streaming
         e.putBoolean("checkbox_unlock_fps", false);
         e.putString("list_video_scale_mode", "fit");
         e.putBoolean("checkbox_enable_hdr", false);          // the RP6 panel is SDR-tuned
 
         // Controls: built-in pad, Back acts as Xbox Guide, device motor for rumble
-        e.putBoolean("checkbox_back_as_guide", true);
+        e.putBoolean("checkbox_back_as_guide", false); // Back is handled by Button actions
         e.putBoolean("checkbox_back_as_meta", false);
         e.putBoolean("checkbox_show_onscreen_controls", false);
         e.putBoolean("checkbox_enable_keyboard", false);

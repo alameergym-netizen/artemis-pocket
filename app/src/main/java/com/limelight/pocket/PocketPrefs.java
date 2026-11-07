@@ -31,6 +31,12 @@ public final class PocketPrefs {
     public static final String KEY_OPEN_LAST_PC = "pocket_open_last_pc";
     public static final String KEY_SORT_RECENT = "pocket_sort_recent";
     public static final String KEY_SHOW_LATENCY = "pocket_show_latency";
+    public static final String KEY_ACTION_FEEDBACK = "pocket_action_feedback";
+    public static final String KEY_FOCUS_STYLE = "pocket_focus_style";
+
+    public static final String FOCUS_RING_ZOOM = "ring_zoom";
+    public static final String FOCUS_RING = "ring";
+    public static final String FOCUS_ZOOM = "zoom";
     private static final String KEY_LAST_PC_UUID = "pocket_last_pc_uuid";
     private static final String KEY_PLAYED_PREFIX = "pocket_played_";
 
@@ -139,7 +145,15 @@ public final class PocketPrefs {
     }
 
     public static boolean hapticsEnabled(Context context) {
-        return prefs(context).getBoolean(KEY_HAPTICS, true);
+        return prefs(context).getBoolean(KEY_HAPTICS, false);
+    }
+
+    public static boolean actionFeedback(Context context) {
+        return prefs(context).getBoolean(KEY_ACTION_FEEDBACK, true);
+    }
+
+    public static String focusStyle(Context context) {
+        return prefs(context).getString(KEY_FOCUS_STYLE, FOCUS_RING_ZOOM);
     }
 
     public static boolean colorBackgroundArt(Context context) {

@@ -203,7 +203,6 @@
                 android:clipChildren="false"
                 android:clipToPadding="false"
                 android:descendantFocusability="afterDescendants"
-                android:layoutAnimation="@anim/pocket_stagger"
                 android:overScrollMode="never"
                 android:paddingStart="16dp"
                 android:paddingTop="14dp"

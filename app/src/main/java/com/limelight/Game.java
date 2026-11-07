@@ -15,6 +15,10 @@ import com.limelight.binding.input.GameInputDevice;
 import com.limelight.binding.input.KeyboardTranslator;
 import com.limelight.pocket.PocketPrefs;
 import com.limelight.pocket.UsbLink;
+import com.limelight.pocket.ButtonActions;
+import com.limelight.pocket.ButtonGestures;
+import com.limelight.pocket.PocketAction;
+import com.limelight.pocket.ui.RadialMenuView;
 import com.limelight.binding.input.capture.InputCaptureManager;
 import com.limelight.binding.input.capture.InputCaptureProvider;
 import com.limelight.binding.input.touch.AbsoluteTouchContext;
@@ -91,6 +95,7 @@ import android.os.Vibrator;
 import android.util.Rational;
 import android.view.Display;
 import android.view.Gravity;
+import android.util.TypedValue;
 import android.view.InputDevice;
 import android.view.KeyCharacterMap;
 import android.view.KeyEvent;
@@ -290,11 +295,14 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     private NvHTTP httpConn;
 
-    // Artemis Pocket: hotkey that opens the quick menu, and Home/Back acting as the Guide button
+    // Artemis Pocket: Back / Home / menu button gestures and the radial menu
     private String pocketMenuHotkey;
-    private boolean pocketHomeAsGuide;
-    private boolean pocketHotkeyDown;
     private boolean pocketGuideDown;
+    private ButtonGestures[] pocketGestures;
+    private RadialMenuView radialMenu;
+    private TextView pocketActionToast;
+    private int radialHeldBy = -1;
+    private final java.util.HashSet<Integer> radialConsumedKeys = new java.util.HashSet<>();
 
     public interface GameMenuCallbacks {
         void showMenu(GameInputDevice devic);
@@ -387,6 +395,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Inflate the content
         setContentView(R.layout.activity_game);
+        setupPocketControls();
 
         clipboardManager = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
 
@@ -552,7 +561,6 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         // Artemis Pocket: a USB-C cable (or no default network at all) is never a metered link
         boolean isMetered = UsbLink.isStreamMetered(this, getIntent().getStringExtra(EXTRA_HOST));
         pocketMenuHotkey = PocketPrefs.getMenuHotkey(this);
-        pocketHomeAsGuide = PocketPrefs.homeAsGuide(this);
         if (isMetered) {
             displayTransientMessage(getResources().getString(R.string.conn_metered));
         }
@@ -2271,41 +2279,390 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }, 150);
     }
 
-    /**
-     * Artemis Pocket keys, handled before anything else so they never reach the PC:
-     *  - the configured menu hotkey opens the quick menu
-     *  - Back (and Home, delivered by the accessibility service) can act as the Xbox Guide button
-     */
-    private boolean handlePocketKey(KeyEvent event, boolean down) {
-        if (PocketPrefs.matchesHotkey(pocketMenuHotkey, event)) {
-            if (down) {
-                if (event.getRepeatCount() == 0 && !pocketHotkeyDown) {
-                    pocketHotkeyDown = true;
-                    if (gameMenuCallbacks != null && gameMenuCallbacks.isMenuOpen()) {
-                        gameMenuCallbacks.hideMenu();
-                    }
-                    else {
-                        showGameMenu(null);
+    // ---- Artemis Pocket: buttons, actions and the radial menu ---------------------------------
+
+    private void setupPocketControls() {
+        ButtonGestures.Callbacks callbacks = new ButtonGestures.Callbacks() {
+            @Override
+            public void runAction(int button, PocketAction action) {
+                performPocketAction(action, button, true);
+            }
+
+            @Override
+            public void passThrough(int button, boolean down) {
+                if (button == ButtonActions.BUTTON_HOME && !down) {
+                    goToAndroidHome();
+                }
+                else if (button == ButtonActions.BUTTON_MENU && down) {
+                    toggleQuickMenu();
+                }
+            }
+
+            @Override
+            public void openRadialHeld(int button) {
+                openRadial(button);
+            }
+
+            @Override
+            public void releaseRadialHeld(int button) {
+                if (radialMenu != null && radialMenu.isShowing() && radialHeldBy == button) {
+                    PocketAction chosen = radialMenu.getSelectedAction();
+                    closeRadial();
+                    if (chosen != null) {
+                        performPocketAction(chosen, -1, true);
                     }
                 }
             }
+        };
+        pocketGestures = new ButtonGestures[3];
+        for (int b = 0; b < 3; b++) {
+            pocketGestures[b] = new ButtonGestures(b, callbacks);
+            pocketGestures[b].configure(
+                    ButtonActions.get(this, b, ButtonActions.GESTURE_TAP),
+                    ButtonActions.get(this, b, ButtonActions.GESTURE_DOUBLE),
+                    ButtonActions.get(this, b, ButtonActions.GESTURE_HOLD));
+        }
+
+        ViewGroup content = findViewById(android.R.id.content);
+        radialMenu = new RadialMenuView(this);
+        content.addView(radialMenu, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        float d = getResources().getDisplayMetrics().density;
+        pocketActionToast = new TextView(this);
+        pocketActionToast.setBackgroundResource(R.drawable.pocket_glass_pill);
+        pocketActionToast.setTextColor(0xFFFFFFFF);
+        pocketActionToast.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
+        pocketActionToast.setPadding((int) (14 * d), (int) (6 * d), (int) (14 * d), (int) (6 * d));
+        pocketActionToast.setVisibility(View.GONE);
+        FrameLayout.LayoutParams toastLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        toastLp.topMargin = (int) (14 * d);
+        content.addView(pocketActionToast, toastLp);
+    }
+
+    private void showPocketActionToast(String text) {
+        if (pocketActionToast == null || !PocketPrefs.actionFeedback(this)) {
+            return;
+        }
+        pocketActionToast.animate().cancel();
+        pocketActionToast.setText(text);
+        pocketActionToast.setVisibility(View.VISIBLE);
+        pocketActionToast.setAlpha(1f);
+        pocketActionToast.animate().alpha(0f).setStartDelay(900).setDuration(250)
+                .withEndAction(() -> pocketActionToast.setVisibility(View.GONE)).start();
+    }
+
+    private void toggleQuickMenu() {
+        if (gameMenuCallbacks != null && gameMenuCallbacks.isMenuOpen()) {
+            gameMenuCallbacks.hideMenu();
+        }
+        else {
+            showGameMenu(null);
+        }
+    }
+
+    private void goToAndroidHome() {
+        try {
+            Intent home = new Intent(Intent.ACTION_MAIN);
+            home.addCategory(Intent.CATEGORY_HOME);
+            home.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(home);
+        } catch (RuntimeException ignored) {
+        }
+    }
+
+    private static final short VK_SNAPSHOT = 0x2C;
+    private static final short VK_MEDIA_PLAY_PAUSE = 0xB3;
+    private static final short VK_VOLUME_MUTE = 0xAD;
+    private static final short VK_VOLUME_DOWN = 0xAE;
+    private static final short VK_VOLUME_UP = 0xAF;
+
+    /** Runs one action. button is the physical button (for DEFAULT), or -1 from the radial menu. */
+    public void performPocketAction(PocketAction action, int button, boolean feedback) {
+        if (action == null || action == PocketAction.NONE) {
+            return;
+        }
+        if (feedback && action != PocketAction.RADIAL && action != PocketAction.QUICK_MENU
+                && action != PocketAction.DEFAULT) {
+            showPocketActionToast(action.shortLabel(this));
+        }
+        switch (action) {
+            case DEFAULT:
+                if (button == ButtonActions.BUTTON_BACK) {
+                    if (controllerHandler != null) {
+                        controllerHandler.pulseFlag(ControllerHandler.POCKET_VIEW);
+                    }
+                }
+                else if (button == ButtonActions.BUTTON_HOME) {
+                    goToAndroidHome();
+                }
+                else if (button == ButtonActions.BUTTON_MENU) {
+                    toggleQuickMenu();
+                }
+                break;
+            case GUIDE:
+                pressGuideButton();
+                break;
+            case GAME_BAR:
+                sendKeys(new short[]{KeyboardTranslator.VK_LWIN, KeyboardTranslator.VK_G});
+                break;
+            case RADIAL:
+                if (radialMenu != null && radialMenu.isShowing()) {
+                    closeRadial();
+                }
+                else {
+                    openRadial(-1);
+                }
+                break;
+            case QUICK_MENU:
+                toggleQuickMenu();
+                break;
+            case VIEW:
+                if (controllerHandler != null) {
+                    controllerHandler.pulseFlag(ControllerHandler.POCKET_VIEW);
+                }
+                break;
+            case START:
+                if (controllerHandler != null) {
+                    controllerHandler.pulseFlag(ControllerHandler.POCKET_START);
+                }
+                break;
+            case ESC:
+                sendKeys(new short[]{KeyboardTranslator.VK_ESCAPE});
+                break;
+            case ALT_TAB:
+                sendKeys(new short[]{KeyboardTranslator.VK_LMENU, KeyboardTranslator.VK_TAB});
+                break;
+            case WIN:
+                sendKeys(new short[]{KeyboardTranslator.VK_LWIN});
+                break;
+            case ALT_F4:
+                sendKeys(new short[]{KeyboardTranslator.VK_LMENU, KeyboardTranslator.VK_F4});
+                break;
+            case ALT_ENTER:
+                sendKeys(new short[]{KeyboardTranslator.VK_LMENU, KeyboardTranslator.VK_RETURN});
+                break;
+            case TASK_MANAGER:
+                sendKeys(new short[]{KeyboardTranslator.VK_LCONTROL, KeyboardTranslator.VK_LSHIFT, KeyboardTranslator.VK_ESCAPE});
+                break;
+            case DESKTOP:
+                sendKeys(new short[]{KeyboardTranslator.VK_LWIN, KeyboardTranslator.VK_D});
+                break;
+            case SCREENSHOT:
+                sendKeys(new short[]{KeyboardTranslator.VK_LWIN, KeyboardTranslator.VK_LMENU, VK_SNAPSHOT});
+                break;
+            case RECORD:
+                sendKeys(new short[]{KeyboardTranslator.VK_LWIN, KeyboardTranslator.VK_LMENU, KeyboardTranslator.VK_G});
+                break;
+            case PLAY_PAUSE:
+                sendKeys(new short[]{VK_MEDIA_PLAY_PAUSE});
+                break;
+            case VOLUME_UP:
+                sendKeys(new short[]{VK_VOLUME_UP});
+                break;
+            case VOLUME_DOWN:
+                sendKeys(new short[]{VK_VOLUME_DOWN});
+                break;
+            case MUTE:
+                sendKeys(new short[]{VK_VOLUME_MUTE});
+                break;
+            case STATS:
+                toggleHUD();
+                break;
+            case KEYBOARD:
+                toggleKeyboard();
+                break;
+            case MOUSE:
+                if (controllerHandler != null) {
+                    controllerHandler.togglePrimaryMouseEmulation();
+                }
+                break;
+            case ANDROID_HOME:
+                goToAndroidHome();
+                break;
+            case DISCONNECT:
+                disconnect();
+                break;
+            case QUIT:
+                quit();
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void openRadial(int heldBy) {
+        if (radialMenu == null) {
+            return;
+        }
+        if (gameMenuCallbacks != null && gameMenuCallbacks.isMenuOpen()) {
+            gameMenuCallbacks.hideMenu();
+        }
+        PocketAction[] slots = new PocketAction[ButtonActions.RADIAL_SLOTS];
+        for (int i = 0; i < slots.length; i++) {
+            slots[i] = ButtonActions.getRadial(this, i);
+        }
+        String time = android.text.format.DateFormat.getTimeFormat(this).format(new java.util.Date());
+        String battery = "";
+        Intent b = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        if (b != null) {
+            int level = b.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+            int scale = b.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+            if (level >= 0 && scale > 0) {
+                battery = Math.round(level * 100f / scale) + "%";
+            }
+        }
+        radialHeldBy = heldBy;
+        radialConsumedKeys.clear();
+        if (controllerHandler != null) {
+            // Don't leave a stick or button held on the PC while the menu is open
+            controllerHandler.releaseAllInputs();
+        }
+        radialMenu.show(slots, time, battery);
+    }
+
+    private void closeRadial() {
+        radialHeldBy = -1;
+        if (radialMenu != null) {
+            radialMenu.hide();
+        }
+    }
+
+    /** While the radial menu is open, the controller drives it instead of the PC. */
+    private boolean handleRadialKey(KeyEvent event, boolean down) {
+        if (radialMenu == null || !radialMenu.isShowing()) {
+            if (!down && radialConsumedKeys.remove(event.getKeyCode())) {
+                return true; // the matching release of a key the menu used
+            }
+            return false;
+        }
+        int keyCode = event.getKeyCode();
+        if (down) {
+            radialConsumedKeys.add(keyCode);
+            if (event.getRepeatCount() > 0) {
+                return true;
+            }
+            switch (keyCode) {
+                case KeyEvent.KEYCODE_BUTTON_A:
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                case KeyEvent.KEYCODE_ENTER: {
+                    PocketAction chosen = radialMenu.getSelectedAction();
+                    closeRadial();
+                    if (chosen != null) {
+                        performPocketAction(chosen, -1, true);
+                    }
+                    break;
+                }
+                case KeyEvent.KEYCODE_BUTTON_B:
+                case KeyEvent.KEYCODE_ESCAPE:
+                case KeyEvent.KEYCODE_BACK:
+                    closeRadial();
+                    break;
+                case KeyEvent.KEYCODE_DPAD_UP:
+                    radialMenu.onDirection(0);
+                    break;
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    radialMenu.onDirection(2);
+                    break;
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                    radialMenu.onDirection(4);
+                    break;
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                    radialMenu.onDirection(6);
+                    break;
+                case KeyEvent.KEYCODE_BUTTON_L1:
+                    radialMenu.rotate(-1);
+                    break;
+                case KeyEvent.KEYCODE_BUTTON_R1:
+                    radialMenu.rotate(1);
+                    break;
+                default:
+                    break;
+            }
+            return true;
+        }
+        radialConsumedKeys.remove(keyCode);
+        return true;
+    }
+
+    private boolean handleRadialMotion(MotionEvent event) {
+        if (radialMenu == null || !radialMenu.isShowing()) {
+            return false;
+        }
+        if ((event.getSource() & InputDevice.SOURCE_CLASS_JOYSTICK) == 0) {
+            return false;
+        }
+        float lx = event.getAxisValue(MotionEvent.AXIS_X);
+        float ly = event.getAxisValue(MotionEvent.AXIS_Y);
+        float rx = event.getAxisValue(MotionEvent.AXIS_Z);
+        float ry = event.getAxisValue(MotionEvent.AXIS_RZ);
+        float hx = event.getAxisValue(MotionEvent.AXIS_HAT_X);
+        float hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y);
+        if (Math.abs(hx) > 0.5f || Math.abs(hy) > 0.5f) {
+            radialMenu.onStick(Math.signum(hx), Math.signum(hy));
+        }
+        else if (Math.hypot(rx, ry) > Math.hypot(lx, ly)) {
+            radialMenu.onStick(rx, ry);
+        }
+        else {
+            radialMenu.onStick(lx, ly);
+        }
+        return true;
+    }
+
+    /**
+     * Artemis Pocket keys, handled before anything else so they never reach the PC:
+     * the radial menu, then Back / Home / the menu button with their tap, double and hold actions.
+     */
+    private boolean handlePocketKey(KeyEvent event, boolean down) {
+        if (pocketGestures == null) {
+            return false;
+        }
+        int keyCode = event.getKeyCode();
+        int source = event.getSource();
+        boolean fromMouse = source == InputDevice.SOURCE_MOUSE || source == InputDevice.SOURCE_MOUSE_RELATIVE;
+
+        int button = -1;
+        if (PocketPrefs.matchesHotkey(pocketMenuHotkey, event)) {
+            button = ButtonActions.BUTTON_MENU;
+        }
+        else if (keyCode == KeyEvent.KEYCODE_BACK && !fromMouse) {
+            button = ButtonActions.BUTTON_BACK;
+        }
+        else if (keyCode == KeyEvent.KEYCODE_HOME) {
+            button = ButtonActions.BUTTON_HOME;
+        }
+
+        // The button holding the radial menu open must still get its release
+        if (button < 0 || radialHeldBy != button) {
+            if (handleRadialKey(event, down)) {
+                return true;
+            }
+        }
+
+        if (button >= 0) {
+            if (button == ButtonActions.BUTTON_BACK
+                    && ButtonActions.get(this, button, ButtonActions.GESTURE_TAP) == PocketAction.DEFAULT
+                    && ButtonActions.get(this, button, ButtonActions.GESTURE_DOUBLE) == PocketAction.NONE
+                    && ButtonActions.get(this, button, ButtonActions.GESTURE_HOLD) == PocketAction.NONE) {
+                return false; // plain Back: normal handling (View/Select button)
+            }
+            if (down) {
+                if (event.getRepeatCount() == 0) {
+                    pocketGestures[button].onDown();
+                }
+            }
             else {
-                pocketHotkeyDown = false;
+                pocketGestures[button].onUp();
             }
             return true;
         }
 
-        int keyCode = event.getKeyCode();
-        int source = event.getSource();
-        if (keyCode == KeyEvent.KEYCODE_BACK &&
-                (source == InputDevice.SOURCE_MOUSE || source == InputDevice.SOURCE_MOUSE_RELATIVE)) {
-            return false;
-        }
-        boolean guideKey = (keyCode == KeyEvent.KEYCODE_BACK && prefConfig.backAsGuide) ||
-                (keyCode == KeyEvent.KEYCODE_HOME && pocketHomeAsGuide) ||
-                // Guide injected by a remapper (e.g. Key Mapper) from a non-controller device
-                (keyCode == KeyEvent.KEYCODE_BUTTON_MODE && !ControllerHandler.isGameControllerDevice(event.getDevice()));
-        if (guideKey && controllerHandler != null) {
+        // A Guide press injected by a remapper (e.g. Key Mapper) from a non-controller device
+        if (keyCode == KeyEvent.KEYCODE_BUTTON_MODE && controllerHandler != null
+                && !ControllerHandler.isGameControllerDevice(event.getDevice())) {
             if (down) {
                 if (!pocketGuideDown) {
                     pocketGuideDown = true;
@@ -2891,6 +3248,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     // Returns true if the event was consumed
     // NB: View is only present if called from a view callback
     public boolean handleMotionEvent(View view, MotionEvent event) {
+        if (handleRadialMotion(event)) {
+            return true;
+        }
+
         // Pass through mouse/touch/joystick input if we're not grabbing
         if (!grabbedInput) {
             return false;

@@ -21,8 +21,8 @@ import com.limelight.pocket.PocketPrefs;
 public final class PocketUi {
     private PocketUi() {}
 
-    /** Apple-style "ease out" curve used for most motion. */
-    public static final PathInterpolator EASE = new PathInterpolator(0.2f, 0.9f, 0.1f, 1f);
+    /** Calm decelerating curve used for all motion (no overshoot). */
+    public static final PathInterpolator EASE = new PathInterpolator(0.2f, 0f, 0f, 1f);
 
     /**
      * Applies the user's interface size by scaling the screen density for this context.
@@ -67,47 +67,11 @@ public final class PocketUi {
         }
     }
 
-    /** Cross-fades a TextView to new text with a small upward slide. */
+    /** Sets text without flicker (kept as a helper so callers stay simple). */
     public static void swapText(final TextView view, final CharSequence text) {
-        if (view == null) {
-            return;
-        }
-        if (TextUtils.equals(view.getText(), text)) {
-            return;
-        }
-        if (!PocketPrefs.animationsEnabled(view.getContext()) || view.getVisibility() != View.VISIBLE) {
+        if (view != null && !TextUtils.equals(view.getText(), text)) {
             view.setText(text);
-            return;
         }
-        final float shift = view.getResources().getDisplayMetrics().density * 6;
-        view.animate().cancel();
-        view.animate().alpha(0f).translationY(-shift).setDuration(90).withEndAction(() -> {
-            view.setText(text);
-            view.setTranslationY(shift);
-            view.animate().alpha(1f).translationY(0).setDuration(240).setInterpolator(EASE).start();
-        }).start();
-    }
-
-    /** Sweeps a soft band of light across a card (the view tagged "shine"). */
-    public static void shine(View card) {
-        if (card == null || !PocketPrefs.animationsEnabled(card.getContext())) {
-            return;
-        }
-        final View band = card.findViewWithTag("shine");
-        if (band == null) {
-            return;
-        }
-        final float width = card.getWidth();
-        if (width <= 0) {
-            return;
-        }
-        band.animate().cancel();
-        band.setVisibility(View.VISIBLE);
-        band.setAlpha(1f);
-        band.setTranslationX(-width);
-        band.animate().translationX(width).setStartDelay(60).setDuration(750)
-                .setInterpolator(new DecelerateInterpolator(1.4f))
-                .withEndAction(() -> band.setVisibility(View.INVISIBLE)).start();
     }
 
     /**

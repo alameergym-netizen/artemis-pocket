@@ -195,4 +195,91 @@
     <string name="pocket_button_test_service_on">خدمة إمكانية الوصول: شغّالة · Home بيشتغل كـ Guide أثناء الستريم</string>
     <string name="pocket_button_test_service_off">خدمة إمكانية الوصول: طافية · فعّل \"Artemis Pocket: Home button and keyboard capture\" عشان Home يصير Guide</string>
     <string name="pocket_usb_status_bridge">متصل · جسر ADB</string>
+
+    <!-- v3: buttons, radial menu, focus style, turbo -->
+    <string name="pocket_tab_buttons">الأزرار</string>
+    <string name="pocket_act_none">ولا شي</string>
+    <string name="pocket_act_default">الافتراضي</string>
+    <string name="pocket_act_guide">زر Xbox Guide</string>
+    <string name="pocket_act_gamebar">Xbox Game Bar (Win+G)</string>
+    <string name="pocket_act_radial">القائمة الدائرية</string>
+    <string name="pocket_act_quickmenu">القائمة السريعة</string>
+    <string name="pocket_act_view">زر View / Select</string>
+    <string name="pocket_act_start">زر Menu / Start</string>
+    <string name="pocket_act_esc">Esc</string>
+    <string name="pocket_act_alttab">تبديل النوافذ (Alt+Tab)</string>
+    <string name="pocket_act_win">زر الويندوز</string>
+    <string name="pocket_act_altf4">إغلاق النافذة (Alt+F4)</string>
+    <string name="pocket_act_altenter">شاشة كاملة (Alt+Enter)</string>
+    <string name="pocket_act_taskmgr">مدير المهام</string>
+    <string name="pocket_act_desktop">سطح المكتب (Win+D)</string>
+    <string name="pocket_act_screenshot">لقطة شاشة (Game Bar)</string>
+    <string name="pocket_act_record">تسجيل آخر 30 ثانية (Game Bar)</string>
+    <string name="pocket_act_playpause">تشغيل / إيقاف الوسائط</string>
+    <string name="pocket_act_volup">رفع صوت الكمبيوتر</string>
+    <string name="pocket_act_voldown">خفض صوت الكمبيوتر</string>
+    <string name="pocket_act_mute">كتم صوت الكمبيوتر</string>
+    <string name="pocket_act_stats">معلومات الأداء</string>
+    <string name="pocket_act_keyboard">كيبورد على الشاشة</string>
+    <string name="pocket_act_mouse">تشغيل / إيقاف وضع الماوس</string>
+    <string name="pocket_act_androidhome">الشاشة الرئيسية لأندرويد</string>
+    <string name="pocket_act_disconnect">قطع الاتصال (اللعبة بتضل شغّالة)</string>
+    <string name="pocket_act_quit">إغلاق اللعبة</string>
+    <string name="pocket_short_guide">Guide</string>
+    <string name="pocket_short_gamebar">Game Bar</string>
+    <string name="pocket_short_quickmenu">القائمة</string>
+    <string name="pocket_short_taskmgr">مدير المهام</string>
+    <string name="pocket_short_screenshot">لقطة شاشة</string>
+    <string name="pocket_short_record">تسجيل</string>
+    <string name="pocket_short_desktop">سطح المكتب</string>
+    <string name="pocket_short_altf4">إغلاق</string>
+    <string name="pocket_short_altenter">شاشة كاملة</string>
+    <string name="pocket_short_playpause">تشغيل / إيقاف</string>
+    <string name="pocket_short_volup">صوت +</string>
+    <string name="pocket_short_voldown">صوت −</string>
+    <string name="pocket_short_stats">الأداء</string>
+    <string name="pocket_short_keyboard">كيبورد</string>
+    <string name="pocket_short_mouse">ماوس</string>
+    <string name="pocket_short_androidhome">أندرويد</string>
+    <string name="pocket_short_disconnect">قطع</string>
+    <string name="pocket_short_quit">إغلاق اللعبة</string>
+    <string name="pocket_button_back">Back</string>
+    <string name="pocket_button_home">Home</string>
+    <string name="pocket_button_menu">زر القائمة</string>
+    <string name="pocket_gesture_tap">ضغطة</string>
+    <string name="pocket_gesture_double">ضغطتين</string>
+    <string name="pocket_gesture_hold">ضغط مطوّل</string>
+    <string name="pocket_header_back">زر Back</string>
+    <string name="pocket_header_home">زر Home</string>
+    <string name="pocket_header_menu_button">زر القائمة (M1 / M2…)</string>
+    <string name="pocket_header_radial">القائمة الدائرية</string>
+    <string name="pocket_header_more_buttons">المزيد</string>
+    <string name="pocket_set_home_service">صلاحية زر Home</string>
+    <string name="pocket_set_home_service_sub">أندرويد ما بيخلّي التطبيقات تشوف Home إلا عن طريق هالخدمة</string>
+    <string name="pocket_service_on">شغّالة</string>
+    <string name="pocket_service_off">طافية · اضغط لتشغيلها</string>
+    <string name="pocket_set_feedback">إظهار شو عمل الزر</string>
+    <string name="pocket_set_feedback_sub">كلمة صغيرة فوق الستريم</string>
+    <string name="pocket_set_buttons_reset">إرجاع الأزرار والقائمة الدائرية للافتراضي</string>
+    <string name="pocket_buttons_reset_done">رجعت الأزرار للافتراضي</string>
+    <string name="pocket_set_focus_style">شكل التحديد</string>
+    <string name="pocket_set_focus_style_sub">كيف بيبين الكرت المحدد</string>
+    <string name="pocket_focus_ring_zoom">إطار + تكبير</string>
+    <string name="pocket_focus_ring">إطار</string>
+    <string name="pocket_focus_zoom">تكبير</string>
+    <string name="pocket_set_turbo">تأخير منخفض جداً (Turbo)</string>
+    <string name="pocket_set_turbo_sub">فك ترميز سريع لسناب دراغون، أقل تأخير، وبيتخطى الفريمات المتأخرة</string>
+    <string-array name="pocket_radial_positions">
+        <item>فوق</item>
+        <item>فوق يمين</item>
+        <item>يمين</item>
+        <item>تحت يمين</item>
+        <item>تحت</item>
+        <item>تحت يسار</item>
+        <item>يسار</item>
+        <item>فوق يسار</item>
+    </string-array>
+    <string name="pocket_set_guide_help">زر Guide ما بيعمل إشي على الكمبيوتر؟</string>
+    <string name="pocket_set_guide_help_sub">شو بيفتح زر Xbox على ويندوز</string>
+    <string name="pocket_guide_help_body">زر Guide (Xbox) بيوصل للكمبيوتر كزر كنترولر. Steam Big Picture وألعاب تطبيق Xbox بتتجاوب معه.\n\nالـ Game Bar تبع ويندوز ما بيفتح من Guide إلا إذا كان خيار \"Open Xbox Game Bar using this button on a controller\" شغّال (إعدادات ويندوز ← Gaming ← Xbox Game Bar)، ومع بعض الكنترولرات الافتراضية ما بيتجاوب أبداً.\n\nإذا بدك الـ Game Bar كل مرة، خلّي الزر على \"Xbox Game Bar (Win+G)\": هاد بيبعت اختصار الكيبورد اللي دايماً بيشتغل.\n\nشغّل \"إظهار شو عمل الزر\" عشان تشوف تأكيد كل ضغطة فوق الستريم.</string>
 </resources>

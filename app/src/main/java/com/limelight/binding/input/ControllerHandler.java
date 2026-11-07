@@ -118,6 +118,9 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
     private final Activity activityContext;
     private final double stickDeadzone;
     private final InputDeviceContext defaultContext = new InputDeviceContext();
+    // Artemis Pocket: the controller the player is actually using, so emulated Guide/View/Start
+    // presses land on the same virtual pad on the PC
+    private InputDeviceContext lastActiveContext;
     private final GameGestures gestures;
     private final InputManager inputManager;
     private final Vibrator deviceVibrator;
@@ -1922,6 +1925,9 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
         if (context == null) {
             return true;
         }
+        if (context != defaultContext) {
+            lastActiveContext = context;
+        }
 
         float lsX = 0, lsY = 0, rsX = 0, rsY = 0, rt = 0, lt = 0, hatX = 0, hatY = 0;
 
@@ -2710,6 +2716,9 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
         if (context == null) {
             return true;
         }
+        if (context != defaultContext) {
+            lastActiveContext = context;
+        }
 
         int keyCode = handleRemapping(context, event);
         if (keyCode < 0) {
@@ -2945,16 +2954,78 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
      * Used when Back or Home is configured to act as the Guide button.
      */
     public void setEmulatedGuideButton(boolean down) {
+        setEmulatedFlag(ControllerPacket.SPECIAL_BUTTON_FLAG, down);
+    }
+
+    public static final int POCKET_GUIDE = ControllerPacket.SPECIAL_BUTTON_FLAG;
+    public static final int POCKET_VIEW = ControllerPacket.BACK_FLAG;
+    public static final int POCKET_START = ControllerPacket.PLAY_FLAG;
+
+    /**
+     * Artemis Pocket: press/release one controller button (Guide, View, Start) on the controller
+     * that is being used, falling back to player 1.
+     */
+    public void setEmulatedFlag(int flag, boolean down) {
         if (stopped) {
             return;
         }
+        GenericControllerContext target = defaultContext;
+        InputDeviceContext last = lastActiveContext;
+        if (last != null && inputDeviceContexts.get(last.id) == last) {
+            target = last;
+        }
+        // Clear the flag from whichever context held it before, so nothing stays stuck
+        if (!down && target != defaultContext && (defaultContext.inputMap & flag) != 0) {
+            defaultContext.inputMap &= ~flag;
+            sendControllerInputPacket(defaultContext);
+        }
         if (down) {
-            defaultContext.inputMap |= ControllerPacket.SPECIAL_BUTTON_FLAG;
+            target.inputMap |= flag;
         }
         else {
-            defaultContext.inputMap &= ~ControllerPacket.SPECIAL_BUTTON_FLAG;
+            target.inputMap &= ~flag;
         }
+        sendControllerInputPacket(target);
+    }
+
+    /** Artemis Pocket: tap a controller button (down, then up after a short moment). */
+    public void pulseFlag(final int flag) {
+        setEmulatedFlag(flag, true);
+        mainThreadHandler.postDelayed(() -> setEmulatedFlag(flag, false), 120);
+    }
+
+    /** Artemis Pocket: let go of everything on the PC side (used when the radial menu opens). */
+    public void releaseAllInputs() {
+        if (stopped) {
+            return;
+        }
+        for (int i = 0; i < inputDeviceContexts.size(); i++) {
+            GenericControllerContext c = inputDeviceContexts.valueAt(i);
+            c.inputMap = 0;
+            c.leftTrigger = 0;
+            c.rightTrigger = 0;
+            c.leftStickX = c.leftStickY = 0;
+            c.rightStickX = c.rightStickY = 0;
+            if (c.assignedControllerNumber) {
+                sendControllerInputPacket(c);
+            }
+        }
+        defaultContext.inputMap = 0;
         sendControllerInputPacket(defaultContext);
+    }
+
+    /** Artemis Pocket: toggle mouse mode on the built-in controller. */
+    public void togglePrimaryMouseEmulation() {
+        for (int i = 0; i < inputDeviceContexts.size(); i++) {
+            InputDeviceContext c = inputDeviceContexts.valueAt(i);
+            if (c.assignedControllerNumber && c.controllerNumber == 0) {
+                c.toggleMouseEmulation();
+                return;
+            }
+        }
+        if (inputDeviceContexts.size() > 0) {
+            inputDeviceContexts.valueAt(0).toggleMouseEmulation();
+        }
     }
 
     public void reportOscState(int buttonFlags,

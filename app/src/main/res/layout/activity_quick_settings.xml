@@ -113,7 +113,6 @@
                     android:id="@+id/pocketRows"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layoutAnimation="@anim/pocket_rows_stagger"
                     android:orientation="vertical"
                     android:paddingTop="4dp"
                     android:paddingEnd="8dp"

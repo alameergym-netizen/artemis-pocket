@@ -1,18 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Drawn on top of box art: hairline glass edge, bright white edge when focused -->
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:state_activated="true">
-        <shape android:shape="rectangle">
-            <solid android:color="@android:color/transparent" />
-            <stroke android:width="2dp" android:color="#FFFFFFFF" />
-            <corners android:radius="14dp" />
-        </shape>
-    </item>
-    <item>
-        <shape android:shape="rectangle">
-            <solid android:color="@android:color/transparent" />
-            <stroke android:width="1dp" android:color="#2EFFFFFF" />
-            <corners android:radius="14dp" />
-        </shape>
-    </item>
-</selector>
+<!-- Hairline glass edge over box art (focus is shown by the outline around the card) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+    <stroke android:width="1dp" android:color="#24FFFFFF" />
+    <corners android:radius="14dp" />
+</shape>

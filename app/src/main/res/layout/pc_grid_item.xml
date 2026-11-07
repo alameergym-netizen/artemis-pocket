@@ -81,12 +81,4 @@
         </LinearLayout>
     </LinearLayout>
 
-    <View
-        android:layout_width="40dp"
-        android:layout_height="match_parent"
-        android:background="@drawable/pocket_shine"
-        android:rotation="14"
-        android:scaleY="1.4"
-        android:tag="shine"
-        android:visibility="invisible" />
 </FrameLayout>

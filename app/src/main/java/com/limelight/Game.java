@@ -2259,7 +2259,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         int keyCode = event.getKeyCode();
         boolean guideKey = (keyCode == KeyEvent.KEYCODE_BACK && prefConfig.backAsGuide) ||
-                (keyCode == KeyEvent.KEYCODE_HOME && pocketHomeAsGuide);
+                (keyCode == KeyEvent.KEYCODE_HOME && pocketHomeAsGuide) ||
+                // Guide injected by a remapper (e.g. Key Mapper) from a non-controller device
+                (keyCode == KeyEvent.KEYCODE_BUTTON_MODE && !ControllerHandler.isGameControllerDevice(event.getDevice()));
         if (guideKey && controllerHandler != null) {
             if (down) {
                 if (!pocketGuideDown) {

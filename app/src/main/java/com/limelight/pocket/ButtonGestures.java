@@ -8,8 +8,8 @@ import android.os.Looper;
  * action. Rules:
  *  - If only "tap" is set to DEFAULT and nothing else is assigned, the button passes straight
  *    through (down/up as they happen) so it can still be held in games.
- *  - "Live" controller buttons: when tap is Xbox Guide, View or Start, there is no double-press
- *    action and hold is empty or the same button, the press goes to the PC exactly as long as
+ *  - "Live" controller buttons: when tap is Xbox Guide, View or Start and double press and hold
+ *    are empty or the same button, the press goes to the PC exactly as long as
  *    it is held (a tap is a tap, a long press is a long press, e.g. Windows' hold-Guide).
  *  - A tap waits for a possible second press only if a double-press action exists.
  *  - Hold fires after HOLD_MS. Guide, View or Start as the hold action stay pressed on the PC
@@ -103,7 +103,7 @@ public class ButtonGestures {
 
     /** True when this combination makes the button behave exactly like that controller button. */
     public static boolean isLive(PocketAction tap, PocketAction doubleTap, PocketAction hold) {
-        return canBeHeld(tap) && doubleTap == PocketAction.NONE
+        return canBeHeld(tap) && (doubleTap == PocketAction.NONE || doubleTap == tap)
                 && (hold == PocketAction.NONE || hold == tap);
     }
 

@@ -2961,11 +2961,65 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
     public static final int POCKET_VIEW = ControllerPacket.BACK_FLAG;
     public static final int POCKET_START = ControllerPacket.PLAY_FLAG;
 
+    // Artemis Pocket: emulated presses are paced so every press and every gap between presses
+    // lasts long enough for the PC to see it. Without this, a quick double tap on the handheld
+    // reaches Windows as a single press (or none), because the PC polls the pad between them.
+    private static final long POCKET_MIN_PRESS_MS = 90;
+    private static final long POCKET_MIN_GAP_MS = 70;
+
+    private static final class FlagPacer {
+        boolean applied;
+        long lastEdgeMs;
+        boolean scheduled;
+        final java.util.ArrayDeque<Boolean> pending = new java.util.ArrayDeque<>();
+    }
+
+    private final SparseArray<FlagPacer> pocketPacers = new SparseArray<>();
+
     /**
      * Artemis Pocket: press/release one controller button (Guide, View, Start) on the controller
-     * that is being used, falling back to player 1.
+     * that is being used, falling back to player 1. Every change is queued and paced.
      */
     public void setEmulatedFlag(int flag, boolean down) {
+        if (stopped) {
+            return;
+        }
+        FlagPacer pacer = pocketPacers.get(flag);
+        if (pacer == null) {
+            pacer = new FlagPacer();
+            pocketPacers.put(flag, pacer);
+        }
+        boolean last = pacer.pending.isEmpty() ? pacer.applied : pacer.pending.peekLast();
+        if (last == down) {
+            return;
+        }
+        pacer.pending.addLast(down);
+        drainPacer(flag, pacer);
+    }
+
+    private void drainPacer(final int flag, final FlagPacer pacer) {
+        while (!pacer.pending.isEmpty()) {
+            long now = android.os.SystemClock.uptimeMillis();
+            long wait = pacer.lastEdgeMs == 0 ? 0
+                    : pacer.lastEdgeMs + (pacer.applied ? POCKET_MIN_PRESS_MS : POCKET_MIN_GAP_MS) - now;
+            if (wait > 0) {
+                if (!pacer.scheduled) {
+                    pacer.scheduled = true;
+                    mainThreadHandler.postDelayed(() -> {
+                        pacer.scheduled = false;
+                        drainPacer(flag, pacer);
+                    }, wait);
+                }
+                return;
+            }
+            boolean next = pacer.pending.pollFirst();
+            pacer.applied = next;
+            pacer.lastEdgeMs = now;
+            applyEmulatedFlag(flag, next);
+        }
+    }
+
+    private void applyEmulatedFlag(int flag, boolean down) {
         if (stopped) {
             return;
         }
@@ -2996,10 +3050,10 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
         sendControllerInputPacket(target);
     }
 
-    /** Artemis Pocket: tap a controller button (down, then up after a short moment). */
+    /** Artemis Pocket: tap a controller button (down, then up after the minimum press time). */
     public void pulseFlag(final int flag) {
         setEmulatedFlag(flag, true);
-        mainThreadHandler.postDelayed(() -> setEmulatedFlag(flag, false), 120);
+        setEmulatedFlag(flag, false);
     }
 
     /** Artemis Pocket: let go of everything on the PC side (used when the radial menu opens). */
@@ -3020,6 +3074,15 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
         }
         defaultContext.inputMap = 0;
         sendControllerInputPacket(defaultContext);
+        // Forget queued emulated presses too, so nothing gets pressed again after this
+        for (int i = 0; i < pocketPacers.size(); i++) {
+            FlagPacer pacer = pocketPacers.valueAt(i);
+            pacer.pending.clear();
+            if (pacer.applied) {
+                pacer.applied = false;
+                pacer.lastEdgeMs = android.os.SystemClock.uptimeMillis();
+            }
+        }
     }
 
     /** Artemis Pocket: toggle mouse mode on the built-in controller. */

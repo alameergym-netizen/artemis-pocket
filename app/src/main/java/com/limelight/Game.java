@@ -2295,12 +2295,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if (controllerHandler == null) {
             return;
         }
-        controllerHandler.setEmulatedGuideButton(true);
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (controllerHandler != null) {
-                controllerHandler.setEmulatedGuideButton(false);
-            }
-        }, 150);
+        // Paced inside the controller handler, so quick repeats stay separate presses
+        controllerHandler.pulseFlag(ControllerHandler.POCKET_GUIDE);
     }
 
     // ---- Artemis Pocket: buttons, actions and the radial menu ---------------------------------

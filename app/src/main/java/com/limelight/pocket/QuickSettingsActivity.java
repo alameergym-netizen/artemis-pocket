@@ -63,6 +63,20 @@ public class QuickSettingsActivity extends ConsoleActivity {
     private ScrollView rowsScroll;
     private int currentTab = TAB_STREAM;
     private boolean capturingHotkey;
+    // What the capture panel is assigning: the menu button, or which key is Back / Home
+    private static final int CAPTURE_MENU = 0;
+    private static final int CAPTURE_BACK = 1;
+    private static final int CAPTURE_HOME = 2;
+    private int captureTarget = CAPTURE_MENU;
+    private int swallowKeyUp = -1;
+    private long lastCaptureEventTime = -1;
+    private int lastCaptureKeyCode = -1;
+    private final KeyboardAccessibilityService.KeyTestListener serviceCapture = event ->
+            runOnUiThread(() -> {
+                if (capturingHotkey) {
+                    handleCaptureKey(event);
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -130,6 +144,14 @@ public class QuickSettingsActivity extends ConsoleActivity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        if (capturingHotkey) {
+            endHotkeyCapture();
+        }
+    }
+
+    @Override
     protected boolean onShoulder(int direction) {
         int next = Math.max(0, Math.min(tabs.size() - 1, currentTab + direction));
         if (next != currentTab) {
@@ -152,9 +174,21 @@ public class QuickSettingsActivity extends ConsoleActivity {
             handleCaptureKey(event);
             return true;
         }
+        if (swallowKeyUp >= 0 && event.getKeyCode() == swallowKeyUp) {
+            // The release (and duplicate press) of the key that was just captured
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                swallowKeyUp = -1;
+                return true;
+            }
+            if (event.getEventTime() == lastCaptureEventTime || event.getRepeatCount() > 0) {
+                return true;
+            }
+            swallowKeyUp = -1; // a fresh press: handle it normally
+        }
         int keyCode = event.getKeyCode();
         if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_BUTTON_B) {
             if (event.getAction() == KeyEvent.ACTION_UP) {
+                PocketSounds.play(this, PocketSounds.BACK);
                 View focus = getCurrentFocus();
                 if (focus != null && focus.getParent() == rowsContainer) {
                     tabs.get(currentTab).requestFocus();
@@ -351,9 +385,16 @@ public class QuickSettingsActivity extends ConsoleActivity {
     // ---- Buttons ------------------------------------------------------------------------
 
     private void buildButtonsTab() {
-        addButtonSection(ButtonActions.BUTTON_BACK, R.string.pocket_header_back);
+        addHeader(R.string.pocket_header_back);
+        addAction(getString(R.string.pocket_set_which_back), getString(R.string.pocket_set_which_sub),
+                () -> PocketPrefs.describeButtonKey(this, PocketPrefs.getBackKey(this), R.string.pocket_key_auto_back),
+                () -> startCapture(CAPTURE_BACK));
+        addGestureRows(ButtonActions.BUTTON_BACK);
 
         addHeader(R.string.pocket_header_home);
+        addAction(getString(R.string.pocket_set_which_home), getString(R.string.pocket_set_which_sub),
+                () -> PocketPrefs.describeButtonKey(this, PocketPrefs.getHomeKey(this), R.string.pocket_key_auto_home),
+                () -> startCapture(CAPTURE_HOME));
         addAction(getString(R.string.pocket_set_home_service), getString(R.string.pocket_set_home_service_sub),
                 () -> getString(isAccessibilityServiceEnabled(this) ? R.string.pocket_service_on : R.string.pocket_service_off),
                 this::showAccessibilityPrompt);
@@ -365,7 +406,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     String name = PocketPrefs.describeHotkey(PocketPrefs.getMenuHotkey(this));
                     return name != null ? name : getString(R.string.pocket_not_set);
                 },
-                this::startHotkeyCapture);
+                () -> startCapture(CAPTURE_MENU));
         addGestureRows(ButtonActions.BUTTON_MENU);
 
         addHeader(R.string.pocket_header_radial);
@@ -586,6 +627,19 @@ public class QuickSettingsActivity extends ConsoleActivity {
         addToggle(getString(R.string.pocket_set_haptics), getString(R.string.pocket_set_haptics_sub),
                 () -> PocketPrefs.hapticsEnabled(this),
                 value -> prefs().edit().putBoolean(PocketPrefs.KEY_HAPTICS, value).apply());
+
+        addToggle(getString(R.string.pocket_set_sounds), getString(R.string.pocket_set_sounds_sub),
+                () -> PocketPrefs.uiSounds(this),
+                value -> {
+                    prefs().edit().putBoolean(PocketPrefs.KEY_UI_SOUNDS, value).apply();
+                    if (value) {
+                        PocketSounds.preload(this);
+                    }
+                });
+
+        addToggle(getString(R.string.pocket_set_battery_alerts), getString(R.string.pocket_set_battery_alerts_sub),
+                () -> PocketPrefs.batteryAlerts(this),
+                value -> prefs().edit().putBoolean(PocketPrefs.KEY_BATTERY_ALERTS, value).apply());
 
         addToggle(getString(R.string.pocket_set_color_art), getString(R.string.pocket_set_color_art_sub),
                 () -> PocketPrefs.colorBackgroundArt(this),
@@ -827,7 +881,10 @@ public class QuickSettingsActivity extends ConsoleActivity {
         }
         if (action != null) {
             row.addView(chevron(R.drawable.ic_chevron_right));
-            row.setOnClickListener(v -> action.run());
+            row.setOnClickListener(v -> {
+                PocketSounds.play(this, PocketSounds.SELECT);
+                action.run();
+            });
         }
         rowsContainer.addView(row);
     }
@@ -843,11 +900,34 @@ public class QuickSettingsActivity extends ConsoleActivity {
 
     // ---- Hotkey capture -----------------------------------------------------------------
 
-    private void startHotkeyCapture() {
+    private void startCapture(int target) {
+        captureTarget = target;
         capturingHotkey = true;
+        // Home never reaches apps directly; the accessibility service hands it to us while capturing
+        KeyboardAccessibilityService.keyTestListener = serviceCapture;
+        TextView title = findViewById(R.id.pocketCaptureTitle);
+        TextView sub = findViewById(R.id.pocketCaptureSub);
+        if (title != null && sub != null) {
+            switch (target) {
+                case CAPTURE_BACK:
+                    title.setText(R.string.pocket_capture_back_title);
+                    sub.setText(R.string.pocket_capture_back_sub);
+                    break;
+                case CAPTURE_HOME:
+                    title.setText(R.string.pocket_capture_home_title);
+                    sub.setText(isAccessibilityServiceEnabled(this) ? R.string.pocket_capture_home_sub
+                            : R.string.pocket_capture_home_sub_noservice);
+                    break;
+                default:
+                    title.setText(R.string.pocket_capture_title);
+                    sub.setText(R.string.pocket_capture_sub);
+                    break;
+            }
+        }
         View overlay = findViewById(R.id.pocketCaptureOverlay);
         ViewGroup hints = findViewById(R.id.pocketCaptureHints);
-        fillHintBar(this, hints, hintB(this, R.string.pocket_hint_cancel), hintX(this, R.string.pocket_hint_clear));
+        fillHintBar(this, hints, hintB(this, R.string.pocket_hint_cancel),
+                hintX(this, target == CAPTURE_MENU ? R.string.pocket_hint_clear : R.string.pocket_hint_reset_auto));
         overlay.setAlpha(0f);
         overlay.setVisibility(View.VISIBLE);
         overlay.animate().alpha(1f).setDuration(200).start();
@@ -856,6 +936,9 @@ public class QuickSettingsActivity extends ConsoleActivity {
 
     private void endHotkeyCapture() {
         capturingHotkey = false;
+        if (KeyboardAccessibilityService.keyTestListener == serviceCapture) {
+            KeyboardAccessibilityService.keyTestListener = null;
+        }
         PocketUi.setBackdropBlur(findViewById(R.id.pocketMain), false);
         View overlay = findViewById(R.id.pocketCaptureOverlay);
         overlay.animate().alpha(0f).setDuration(180).withEndAction(() -> overlay.setVisibility(View.GONE)).start();
@@ -866,7 +949,47 @@ public class QuickSettingsActivity extends ConsoleActivity {
         if (event.getAction() != KeyEvent.ACTION_DOWN || event.getRepeatCount() != 0) {
             return;
         }
+        // The accessibility service and the window can both hand us the same press
+        if (event.getEventTime() == lastCaptureEventTime && event.getKeyCode() == lastCaptureKeyCode) {
+            return;
+        }
+        lastCaptureEventTime = event.getEventTime();
+        lastCaptureKeyCode = event.getKeyCode();
         int keyCode = event.getKeyCode();
+        // Whatever happens below, the release of this key belongs to the capture
+        swallowKeyUp = keyCode;
+        if (captureTarget != CAPTURE_MENU) {
+            String prefKey = captureTarget == CAPTURE_BACK ? PocketPrefs.KEY_BACK_KEY : PocketPrefs.KEY_HOME_KEY;
+            switch (keyCode) {
+                case KeyEvent.KEYCODE_BUTTON_B:
+                case KeyEvent.KEYCODE_ESCAPE:
+                    endHotkeyCapture();
+                    return;
+                case KeyEvent.KEYCODE_BUTTON_X:
+                    PocketPrefs.resetButtonKey(this, prefKey);
+                    Toast.makeText(this, R.string.pocket_key_reset_done, Toast.LENGTH_SHORT).show();
+                    endHotkeyCapture();
+                    return;
+                case KeyEvent.KEYCODE_BUTTON_A:
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                case KeyEvent.KEYCODE_DPAD_UP:
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                case KeyEvent.KEYCODE_BUTTON_Y:
+                case KeyEvent.KEYCODE_VOLUME_UP:
+                case KeyEvent.KEYCODE_VOLUME_DOWN:
+                case KeyEvent.KEYCODE_POWER:
+                    Toast.makeText(this, R.string.pocket_hotkey_reserved, Toast.LENGTH_SHORT).show();
+                    return;
+            }
+            PocketPrefs.setButtonKey(this, prefKey, event);
+            PocketSounds.play(this, PocketSounds.SELECT);
+            Toast.makeText(this, getString(R.string.pocket_hotkey_assigned,
+                    PocketPrefs.describeHotkey(PocketPrefs.encodeKey(event))), Toast.LENGTH_SHORT).show();
+            endHotkeyCapture();
+            return;
+        }
         switch (keyCode) {
             case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_BUTTON_B:

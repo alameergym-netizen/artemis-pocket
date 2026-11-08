@@ -87,9 +87,18 @@ public class ButtonGestures {
         return tap == PocketAction.DEFAULT && doubleTap == PocketAction.NONE && hold == PocketAction.NONE;
     }
 
+    public boolean isDown() {
+        return down;
+    }
+
+    /**
+     * A new press. Callers filter key repeats, so a press while we still think the button is
+     * down means its release never reached us (some ROMs swallow the release of system keys).
+     * Finish the old press first instead of ignoring the button forever.
+     */
     public void onDown() {
         if (down) {
-            return; // key repeat
+            onUp();
         }
         down = true;
         holdFired = false;

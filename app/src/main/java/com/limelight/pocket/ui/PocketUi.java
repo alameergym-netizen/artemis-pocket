@@ -49,6 +49,7 @@ public final class PocketUi {
 
     /** A very light tick when moving between items, like a console menu. */
     public static void tick(Context context) {
+        com.limelight.pocket.PocketSounds.play(context, com.limelight.pocket.PocketSounds.NAV);
         if (!PocketPrefs.hapticsEnabled(context)) {
             return;
         }

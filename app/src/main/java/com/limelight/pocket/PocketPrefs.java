@@ -2,6 +2,8 @@ package com.limelight.pocket;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
+import android.view.InputDevice;
 import android.view.KeyEvent;
 
 import androidx.preference.PreferenceManager;
@@ -116,6 +118,84 @@ public final class PocketPrefs {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    // ---- Which physical key is Back / Home ----------------------------------------------
+
+    public static final String KEY_BACK_KEY = "pocket_key_back";
+    public static final String KEY_HOME_KEY = "pocket_key_home";
+    public static final String KEY_AUTO = "auto";
+
+    public static String encodeKey(KeyEvent event) {
+        if (event.getKeyCode() != KeyEvent.KEYCODE_UNKNOWN) {
+            return "k:" + event.getKeyCode();
+        }
+        return "s:" + event.getScanCode();
+    }
+
+    public static String getBackKey(Context context) {
+        return prefs(context).getString(KEY_BACK_KEY, KEY_AUTO);
+    }
+
+    public static String getHomeKey(Context context) {
+        return prefs(context).getString(KEY_HOME_KEY, KEY_AUTO);
+    }
+
+    public static void setButtonKey(Context context, String prefKey, KeyEvent event) {
+        prefs(context).edit().putString(prefKey, encodeKey(event)).apply();
+    }
+
+    public static void resetButtonKey(Context context, String prefKey) {
+        prefs(context).edit().remove(prefKey).apply();
+    }
+
+    /** Back: "auto" is Android's Back key (not a mouse's back button). */
+    public static boolean matchesBack(String spec, KeyEvent event) {
+        if (KEY_AUTO.equals(spec)) {
+            int source = event.getSource();
+            boolean fromMouse = (source & InputDevice.SOURCE_MOUSE) == InputDevice.SOURCE_MOUSE
+                    || source == InputDevice.SOURCE_MOUSE_RELATIVE;
+            return event.getKeyCode() == KeyEvent.KEYCODE_BACK && !fromMouse;
+        }
+        return matchesHotkey(spec, event);
+    }
+
+    /**
+     * Home: "auto" is Android's Home key, or the Guide/Mode button of the handheld's built-in
+     * controller (some handhelds send their Home button that way). Guide buttons of external
+     * controllers keep working as plain Guide.
+     */
+    public static boolean matchesHome(String spec, KeyEvent event) {
+        if (KEY_AUTO.equals(spec)) {
+            if (event.getKeyCode() == KeyEvent.KEYCODE_HOME) {
+                return true;
+            }
+            if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_MODE) {
+                InputDevice device = event.getDevice();
+                return device != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !device.isExternal();
+            }
+            return false;
+        }
+        return matchesHotkey(spec, event);
+    }
+
+    public static String describeButtonKey(Context context, String spec, int autoLabel) {
+        if (KEY_AUTO.equals(spec)) {
+            return context.getString(autoLabel);
+        }
+        String name = describeHotkey(spec);
+        return name != null ? name : context.getString(autoLabel);
+    }
+
+    public static boolean uiSounds(Context context) {
+        return prefs(context).getBoolean(KEY_UI_SOUNDS, true);
+    }
+
+    public static final String KEY_UI_SOUNDS = "pocket_ui_sounds";
+    public static final String KEY_BATTERY_ALERTS = "pocket_battery_alerts";
+
+    public static boolean batteryAlerts(Context context) {
+        return prefs(context).getBoolean(KEY_BATTERY_ALERTS, true);
     }
 
     // ---- Toggles ------------------------------------------------------------------------

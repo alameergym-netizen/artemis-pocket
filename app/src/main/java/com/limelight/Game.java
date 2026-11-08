@@ -19,6 +19,9 @@ import com.limelight.pocket.ButtonActions;
 import com.limelight.pocket.ButtonGestures;
 import com.limelight.pocket.PocketAction;
 import com.limelight.pocket.ui.RadialMenuView;
+import com.limelight.pocket.PocketSounds;
+import com.limelight.pocket.ConsoleActivity;
+import com.limelight.pocket.ui.StreamMenuView;
 import com.limelight.binding.input.capture.InputCaptureManager;
 import com.limelight.binding.input.capture.InputCaptureProvider;
 import com.limelight.binding.input.touch.AbsoluteTouchContext;
@@ -303,6 +306,13 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private TextView pocketActionToast;
     private int radialHeldBy = -1;
     private final java.util.HashSet<Integer> radialConsumedKeys = new java.util.HashSet<>();
+    private String pocketBackKey = PocketPrefs.KEY_AUTO;
+    private String pocketHomeKey = PocketPrefs.KEY_AUTO;
+    private StreamMenuView streamMenu;
+    private final java.util.HashSet<Integer> streamMenuConsumedKeys = new java.util.HashSet<>();
+    private long pocketKeyMonitorUntil;
+    private long pocketSessionStartMs;
+    private int pocketLastBatteryAlert = 101;
 
     public interface GameMenuCallbacks {
         void showMenu(GameInputDevice devic);
@@ -561,6 +571,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         // Artemis Pocket: a USB-C cable (or no default network at all) is never a metered link
         boolean isMetered = UsbLink.isStreamMetered(this, getIntent().getStringExtra(EXTRA_HOST));
         pocketMenuHotkey = PocketPrefs.getMenuHotkey(this);
+        pocketBackKey = PocketPrefs.getBackKey(this);
+        pocketHomeKey = PocketPrefs.getHomeKey(this);
         if (isMetered) {
             displayTransientMessage(getResources().getString(R.string.conn_metered));
         }
@@ -1727,6 +1739,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         instance = null;
         timerHandler.removeCallbacksAndMessages(null);
+        if (streamMenu != null) {
+            streamMenu.hide();
+        }
 
         if (prefConfig.enableFullExDisplay) handleDisplayRemoved();
 
@@ -2066,6 +2081,15 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     @Override
     public boolean handleKeyDown(KeyEvent event) {
+        if (pocketKeyMonitorUntil != 0 && event.getRepeatCount() == 0) {
+            if (android.os.SystemClock.uptimeMillis() < pocketKeyMonitorUntil) {
+                showPocketToast(describeKeyForMonitor(event), true, 1800);
+            }
+            else {
+                pocketKeyMonitorUntil = 0;
+            }
+        }
+
         // Artemis Pocket keys first: handheld Home/Back buttons are often flagged as
         // "virtual" keys, which the code below would otherwise pass straight to Android.
         if (handlePocketKey(event, true)) {
@@ -2328,6 +2352,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         content.addView(radialMenu, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
+        streamMenu = new StreamMenuView(this);
+        streamMenu.setConfirmLabel(getString(R.string.pocket_sm_confirm));
+        content.addView(streamMenu, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         float d = getResources().getDisplayMetrics().density;
         pocketActionToast = new TextView(this);
         pocketActionToast.setBackgroundResource(R.drawable.pocket_glass_pill);
@@ -2343,23 +2372,255 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     private void showPocketActionToast(String text) {
-        if (pocketActionToast == null || !PocketPrefs.actionFeedback(this)) {
+        showPocketToast(text, false, 900);
+    }
+
+    private void showPocketToast(String text, boolean force, long holdMs) {
+        if (pocketActionToast == null || (!force && !PocketPrefs.actionFeedback(this))) {
             return;
         }
         pocketActionToast.animate().cancel();
         pocketActionToast.setText(text);
         pocketActionToast.setVisibility(View.VISIBLE);
         pocketActionToast.setAlpha(1f);
-        pocketActionToast.animate().alpha(0f).setStartDelay(900).setDuration(250)
+        pocketActionToast.animate().alpha(0f).setStartDelay(holdMs).setDuration(250)
                 .withEndAction(() -> pocketActionToast.setVisibility(View.GONE)).start();
     }
 
+    private static String describeKeyForMonitor(KeyEvent event) {
+        String name = KeyEvent.keyCodeToString(event.getKeyCode()).replace("KEYCODE_", "");
+        InputDevice device = event.getDevice();
+        return name + "  \u00b7  scan " + event.getScanCode()
+                + (device != null ? "  \u00b7  " + device.getName() : "");
+    }
+
     private void toggleQuickMenu() {
-        if (gameMenuCallbacks != null && gameMenuCallbacks.isMenuOpen()) {
+        if (streamMenu != null && streamMenu.isShowing()) {
+            streamMenu.hide();
+        }
+        else if (gameMenuCallbacks != null && gameMenuCallbacks.isMenuOpen()) {
             gameMenuCallbacks.hideMenu();
         }
         else {
             showGameMenu(null);
+        }
+    }
+
+    /** Quits the game on the PC without another dialog (the in-stream menu already asked). */
+    public void quitNow() {
+        quitOnStop = true;
+        finish();
+    }
+
+    // ---- Artemis Pocket: the in-stream console menu -------------------------------------
+
+    private void openStreamMenu() {
+        if (streamMenu == null) {
+            if (gameMenuCallbacks != null) {
+                gameMenuCallbacks.showMenu(null);
+            }
+            return;
+        }
+        if (radialMenu != null && radialMenu.isShowing()) {
+            closeRadial();
+        }
+        if (gameMenuCallbacks != null && gameMenuCallbacks.isMenuOpen()) {
+            gameMenuCallbacks.hideMenu();
+        }
+        if (controllerHandler != null) {
+            // Don't leave a stick or button held on the PC while the menu is open
+            controllerHandler.releaseAllInputs();
+        }
+        streamMenuConsumedKeys.clear();
+
+        String title = appName != null ? appName : getString(R.string.app_name);
+        StringBuilder sub = new StringBuilder();
+        if (pcName != null) {
+            sub.append(pcName).append("  \u00b7  ");
+        }
+        sub.append(getString(UsbLink.isUsbAddress(host) ? R.string.pocket_link_usb : R.string.pocket_link_wifi));
+        if (pocketSessionStartMs > 0) {
+            long secs = (android.os.SystemClock.elapsedRealtime() - pocketSessionStartMs) / 1000;
+            sub.append("  \u00b7  ").append(getString(R.string.pocket_sm_played,
+                    android.text.format.DateUtils.formatElapsedTime(secs)));
+        }
+
+        StringBuilder stats = new StringBuilder();
+        Intent b = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        if (b != null) {
+            int level = b.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+            int scale = b.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+            boolean charging = b.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0;
+            if (level >= 0 && scale > 0) {
+                int pct = Math.round(level * 100f / scale);
+                stats.append(getString(charging ? R.string.pocket_sm_charging : R.string.pocket_sm_battery, pct))
+                        .append("  \u00b7  ");
+            }
+        }
+        if (prefConfig != null) {
+            stats.append(prefConfig.width).append("\u00d7").append(prefConfig.height)
+                    .append("  \u00b7  ").append(prefConfig.fps).append(" fps  \u00b7  ");
+        }
+        stats.append(android.text.format.DateFormat.getTimeFormat(this).format(new Date()));
+
+        streamMenu.show(title, sub.toString(), stats.toString(), buildStreamMenuItems(),
+                ConsoleActivity.hintA(this, R.string.pocket_hint_select),
+                ConsoleActivity.hintB(this, R.string.pocket_hint_back),
+                new ConsoleActivity.Hint("\u25c0\u25b6", 0xFFFFFFFF, getString(R.string.pocket_hint_change)));
+    }
+
+    private String onOff(boolean on) {
+        return getString(on ? R.string.pocket_on : R.string.pocket_off);
+    }
+
+    private StreamMenuView.Item actionItem(final PocketAction action, boolean confirm) {
+        Runnable run = () -> performPocketAction(action, -1, true);
+        return confirm ? StreamMenuView.Item.confirm(action.shortLabel(this), run)
+                : StreamMenuView.Item.action(action.shortLabel(this), run);
+    }
+
+    private List<StreamMenuView.Item> buildStreamMenuItems() {
+        List<StreamMenuView.Item> items = new ArrayList<>();
+
+        items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_play)));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_resume), () -> { }));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_guide),
+                () -> performPocketAction(PocketAction.GUIDE, -1, true)));
+        items.add(StreamMenuView.Item.value(getString(R.string.pocket_sm_stats),
+                onOff(prefConfig != null && prefConfig.enablePerfOverlay), direction -> {
+                    toggleHUD();
+                    return onOff(prefConfig.enablePerfOverlay);
+                }));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_mouse),
+                () -> performPocketAction(PocketAction.MOUSE, -1, true)));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_keyboard),
+                () -> performPocketAction(PocketAction.KEYBOARD, -1, false)));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_radial), () -> openRadial(-1)));
+
+        items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_pc)));
+        final String shortcutsTitle = getString(R.string.pocket_sm_shortcuts);
+        items.add(StreamMenuView.Item.submenu(shortcutsTitle, () -> {
+            List<StreamMenuView.Item> page = new ArrayList<>();
+            PocketAction[] list = {PocketAction.GAME_BAR, PocketAction.ALT_TAB, PocketAction.ESC,
+                    PocketAction.ALT_ENTER, PocketAction.WIN, PocketAction.DESKTOP, PocketAction.TASK_MANAGER,
+                    PocketAction.SCREENSHOT, PocketAction.RECORD};
+            for (PocketAction a : list) {
+                page.add(actionItem(a, false));
+            }
+            page.add(actionItem(PocketAction.ALT_F4, true));
+            streamMenu.push(shortcutsTitle, page);
+        }));
+        final String mediaTitle = getString(R.string.pocket_sm_media);
+        items.add(StreamMenuView.Item.submenu(mediaTitle, () -> {
+            List<StreamMenuView.Item> page = new ArrayList<>();
+            PocketAction[] repeat = {PocketAction.VOLUME_UP, PocketAction.VOLUME_DOWN, PocketAction.MUTE};
+            for (final PocketAction a : repeat) {
+                page.add(StreamMenuView.Item.repeatable(a.shortLabel(this), () -> performPocketAction(a, -1, false)));
+            }
+            page.add(actionItem(PocketAction.PLAY_PAUSE, false));
+            streamMenu.push(mediaTitle, page);
+        }));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_clip_send), () -> sendClipboard(true)));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_clip_get), () -> getClipboard(0)));
+        final String commandsTitle = getString(R.string.pocket_sm_commands);
+        items.add(StreamMenuView.Item.submenu(commandsTitle, () -> {
+            List<StreamMenuView.Item> page = new ArrayList<>();
+            ArrayList<String> cmds = getServerCmds();
+            if (cmds == null || cmds.isEmpty()) {
+                page.add(StreamMenuView.Item.repeatable(getString(R.string.pocket_sm_no_commands), null));
+            }
+            else {
+                for (int i = 0; i < cmds.size(); i++) {
+                    final int id = i;
+                    page.add(StreamMenuView.Item.action(cmds.get(i), () -> sendExecServerCmd(id)));
+                }
+            }
+            streamMenu.push(commandsTitle, page);
+        }));
+
+        items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_tools)));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_button_check), () -> {
+            pocketKeyMonitorUntil = android.os.SystemClock.uptimeMillis() + 15000;
+            showPocketToast(getString(R.string.pocket_sm_button_check_toast), true, 2500);
+        }));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_classic), () -> {
+            if (gameMenuCallbacks != null) {
+                gameMenuCallbacks.showMenu(null);
+            }
+        }));
+
+        items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_session)));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_disconnect), this::disconnect)
+                .withValue(getString(R.string.pocket_sm_disconnect_value)));
+        items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_sm_quit), this::quitNow));
+        return items;
+    }
+
+    /**
+     * While the in-stream menu is open it gets every key. Keys it used never reach the PC,
+     * including their release after the menu closes.
+     */
+    private boolean handleStreamMenuKey(KeyEvent event, boolean down, int button) {
+        int keyCode = event.getKeyCode();
+        if (streamMenu == null || !streamMenu.isShowing()) {
+            return !down && streamMenuConsumedKeys.remove(keyCode);
+        }
+        if (!down) {
+            streamMenuConsumedKeys.remove(keyCode);
+            if (button >= 0 && pocketGestures[button].isDown()) {
+                // The release of the press that opened the menu
+                pocketGestures[button].onUp();
+            }
+            return true;
+        }
+        streamMenuConsumedKeys.add(keyCode);
+        if (button == ButtonActions.BUTTON_MENU || button == ButtonActions.BUTTON_HOME) {
+            if (event.getRepeatCount() == 0) {
+                PocketSounds.play(this, PocketSounds.BACK);
+                streamMenu.hide();
+            }
+            return true;
+        }
+        return streamMenu.handleKey(event);
+    }
+
+    private final Runnable pocketBatteryWatch = new Runnable() {
+        @Override
+        public void run() {
+            if (!connected || isFinishing()) {
+                return;
+            }
+            checkPocketBattery();
+            timerHandler.postDelayed(this, 30000);
+        }
+    };
+
+    /** A heads-up at 15% and 5% while streaming on battery. */
+    private void checkPocketBattery() {
+        if (!PocketPrefs.batteryAlerts(this)) {
+            return;
+        }
+        Intent b = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        if (b == null) {
+            return;
+        }
+        int level = b.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+        int scale = b.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+        if (level < 0 || scale <= 0) {
+            return;
+        }
+        if (b.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0) {
+            pocketLastBatteryAlert = 101;
+            return;
+        }
+        int pct = Math.round(level * 100f / scale);
+        int step = pct <= 5 ? 5 : (pct <= 15 ? 15 : 101);
+        if (step < pocketLastBatteryAlert) {
+            pocketLastBatteryAlert = step;
+            if (step <= 15) {
+                showPocketToast(getString(step == 5 ? R.string.pocket_battery_critical_alert
+                        : R.string.pocket_battery_low_alert, pct), true, 4000);
+            }
         }
     }
 
@@ -2500,6 +2761,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if (gameMenuCallbacks != null && gameMenuCallbacks.isMenuOpen()) {
             gameMenuCallbacks.hideMenu();
         }
+        if (streamMenu != null && streamMenu.isShowing()) {
+            streamMenu.hide();
+        }
         PocketAction[] slots = new PocketAction[ButtonActions.RADIAL_SLOTS];
         for (int i = 0; i < slots.length; i++) {
             slots[i] = ButtonActions.getRadial(this, i);
@@ -2628,11 +2892,16 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if (PocketPrefs.matchesHotkey(pocketMenuHotkey, event)) {
             button = ButtonActions.BUTTON_MENU;
         }
-        else if (keyCode == KeyEvent.KEYCODE_BACK && !fromMouse) {
+        else if (!fromMouse && PocketPrefs.matchesBack(pocketBackKey, event)) {
             button = ButtonActions.BUTTON_BACK;
         }
-        else if (keyCode == KeyEvent.KEYCODE_HOME) {
+        else if (PocketPrefs.matchesHome(pocketHomeKey, event)) {
             button = ButtonActions.BUTTON_HOME;
+        }
+
+        // The in-stream menu takes every key while it is open
+        if (handleStreamMenuKey(event, down, button)) {
+            return true;
         }
 
         // The button holding the radial menu open must still get its release
@@ -2643,7 +2912,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
 
         if (button >= 0) {
-            if (button == ButtonActions.BUTTON_BACK
+            if (button == ButtonActions.BUTTON_BACK && keyCode == KeyEvent.KEYCODE_BACK
                     && ButtonActions.get(this, button, ButtonActions.GESTURE_TAP) == PocketAction.DEFAULT
                     && ButtonActions.get(this, button, ButtonActions.GESTURE_DOUBLE) == PocketAction.NONE
                     && ButtonActions.get(this, button, ButtonActions.GESTURE_HOLD) == PocketAction.NONE) {
@@ -3248,6 +3517,16 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     // Returns true if the event was consumed
     // NB: View is only present if called from a view callback
     public boolean handleMotionEvent(View view, MotionEvent event) {
+        if (streamMenu != null && streamMenu.isShowing()) {
+            if ((event.getSource() & InputDevice.SOURCE_CLASS_JOYSTICK) != 0) {
+                float hx = event.getAxisValue(MotionEvent.AXIS_HAT_X);
+                float hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y);
+                float x = Math.abs(hx) > 0.5f ? hx : event.getAxisValue(MotionEvent.AXIS_X);
+                float y = Math.abs(hy) > 0.5f ? hy : event.getAxisValue(MotionEvent.AXIS_Y);
+                streamMenu.onStick(x, y);
+            }
+            return true;
+        }
         if (handleRadialMotion(event)) {
             return true;
         }
@@ -4168,6 +4447,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
                 connected = true;
                 connecting = false;
+                pocketSessionStartMs = android.os.SystemClock.elapsedRealtime();
+                pocketLastBatteryAlert = 101;
+                timerHandler.removeCallbacks(pocketBatteryWatch);
+                timerHandler.postDelayed(pocketBatteryWatch, 5000);
                 updatePipAutoEnter();
 
                 // Hide the mouse cursor now after a short delay.
@@ -4744,9 +5027,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if(isOnExternalDisplay()) {
             ExternalDisplayControlActivity.toggleGameMenu();
         } else {
-            if (gameMenuCallbacks != null) {
-                gameMenuCallbacks.showMenu(device);
-            }
+            openStreamMenu();
         }
     }
 

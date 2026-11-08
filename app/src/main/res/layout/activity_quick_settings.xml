@@ -166,6 +166,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:gravity="center"
+                android:id="@+id/pocketCaptureTitle"
                 android:fontFamily="sans-serif-medium"
                 android:text="@string/pocket_capture_title"
                 android:textColor="@color/pocket_text"
@@ -177,6 +178,7 @@
                 android:layout_marginTop="8dp"
                 android:gravity="center"
                 android:maxWidth="440dp"
+                android:id="@+id/pocketCaptureSub"
                 android:text="@string/pocket_capture_sub"
                 android:textColor="@color/pocket_text_dim"
                 android:textSize="14sp" />

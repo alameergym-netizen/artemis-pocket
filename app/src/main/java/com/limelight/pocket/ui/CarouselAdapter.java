@@ -133,6 +133,7 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
             int pos = holder.getBindingAdapterPosition();
             if (pos != RecyclerView.NO_POSITION) {
                 pressFeedback(frame);
+                com.limelight.pocket.PocketSounds.play(frame.getContext(), com.limelight.pocket.PocketSounds.SELECT);
                 listener.onItemClicked(pos, frame.getChildAt(0));
             }
         });

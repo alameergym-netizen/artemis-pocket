@@ -67,11 +67,6 @@ import java.util.Map;
 
 public class StreamSettings extends AppCompatActivity {
 
-    @Override
-    protected void attachBaseContext(android.content.Context newBase) {
-        // Artemis Pocket: honour the interface size setting
-        super.attachBaseContext(com.limelight.pocket.ui.PocketUi.wrapWithUiScale(newBase));
-    }
     private PreferenceConfiguration previousPrefs;
     private int previousDisplayPixelCount;
 
@@ -81,17 +76,24 @@ public class StreamSettings extends AppCompatActivity {
     static DisplayCutout displayCutoutP;
 
     void reloadSettings() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Display.Mode mode = getActiveDisplay(StreamSettings.this, previousPrefs).getMode();
-            previousDisplayPixelCount = mode.getPhysicalWidth() * mode.getPhysicalHeight();
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                Display.Mode mode = getActiveDisplay(StreamSettings.this, previousPrefs).getMode();
+                previousDisplayPixelCount = mode.getPhysicalWidth() * mode.getPhysicalHeight();
+            }
+            prefsFragment = new SettingsFragment(PreferenceConfiguration.readPreferences(
+                    this,
+                    PreferenceManager.getDefaultSharedPreferences(this)
+            ));
+            getSupportFragmentManager().beginTransaction().replace(
+                    R.id.stream_settings, prefsFragment
+            ).commitAllowingStateLoss();
+        } catch (RuntimeException e) {
+            // Artemis Pocket: report instead of crashing (shown on the next console screen)
+            com.limelight.pocket.CrashReporter.saveCaught(this, e);
+            Toast.makeText(this, R.string.pocket_advanced_failed, Toast.LENGTH_LONG).show();
+            finish();
         }
-        prefsFragment = new SettingsFragment(PreferenceConfiguration.readPreferences(
-                this,
-                PreferenceManager.getDefaultSharedPreferences(this)
-        ));
-        getSupportFragmentManager().beginTransaction().replace(
-                R.id.stream_settings, prefsFragment
-        ).commitAllowingStateLoss();
     }
 
     @Override
@@ -335,7 +337,14 @@ public class StreamSettings extends AppCompatActivity {
 
         @Override
         public void onCreatePreferences(Bundle bundle, String s) {
-            initializePreferences();
+            try {
+                initializePreferences();
+            } catch (RuntimeException e) {
+                // Artemis Pocket: never let one odd preference take the whole screen down.
+                // Whatever loaded stays usable and the error is kept for the crash report.
+                com.limelight.pocket.CrashReporter.saveCaught(requireContext(), e);
+                Toast.makeText(requireContext(), R.string.pocket_advanced_failed, Toast.LENGTH_LONG).show();
+            }
         }
 
         public void initializePreferences() {
@@ -964,7 +973,11 @@ public class StreamSettings extends AppCompatActivity {
             }
 
             // Artemis Pocket: hide features that were removed or make no sense on a handheld
-            hidePocketRemovedFeatures();
+            try {
+                hidePocketRemovedFeatures();
+            } catch (RuntimeException e) {
+                com.limelight.pocket.CrashReporter.saveCaught(requireContext(), e);
+            }
         }
 
         private void hidePocketRemovedFeatures() {

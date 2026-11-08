@@ -38,7 +38,10 @@ public class KeyboardAccessibilityService extends AccessibilityService {
         int keyCode = event.getKeyCode();
 //        Toast.makeText(getApplicationContext(),"scancode:"+event.getScanCode()+",code:"+event.getKeyCode(),Toast.LENGTH_LONG).show();
         //主要解决系统自带快捷键在pc端无法使用问题 home键 scancode=172 code- 3
-        if (Game.instance != null && Game.instance.connected && !BLACKLIST_KEYS.contains(keyCode)) {
+        // Artemis Pocket: while a dialog (classic menu, quit, mouse mode...) covers the stream, the
+        // stream window loses focus and the keys must go to that dialog instead of the PC.
+        if (Game.instance != null && Game.instance.connected && Game.instance.hasWindowFocus()
+                && !BLACKLIST_KEYS.contains(keyCode)) {
 
             if (action == KeyEvent.ACTION_DOWN) {
                 //fix 小米平板esc键按钮映射错误 KEYCODE_BACK=4

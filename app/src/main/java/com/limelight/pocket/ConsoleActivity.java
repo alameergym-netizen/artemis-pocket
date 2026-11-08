@@ -98,6 +98,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         PocketSetup.applyFirstRunDefaults(this);
         super.onCreate(savedInstanceState);
         createdWithScale = PocketPrefs.uiScalePercent(this);
+        PocketSounds.preload(this);
         applyFullscreenWindow(this);
     }
 
@@ -130,6 +131,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             recreate();
             return;
         }
+        // A crash or caught error from last time: show it once, with a Copy button
+        CrashReporter.showPendingReport(this);
         menuHotkey = PocketPrefs.getMenuHotkey(this);
         enterImmersive();
         try {
@@ -184,6 +187,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     }
 
     public void openQuickSettings() {
+        PocketSounds.play(this, PocketSounds.OPEN);
         startActivity(new Intent(this, QuickSettingsActivity.class));
     }
 
@@ -204,6 +208,9 @@ public abstract class ConsoleActivity extends AppCompatActivity {
 
         int keyCode = event.getKeyCode();
         boolean up = event.getAction() == KeyEvent.ACTION_UP;
+        if (up && (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_BUTTON_B)) {
+            PocketSounds.play(this, PocketSounds.BACK);
+        }
         switch (keyCode) {
             case KeyEvent.KEYCODE_BUTTON_START:
                 if (up) {

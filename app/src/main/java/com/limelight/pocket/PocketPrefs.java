@@ -300,6 +300,110 @@ public final class PocketPrefs {
                 .apply();
     }
 
+    // ---- v2: resume, adaptive stream, frame generation, mic, theme, playtime ------------
+
+    public static final String KEY_SEAMLESS_RESUME = "pocket_seamless_resume";
+    public static final String KEY_ADAPTIVE = "pocket_adaptive_stream";
+    public static final String KEY_FRAME_GEN = "pocket_frame_gen";
+    public static final String KEY_MIC = "pocket_mic_passthrough";
+    public static final String KEY_ACCENT = "pocket_accent";
+    public static final String KEY_BACKDROP = "pocket_backdrop";
+    public static final String KEY_INTRO = "pocket_intro";
+    public static final String KEY_STREAM_BRIGHTNESS = "pocket_stream_brightness";
+    private static final String KEY_PLAYTIME_PREFIX = "pocket_playtime_";
+    private static final String KEY_ADAPTIVE_CAP = "pocket_adaptive_cap_kbps";
+    private static final String KEY_ADAPTIVE_CAP_UNTIL = "pocket_adaptive_cap_until";
+    private static final String KEY_COMPANION_TOKEN_PREFIX = "pocket_companion_token_";
+
+    public static final String FRAME_GEN_OFF = "off";
+    public static final String FRAME_GEN_2X = "2x";
+
+    public static final String BACKDROP_GLOW = "glow";
+    public static final String BACKDROP_ART = "art";
+    public static final String BACKDROP_BLACK = "black";
+
+    /** Pick the game up again by itself after the screen was off or the app was left. */
+    public static boolean seamlessResume(Context context) {
+        return prefs(context).getBoolean(KEY_SEAMLESS_RESUME, true);
+    }
+
+    /** Start quality from the connection, and lower it by itself when the connection struggles. */
+    public static boolean adaptiveStream(Context context) {
+        return prefs(context).getBoolean(KEY_ADAPTIVE, true);
+    }
+
+    public static String frameGen(Context context) {
+        return prefs(context).getString(KEY_FRAME_GEN, FRAME_GEN_OFF);
+    }
+
+    public static boolean frameGenEnabled(Context context) {
+        return FRAME_GEN_2X.equals(frameGen(context));
+    }
+
+    public static boolean micPassthrough(Context context) {
+        return prefs(context).getBoolean(KEY_MIC, false);
+    }
+
+    /** Accent color for focus and highlights (0xAARRGGBB). White by default. */
+    public static int accentColor(Context context) {
+        return prefs(context).getInt(KEY_ACCENT, 0xFFFFFFFF);
+    }
+
+    public static String backdrop(Context context) {
+        return prefs(context).getString(KEY_BACKDROP, BACKDROP_ART);
+    }
+
+    public static boolean introAnimation(Context context) {
+        return prefs(context).getBoolean(KEY_INTRO, true);
+    }
+
+    /** In-stream screen brightness, 0 = follow the system. */
+    public static int streamBrightness(Context context) {
+        return prefs(context).getInt(KEY_STREAM_BRIGHTNESS, 0);
+    }
+
+    // Playtime per game (seconds streamed from this handheld)
+    public static long getPlaytime(Context context, String pcUuid, int appId) {
+        return prefs(context).getLong(KEY_PLAYTIME_PREFIX + pcUuid + "_" + appId, 0);
+    }
+
+    public static void addPlaytime(Context context, String pcUuid, int appId, long seconds) {
+        if (pcUuid == null || appId == 0 || seconds <= 0) {
+            return;
+        }
+        String key = KEY_PLAYTIME_PREFIX + pcUuid + "_" + appId;
+        SharedPreferences p = prefs(context);
+        p.edit().putLong(key, p.getLong(key, 0) + seconds).apply();
+    }
+
+    // Adaptive stream memory: after the stream had to lower its quality, start the next one
+    // there too for a while instead of struggling again.
+    public static int adaptiveCapKbps(Context context) {
+        SharedPreferences p = prefs(context);
+        if (System.currentTimeMillis() > p.getLong(KEY_ADAPTIVE_CAP_UNTIL, 0)) {
+            return 0;
+        }
+        return p.getInt(KEY_ADAPTIVE_CAP, 0);
+    }
+
+    public static void setAdaptiveCap(Context context, int kbps) {
+        prefs(context).edit()
+                .putInt(KEY_ADAPTIVE_CAP, kbps)
+                .putLong(KEY_ADAPTIVE_CAP_UNTIL, kbps > 0 ? System.currentTimeMillis() + 2 * 60 * 60 * 1000L : 0)
+                .apply();
+    }
+
+    // PC companion pairing token per PC
+    public static String getCompanionToken(Context context, String pcUuid) {
+        return pcUuid == null ? null : prefs(context).getString(KEY_COMPANION_TOKEN_PREFIX + pcUuid, null);
+    }
+
+    public static void setCompanionToken(Context context, String pcUuid, String token) {
+        if (pcUuid != null) {
+            prefs(context).edit().putString(KEY_COMPANION_TOKEN_PREFIX + pcUuid, token).apply();
+        }
+    }
+
     public static int getLastAppId(Context context, String pcUuid) {
         return prefs(context).getInt(KEY_LAST_APP_PREFIX + pcUuid + "_id", 0);
     }

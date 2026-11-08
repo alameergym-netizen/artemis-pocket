@@ -22,6 +22,12 @@ import com.limelight.pocket.ui.RadialMenuView;
 import com.limelight.pocket.PocketSounds;
 import com.limelight.pocket.ConsoleActivity;
 import com.limelight.pocket.ui.StreamMenuView;
+import com.limelight.pocket.ResumeTicket;
+import com.limelight.pocket.PocketAdaptive;
+import com.limelight.pocket.PcCompanion;
+import com.limelight.pocket.PocketMic;
+import com.limelight.pocket.PcPower;
+import com.limelight.pocket.StreamScreenshot;
 import com.limelight.binding.input.capture.InputCaptureManager;
 import com.limelight.binding.input.capture.InputCaptureProvider;
 import com.limelight.binding.input.touch.AbsoluteTouchContext;
@@ -313,6 +319,14 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private long pocketKeyMonitorUntil;
     private long pocketSessionStartMs;
     private int pocketLastBatteryAlert = 101;
+    // v2: adaptive stream, seamless resume, mic, playtime
+    private int pocketStreamBitrate;
+    private long pocketPoorSince;
+    private final java.util.ArrayDeque<Long> pocketPoorEvents = new java.util.ArrayDeque<>();
+    private boolean pocketSwitching;
+    private final PocketMic pocketMic = new PocketMic();
+    private static final int POCKET_MIC_PERMISSION_REQUEST = 4711;
+    private final Runnable pocketPoorCheck = () -> pocketMaybeStepDown(false);
 
     public interface GameMenuCallbacks {
         void showMenu(GameInputDevice devic);
@@ -381,6 +395,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         // Read the stream preferences
         prefConfig = PreferenceConfiguration.readPreferences(this);
         applyPocketBatterySaver();
+        // Artemis Pocket: a quality switch comes back with its own frame rate
+        int pocketFpsOverride = getIntent().getIntExtra(ResumeTicket.EXTRA_FPS, 0);
+        if (pocketFpsOverride > 0) {
+            prefConfig.fps = pocketFpsOverride;
+        }
         tombstonePrefs = Game.this.getSharedPreferences("DecoderTombstone", 0);
 
         if (prefConfig.fullScreen) {
@@ -627,6 +646,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             return;
         }
 
+        // Artemis Pocket: remember how to start this stream again (seamless resume)
+        ResumeTicket.remember(this, getIntent());
+
         // Initialize the MediaCodec helper before creating the decoder
         GlPreferences glPrefs = GlPreferences.readPreferences(this);
         MediaCodecHelper.initialize(this, glPrefs.glRenderer);
@@ -821,8 +843,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 .setResolutionScaleFactor(prefConfig.resolutionScaleFactor)
                 .setApp(app)
                 .setEnableUltraLowLatency(prefConfig.enableUltraLowLatency)
-                .setBitrate(isMetered ? prefConfig.meteredBitrate :
-                        (UsbLink.isUsbAddress(host) ? PocketPrefs.usbBitrateKbps(this) : prefConfig.bitrate))
+                .setBitrate(pocketStreamBitrate = pocketChooseBitrate(isMetered))
                 .setEnableSops(prefConfig.enableSops)
                 .enableLocalAudioPlayback(prefConfig.playHostAudio)
                 .setMaxPacketSize(1392)
@@ -1799,6 +1820,14 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     protected void onStop() {
         super.onStop();
 
+        // Artemis Pocket: the screen went off or the app was left mid-game. The game keeps
+        // running on the PC; the next console screen brings the stream straight back.
+        if (!isFinishing() && connected && !quitOnStop && !pocketSwitching && PocketPrefs.seamlessResume(this)) {
+            ResumeTicket.arm(this, ResumeTicket.REASON_SUSPEND, 0, 0, -1);
+        }
+        pocketRecordPlaytime();
+        pocketMic.stop();
+
         SpinnerDialog.closeDialogs(this);
         Dialog.closeDialogs();
 
@@ -2494,6 +2523,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     .append("  \u00b7  ").append(prefConfig.fps).append(" fps  \u00b7  ");
         }
         stats.append(android.text.format.DateFormat.getTimeFormat(this).format(new Date()));
+        String live = pocketLiveStats();
+        if (!live.isEmpty()) {
+            stats.append('\n').append(live);
+        }
 
         streamMenu.show(title, sub.toString(), stats.toString(), buildStreamMenuItems(),
                 ConsoleActivity.hintA(this, R.string.pocket_hint_select),
@@ -2523,13 +2556,48 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     toggleHUD();
                     return onOff(prefConfig.enablePerfOverlay);
                 }));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_screenshot), this::pocketHandheldScreenshot));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_mouse),
                 () -> performPocketAction(PocketAction.MOUSE, -1, true)));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_keyboard),
                 () -> performPocketAction(PocketAction.KEYBOARD, -1, false)));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_radial), () -> openRadial(-1)));
 
+        items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_handheld)));
+        items.add(StreamMenuView.Item.value(getString(R.string.pocket_sm_brightness),
+                pocketBrightnessLabel(PocketPrefs.streamBrightness(this)), this::pocketStepBrightness));
+        items.add(StreamMenuView.Item.value(getString(R.string.pocket_sm_volume),
+                pocketVolumeLabel(), this::pocketStepVolume));
+        items.add(StreamMenuView.Item.value(getString(R.string.pocket_sm_mic), pocketMicLabel(), direction -> {
+            pocketToggleMic();
+            return pocketMicLabel();
+        }));
+
+        items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_quality)));
+        final String bitrateTitle = getString(R.string.pocket_sm_bitrate);
+        items.add(StreamMenuView.Item.submenu(bitrateTitle, () -> streamMenu.push(bitrateTitle, pocketBitrateItems()))
+                .withValue(Math.round(pocketStreamBitrate / 1000f) + " Mbps"));
+        final String fpsTitle = getString(R.string.pocket_sm_fps);
+        items.add(StreamMenuView.Item.submenu(fpsTitle, () -> streamMenu.push(fpsTitle, pocketFpsItems()))
+                .withValue(prefConfig.fps + " FPS"));
+        items.add(StreamMenuView.Item.value(getString(R.string.pocket_sm_adaptive),
+                onOff(PocketPrefs.adaptiveStream(this)), direction -> {
+                    boolean on = !PocketPrefs.adaptiveStream(this);
+                    PocketPrefs.prefs(this).edit().putBoolean(PocketPrefs.KEY_ADAPTIVE, on).apply();
+                    return onOff(on);
+                }));
+
         items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_pc)));
+        final String powerTitle = getString(R.string.pocket_sm_power);
+        items.add(StreamMenuView.Item.submenu(powerTitle, () -> {
+            List<StreamMenuView.Item> page = new ArrayList<>();
+            for (final PcPower p : PcPower.values()) {
+                Runnable run = () -> pocketPower(p);
+                page.add(p.endsStream ? StreamMenuView.Item.confirm(p.label(this), run)
+                        : StreamMenuView.Item.action(p.label(this), run));
+            }
+            streamMenu.push(powerTitle, page);
+        }));
         final String shortcutsTitle = getString(R.string.pocket_sm_shortcuts);
         items.add(StreamMenuView.Item.submenu(shortcutsTitle, () -> {
             List<StreamMenuView.Item> page = new ArrayList<>();
@@ -2587,6 +2655,319 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 .withValue(getString(R.string.pocket_sm_disconnect_value)));
         items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_sm_quit), this::quitNow));
         return items;
+    }
+
+    // ---- Artemis Pocket v2: quality, adaptive stream, handheld controls, PC power, mic ----
+
+    private String pocketPcUuid() {
+        return getIntent().getStringExtra(EXTRA_PC_UUID);
+    }
+
+    private int pocketChooseBitrate(boolean metered) {
+        boolean usb = UsbLink.isUsbAddress(host);
+        int configured = metered ? prefConfig.meteredBitrate
+                : (usb ? PocketPrefs.usbBitrateKbps(this) : prefConfig.bitrate);
+        int override = getIntent().getIntExtra(ResumeTicket.EXTRA_BITRATE, 0);
+        if (override > 0) {
+            return override;
+        }
+        if (metered || usb) {
+            return configured;
+        }
+        return PocketAdaptive.startBitrate(this, configured);
+    }
+
+    /** Ends this stream and brings it straight back with new settings; the game keeps running. */
+    private void pocketSwitchStream(int reason, int bitrateKbps, int fps, int adaptiveSteps) {
+        if (pocketSwitching) {
+            return;
+        }
+        pocketSwitching = true;
+        ResumeTicket.arm(this, reason, bitrateKbps, fps, adaptiveSteps);
+        if (connected) {
+            ResumeTicket.markStopStarted();
+        }
+        finish();
+    }
+
+    private void pocketOnConnectionStatus(boolean poor) {
+        if (pocketSwitching || !connected || !PocketPrefs.adaptiveStream(this)) {
+            return;
+        }
+        long now = android.os.SystemClock.elapsedRealtime();
+        if (pocketSessionStartMs == 0 || now - pocketSessionStartMs < 8000) {
+            return; // the first seconds of a stream are always a bit rough
+        }
+        if (poor) {
+            if (pocketPoorSince == 0) {
+                pocketPoorSince = now;
+            }
+            pocketPoorEvents.addLast(now);
+            while (!pocketPoorEvents.isEmpty() && now - pocketPoorEvents.peekFirst() > 20000) {
+                pocketPoorEvents.pollFirst();
+            }
+            if (pocketPoorEvents.size() >= 4) {
+                pocketMaybeStepDown(true);
+                return;
+            }
+            timerHandler.removeCallbacks(pocketPoorCheck);
+            timerHandler.postDelayed(pocketPoorCheck, 6000);
+        }
+        else {
+            pocketPoorSince = 0;
+            timerHandler.removeCallbacks(pocketPoorCheck);
+        }
+    }
+
+    private void pocketMaybeStepDown(boolean flapping) {
+        if (pocketSwitching || !connected) {
+            return;
+        }
+        if (!flapping && (pocketPoorSince == 0
+                || android.os.SystemClock.elapsedRealtime() - pocketPoorSince < 6000)) {
+            return;
+        }
+        int current = pocketStreamBitrate > 0 ? pocketStreamBitrate : prefConfig.bitrate;
+        int next = PocketAdaptive.stepDown(current);
+        if (next >= current) {
+            return;
+        }
+        if (!UsbLink.isUsbAddress(host)) {
+            PocketPrefs.setAdaptiveCap(this, next);
+        }
+        int steps = getIntent().getIntExtra(ResumeTicket.EXTRA_ADAPTIVE_STEPS, 0) + 1;
+        pocketSwitchStream(ResumeTicket.REASON_ADAPTIVE, next, 0, steps);
+    }
+
+    private List<StreamMenuView.Item> pocketBitrateItems() {
+        List<StreamMenuView.Item> page = new ArrayList<>();
+        page.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_bitrate_auto), () -> {
+            PocketPrefs.setAdaptiveCap(this, 0);
+            pocketSwitchStream(ResumeTicket.REASON_QUALITY, -1, 0, 0);
+        }));
+        int[] values = {120, 100, 80, 60, 50, 40, 30, 20, 15, 10};
+        for (final int mbps : values) {
+            StreamMenuView.Item item = StreamMenuView.Item.action(mbps + " Mbps",
+                    () -> pocketSwitchStream(ResumeTicket.REASON_QUALITY, mbps * 1000, 0, 0));
+            if (Math.round(pocketStreamBitrate / 1000f) == mbps) {
+                item.withValue("\u25cf");
+            }
+            page.add(item);
+        }
+        return page;
+    }
+
+    private List<StreamMenuView.Item> pocketFpsItems() {
+        List<StreamMenuView.Item> page = new ArrayList<>();
+        int[] values = {120, 90, 60, 45, 30};
+        for (final int fps : values) {
+            StreamMenuView.Item item = StreamMenuView.Item.action(fps + " FPS",
+                    () -> pocketSwitchStream(ResumeTicket.REASON_QUALITY, 0, fps, -1));
+            if (prefConfig.fps == fps) {
+                item.withValue("\u25cf");
+            }
+            page.add(item);
+        }
+        return page;
+    }
+
+    private void pocketOnStreamStarted() {
+        pocketApplyBrightness(PocketPrefs.streamBrightness(this));
+        String uuid = pocketPcUuid();
+        if (UsbLink.isUsbAddress(host)) {
+            // Through the cable the PC helper hands over its key, so Wi-Fi works later too
+            PcCompanion.syncTokenOverUsb(this, uuid);
+        }
+        if (PocketPrefs.micPassthrough(this) && PocketMic.hasPermission(this)) {
+            pocketMic.start(this, host, uuid, this::pocketOnMicState);
+        }
+    }
+
+    private void pocketRecordPlaytime() {
+        if (pocketSessionStartMs > 0) {
+            long secs = (android.os.SystemClock.elapsedRealtime() - pocketSessionStartMs) / 1000;
+            PocketPrefs.addPlaytime(this, pocketPcUuid(), appId, secs);
+            pocketSessionStartMs = 0;
+        }
+    }
+
+    // Brightness: 0 = system, else 10..100 %
+    private String pocketBrightnessLabel(int pct) {
+        return pct <= 0 ? getString(R.string.pocket_sm_brightness_auto) : pct + "%";
+    }
+
+    private void pocketApplyBrightness(int pct) {
+        WindowManager.LayoutParams lp = getWindow().getAttributes();
+        lp.screenBrightness = pct <= 0 ? WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE : pct / 100f;
+        getWindow().setAttributes(lp);
+    }
+
+    private String pocketStepBrightness(int direction) {
+        int pct = PocketPrefs.streamBrightness(this);
+        pct = pct <= 0 ? (direction > 0 ? 10 : 0) : pct + direction * 10;
+        if (pct > 100) {
+            pct = 100;
+        }
+        if (pct < 10) {
+            pct = 0;
+        }
+        PocketPrefs.prefs(this).edit().putInt(PocketPrefs.KEY_STREAM_BRIGHTNESS, pct).apply();
+        pocketApplyBrightness(pct);
+        return pocketBrightnessLabel(pct);
+    }
+
+    private String pocketVolumeLabel() {
+        AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (am == null) {
+            return "";
+        }
+        int max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+        int cur = am.getStreamVolume(AudioManager.STREAM_MUSIC);
+        return max > 0 ? Math.round(cur * 100f / max) + "%" : "";
+    }
+
+    private String pocketStepVolume(int direction) {
+        AudioManager am = (AudioManager) getSystemService(AUDIO_SERVICE);
+        if (am != null) {
+            am.adjustStreamVolume(AudioManager.STREAM_MUSIC,
+                    direction > 0 ? AudioManager.ADJUST_RAISE : AudioManager.ADJUST_LOWER, 0);
+        }
+        return pocketVolumeLabel();
+    }
+
+    private void pocketHandheldScreenshot() {
+        // Wait for the menu to slide away so it isn't in the picture
+        timerHandler.postDelayed(() -> StreamScreenshot.capture(this, streamContainer != null ? streamContainer.getSurfaceView() : null, appName, saved ->
+                showPocketToast(getString(saved ? R.string.pocket_screenshot_saved : R.string.pocket_screenshot_failed),
+                        true, 1600)), 350);
+    }
+
+    // Microphone passthrough
+    private String pocketMicLabel() {
+        if (!pocketMic.isRunning()) {
+            return getString(R.string.pocket_off);
+        }
+        return getString(pocketMic.isMuted() ? R.string.pocket_sm_mic_muted : R.string.pocket_on);
+    }
+
+    private void pocketToggleMic() {
+        if (pocketMic.isRunning()) {
+            pocketMic.stop();
+            PocketPrefs.prefs(this).edit().putBoolean(PocketPrefs.KEY_MIC, false).apply();
+            return;
+        }
+        PocketPrefs.prefs(this).edit().putBoolean(PocketPrefs.KEY_MIC, true).apply();
+        if (!PocketMic.hasPermission(this)) {
+            androidx.core.app.ActivityCompat.requestPermissions(this,
+                    new String[]{android.Manifest.permission.RECORD_AUDIO}, POCKET_MIC_PERMISSION_REQUEST);
+            return;
+        }
+        showPocketToast(getString(R.string.pocket_mic_connecting), true, 1200);
+        pocketMic.start(this, host, pocketPcUuid(), this::pocketOnMicState);
+    }
+
+    private void pocketOnMicState(int state, String detail) {
+        switch (state) {
+            case PocketMic.STATE_STARTED:
+                boolean cable = detail != null && detail.toLowerCase(java.util.Locale.ROOT).contains("cable");
+                showPocketToast(getString(cable ? R.string.pocket_mic_on : R.string.pocket_mic_on_no_cable), true,
+                        cable ? 1500 : 4500);
+                break;
+            case PocketMic.STATE_NO_HELPER:
+                showPocketToast(getString(R.string.pocket_companion_missing), true, 4500);
+                break;
+            case PocketMic.STATE_NOT_PAIRED:
+                showPocketToast(getString(R.string.pocket_companion_not_paired), true, 5000);
+                break;
+            case PocketMic.STATE_FAILED:
+                showPocketToast(getString(R.string.pocket_mic_failed), true, 2500);
+                break;
+            default:
+                break;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == POCKET_MIC_PERMISSION_REQUEST) {
+            if (PocketMic.hasPermission(this) && connected) {
+                pocketMic.start(this, host, pocketPcUuid(), this::pocketOnMicState);
+            }
+            else {
+                PocketPrefs.prefs(this).edit().putBoolean(PocketPrefs.KEY_MIC, false).apply();
+            }
+        }
+    }
+
+    // PC power: through Artemis Pocket PC when it runs, else typed into the PC's Run box
+    private void pocketPower(final PcPower action) {
+        showPocketToast(action.label(this) + "\u2026", true, 1400);
+        PcCompanion.runAsync(this, host, pocketPcUuid(), "POWER " + action.command, reply -> {
+            if (reply != null && reply.startsWith("OK")) {
+                pocketAfterPower(action);
+            }
+            else if (action.runBox != null && connected) {
+                pocketTypeRunCommand(action.runBox);
+                pocketAfterPower(action);
+            }
+            else {
+                showPocketToast(getString(R.string.pocket_companion_missing), true, 4500);
+            }
+        });
+    }
+
+    private void pocketAfterPower(PcPower action) {
+        if (action.endsStream) {
+            // Leave cleanly before the PC goes away (no "connection lost" error)
+            timerHandler.postDelayed(() -> {
+                if (connected) {
+                    disconnect();
+                }
+            }, 2500);
+        }
+    }
+
+    private void pocketTypeRunCommand(final String command) {
+        sendKeys(new short[]{KeyboardTranslator.VK_LWIN, KeyboardTranslator.VK_R});
+        timerHandler.postDelayed(() -> {
+            if (conn != null && connected) {
+                conn.sendUtf8Text(command);
+            }
+        }, 800);
+        timerHandler.postDelayed(() -> {
+            if (conn != null && connected) {
+                sendKeys(new short[]{KeyboardTranslator.VK_RETURN});
+            }
+        }, 1300);
+    }
+
+    /** One line of live numbers for the menu header. */
+    private String pocketLiveStats() {
+        StringBuilder sb = new StringBuilder();
+        try {
+            long rtt = MoonBridge.getEstimatedRttInfo();
+            if (rtt != -1) {
+                sb.append(getString(R.string.pocket_sm_ping, (int) (rtt >> 32)));
+            }
+        } catch (RuntimeException | UnsatisfiedLinkError ignored) {
+        }
+        if (decoderRenderer != null) {
+            int dec = decoderRenderer.getAverageDecoderLatency();
+            if (dec > 0) {
+                if (sb.length() > 0) {
+                    sb.append("  \u00b7  ");
+                }
+                sb.append(getString(R.string.pocket_sm_decode, dec));
+            }
+        }
+        if (pocketStreamBitrate > 0) {
+            if (sb.length() > 0) {
+                sb.append("  \u00b7  ");
+            }
+            sb.append(Math.round(pocketStreamBitrate / 1000f)).append(" Mbps");
+        }
+        return sb.toString();
     }
 
     /**
@@ -4261,9 +4642,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             // thread to keep things smooth for the UI. Inside moonlight-common,
             // we prevent another thread from starting a connection before and
             // during the process of stopping this one.
+            ResumeTicket.markStopStarted();
             new Thread() {
                 public void run() {
                     conn.stop();
+                    ResumeTicket.markStopFinished();
                     if (httpConn != null && quitOnStop) {
                         try {
                             sleep(1000);
@@ -4443,6 +4826,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                pocketOnConnectionStatus(connectionStatus == MoonBridge.CONN_STATUS_POOR);
                 if (prefConfig.disableWarnings) {
                     return;
                 }
@@ -4484,6 +4868,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 pocketLastBatteryAlert = 101;
                 timerHandler.removeCallbacks(pocketBatteryWatch);
                 timerHandler.postDelayed(pocketBatteryWatch, 5000);
+                pocketOnStreamStarted();
                 updatePipAutoEnter();
 
                 // Hide the mouse cursor now after a short delay.

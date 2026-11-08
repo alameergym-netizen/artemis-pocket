@@ -174,7 +174,8 @@ public class StreamMenuView extends FrameLayout {
         subtitleView.setPadding(0, dp(2), 0, 0);
         panel.addView(subtitleView);
         statsView = text(10.5f, 0x73FFFFFF, false);
-        statsView.setSingleLine(true);
+        statsView.setMaxLines(2);
+        statsView.setLineSpacing(0, 1.15f);
         statsView.setEllipsize(android.text.TextUtils.TruncateAt.END);
         statsView.setPadding(0, dp(2), 0, dp(10));
         panel.addView(statsView);
@@ -384,7 +385,7 @@ public class StreamMenuView extends FrameLayout {
             text = "‹  " + (item.value != null ? item.value : "") + "  ›";
         }
         else if (item.submenu) {
-            text = "›";
+            text = item.value != null ? item.value + "  ›" : "›";
         }
         else {
             text = item.value != null ? item.value : "";

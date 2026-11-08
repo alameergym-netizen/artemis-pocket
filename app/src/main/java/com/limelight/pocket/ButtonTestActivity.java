@@ -27,6 +27,12 @@ import java.util.Deque;
  */
 public class ButtonTestActivity extends ConsoleActivity implements KeyboardAccessibilityService.KeyTestListener {
 
+    @Override
+    protected boolean allowsAutoResume() {
+        return false;
+    }
+
+
     private TextView bigName;
     private TextView details;
     private TextView serviceStatus;

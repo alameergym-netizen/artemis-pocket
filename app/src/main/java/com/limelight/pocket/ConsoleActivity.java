@@ -133,6 +133,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
         // A crash or caught error from last time: show it once, with a Copy button
         CrashReporter.showPendingReport(this);
+        // A stream that was suspended (screen off, Home) or is switching quality comes back now
+        maybeAutoResume();
         menuHotkey = PocketPrefs.getMenuHotkey(this);
         enterImmersive();
         try {
@@ -147,6 +149,13 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        if (pendingResume != null) {
+            // Left before the stream came back: keep the ticket for next time
+            statusHandler.removeCallbacks(resumeLaunch);
+            ResumeTicket.putBack(this, pendingResumeReason);
+            pendingResume = null;
+            removeResumeOverlay();
+        }
         statusRunning = false;
         statusHandler.removeCallbacks(statusTick);
         try {
@@ -191,8 +200,147 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         startActivity(new Intent(this, QuickSettingsActivity.class));
     }
 
+    // ---- Seamless resume ------------------------------------------------------------------
+
+    private Intent pendingResume;
+    private int pendingResumeReason;
+    private com.limelight.pocket.ui.ResumeOverlay resumeOverlay;
+    private final Runnable resumeLaunch = this::launchPendingResume;
+
+    /** Screens where a suspended stream may come back by itself. */
+    protected boolean allowsAutoResume() {
+        return true;
+    }
+
+    private void maybeAutoResume() {
+        if (pendingResume != null || !allowsAutoResume() || !ResumeTicket.isArmed(this)) {
+            return;
+        }
+        int reason = ResumeTicket.reason(this);
+        if (reason == ResumeTicket.REASON_SUSPEND && !PocketPrefs.seamlessResume(this)) {
+            ResumeTicket.disarm(this);
+            return;
+        }
+        Intent intent = ResumeTicket.take(this);
+        if (intent == null) {
+            return;
+        }
+        pendingResume = intent;
+        pendingResumeReason = reason;
+
+        String caption;
+        String subtitle;
+        if (reason == ResumeTicket.REASON_SUSPEND) {
+            caption = getString(R.string.pocket_resume_caption);
+            subtitle = getString(ResumeTicket.isUsb(intent) ? R.string.pocket_resume_sub_usb : R.string.pocket_resume_sub);
+        }
+        else {
+            caption = getString(reason == ResumeTicket.REASON_ADAPTIVE
+                    ? R.string.pocket_adaptive_caption : R.string.pocket_quality_caption);
+            int kbps = intent.getIntExtra(ResumeTicket.EXTRA_BITRATE, 0);
+            int fps = intent.getIntExtra(ResumeTicket.EXTRA_FPS, 0);
+            StringBuilder sb = new StringBuilder();
+            if (kbps > 0) {
+                sb.append(Math.round(kbps / 1000f)).append(" Mbps");
+            }
+            if (fps > 0) {
+                if (sb.length() > 0) {
+                    sb.append("  \u00b7  ");
+                }
+                sb.append(fps).append(" FPS");
+            }
+            subtitle = sb.toString();
+        }
+
+        removeResumeOverlay();
+        resumeOverlay = new com.limelight.pocket.ui.ResumeOverlay(this);
+        resumeOverlay.bind(caption, ResumeTicket.appName(intent), subtitle,
+                hintA(this, R.string.pocket_hint_now), hintB(this, R.string.pocket_hint_cancel));
+        ViewGroup content = findViewById(android.R.id.content);
+        content.addView(resumeOverlay, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        long delay = reason == ResumeTicket.REASON_SUSPEND ? 1500 : 700;
+        resumeOverlay.start(delay);
+        PocketSounds.play(this, PocketSounds.OPEN);
+        statusHandler.postDelayed(resumeLaunch, delay);
+    }
+
+    private void launchPendingResume() {
+        if (pendingResume == null) {
+            return;
+        }
+        statusHandler.removeCallbacks(resumeLaunch);
+        if (ResumeTicket.isPreviousStreamStopping()) {
+            // Let the last stream finish saying goodbye to the PC first
+            if (resumeOverlay != null) {
+                resumeOverlay.holdFull();
+            }
+            statusHandler.postDelayed(resumeLaunch, 150);
+            return;
+        }
+        final Intent intent = pendingResume;
+        if (ResumeTicket.isUsb(intent)) {
+            new Thread(() -> {
+                UsbBridge.ensureConnected();
+                runOnUiThread(() -> startResumedStream(intent));
+            }).start();
+        }
+        else {
+            startResumedStream(intent);
+        }
+    }
+
+    private void startResumedStream(Intent intent) {
+        if (pendingResume != intent) {
+            return; // cancelled meanwhile
+        }
+        pendingResume = null;
+        PocketSounds.play(this, PocketSounds.SELECT);
+        startActivity(intent);
+        statusHandler.postDelayed(this::removeResumeOverlay, 600);
+    }
+
+    private void cancelResume() {
+        statusHandler.removeCallbacks(resumeLaunch);
+        pendingResume = null;
+        PocketSounds.play(this, PocketSounds.BACK);
+        if (resumeOverlay != null) {
+            resumeOverlay.dismiss();
+            resumeOverlay = null;
+        }
+    }
+
+    private void removeResumeOverlay() {
+        if (resumeOverlay != null) {
+            ViewGroup parent = (ViewGroup) resumeOverlay.getParent();
+            if (parent != null) {
+                parent.removeView(resumeOverlay);
+            }
+            resumeOverlay = null;
+        }
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (pendingResume != null) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                switch (event.getKeyCode()) {
+                    case KeyEvent.KEYCODE_BUTTON_A:
+                    case KeyEvent.KEYCODE_DPAD_CENTER:
+                    case KeyEvent.KEYCODE_ENTER:
+                        launchPendingResume();
+                        break;
+                    case KeyEvent.KEYCODE_BUTTON_B:
+                    case KeyEvent.KEYCODE_BACK:
+                    case KeyEvent.KEYCODE_ESCAPE:
+                        cancelResume();
+                        break;
+                    default:
+                        break;
+                }
+            }
+            return true;
+        }
         if (PocketPrefs.matchesHotkey(menuHotkey, event)) {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 if (event.getRepeatCount() == 0 && !hotkeyDown) {

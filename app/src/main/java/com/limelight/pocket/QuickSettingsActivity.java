@@ -42,6 +42,12 @@ import java.util.List;
  */
 public class QuickSettingsActivity extends ConsoleActivity {
 
+    @Override
+    protected boolean allowsAutoResume() {
+        return false;
+    }
+
+
     private interface IndexGetter { int get(); }
     private interface IndexSetter { void set(int index); }
     private interface BoolGetter { boolean get(); }

@@ -175,6 +175,9 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
     private final static int TEST_NETWORK_ID = 10;
     private final static int GAMESTREAM_EOL_ID = 11;
     private final static int OPEN_MANAGEMENT_PAGE_ID = 20;
+    private final static int POCKET_POWER_MENU_ID = 99;
+    private final static int POCKET_POWER_BASE_ID = 100;
+    private final static int POCKET_COMPANION_PIN_ID = 130;
     private final static int PAIR_ID_OTP = 21;
 
     private void initializeViews() {
@@ -515,6 +518,15 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             }
 
             menu.add(Menu.NONE, FULL_APP_LIST_ID, 4, getResources().getString(R.string.pcview_menu_app_list));
+
+            // Artemis Pocket: PC power through the Artemis Pocket PC helper
+            android.view.SubMenu power = menu.addSubMenu(Menu.NONE, POCKET_POWER_MENU_ID, 4,
+                    getString(R.string.pocket_sm_power));
+            com.limelight.pocket.PcPower[] actions = com.limelight.pocket.PcPower.values();
+            for (int i = 0; i < actions.length; i++) {
+                power.add(Menu.NONE, POCKET_POWER_BASE_ID + i, i, actions[i].label(this));
+            }
+            menu.add(Menu.NONE, POCKET_COMPANION_PIN_ID, 4, getString(R.string.pocket_companion_pin_menu));
         }
 
         menu.add(Menu.NONE, TEST_NETWORK_ID, 5, getResources().getString(R.string.pcview_menu_test_network));
@@ -802,6 +814,9 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             return super.onContextItemSelected(item);
         }
         final ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(position);
+        if (pocketHandleCompanionItem(item.getItemId(), computer.details)) {
+            return true;
+        }
         switch (item.getItemId()) {
             case PAIR_ID:
                 doPair(computer.details, null, null);
@@ -888,6 +903,84 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             default:
                 return super.onContextItemSelected(item);
         }
+    }
+
+    // ---- Artemis Pocket: PC power + helper pairing -----------------------------------------
+
+    private String pocketCompanionHost(ComputerDetails details) {
+        String usb = UsbLink.getUsbAddressFor(this, details.uuid);
+        if (usb != null) {
+            return usb;
+        }
+        return details.activeAddress != null ? details.activeAddress.address : null;
+    }
+
+    private boolean pocketHandleCompanionItem(int id, final ComputerDetails details) {
+        final com.limelight.pocket.PcPower[] actions = com.limelight.pocket.PcPower.values();
+        if (id >= POCKET_POWER_BASE_ID && id < POCKET_POWER_BASE_ID + actions.length) {
+            final com.limelight.pocket.PcPower action = actions[id - POCKET_POWER_BASE_ID];
+            Runnable run = () -> com.limelight.pocket.PcCompanion.runAsync(this, pocketCompanionHost(details),
+                    details.uuid, "POWER " + action.command, reply -> {
+                        int msg;
+                        if (reply == null) {
+                            msg = R.string.pocket_companion_missing;
+                        }
+                        else if (reply.startsWith("ERR auth")) {
+                            msg = R.string.pocket_companion_not_paired;
+                        }
+                        else if (reply.startsWith("OK")) {
+                            msg = R.string.pocket_power_sent;
+                        }
+                        else {
+                            msg = R.string.pocket_power_failed;
+                        }
+                        Toast.makeText(PcView.this, msg, Toast.LENGTH_LONG).show();
+                    });
+            if (action.endsStream) {
+                new android.app.AlertDialog.Builder(this)
+                        .setTitle(action.label(this))
+                        .setMessage(getString(R.string.pocket_power_confirm, details.name))
+                        .setPositiveButton(action.label(this), (d, w) -> run.run())
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .show();
+            }
+            else {
+                run.run();
+            }
+            return true;
+        }
+        if (id == POCKET_COMPANION_PIN_ID) {
+            final android.widget.EditText pin = new android.widget.EditText(this);
+            pin.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+            pin.setHint("000000");
+            pin.setTextSize(22);
+            pin.setGravity(android.view.Gravity.CENTER);
+            new android.app.AlertDialog.Builder(this)
+                    .setTitle(R.string.pocket_companion_pin_title)
+                    .setMessage(R.string.pocket_companion_pin_body)
+                    .setView(pin)
+                    .setPositiveButton(android.R.string.ok, (d, w) -> com.limelight.pocket.PcCompanion.runAsync(this,
+                            pocketCompanionHost(details), details.uuid, "PAIR " + pin.getText().toString().trim(), reply -> {
+                                int msg;
+                                if (reply == null) {
+                                    msg = R.string.pocket_companion_missing;
+                                }
+                                else if (reply.startsWith("TOKEN")) {
+                                    msg = R.string.pocket_companion_linked;
+                                }
+                                else if (reply.startsWith("ERR locked")) {
+                                    msg = R.string.pocket_companion_locked;
+                                }
+                                else {
+                                    msg = R.string.pocket_companion_wrong_pin;
+                                }
+                                Toast.makeText(PcView.this, msg, Toast.LENGTH_LONG).show();
+                            }))
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
+            return true;
+        }
+        return false;
     }
 
     private void removeComputer(ComputerDetails details) {

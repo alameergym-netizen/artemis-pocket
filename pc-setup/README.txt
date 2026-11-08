@@ -1,10 +1,21 @@
 ARTEMIS POCKET - PC TOOLS
 =========================
 
-Retroid Pocket (and any handheld without USB tethering):
-  -> double-click  ArtemisPocket-USB-Bridge.bat
-     Keep the window open while you play (you can minimise it).
-     Needs USB debugging on the handheld. Downloads ADB by itself if needed.
+Double-click  ArtemisPocket-PC.bat  and leave the window open (you can minimise it).
+It can start with Windows (it asks once).
+
+What it does
+  - USB-C streaming: plug the Retroid in with USB debugging on. Downloads ADB by itself.
+  - PC power from the handheld: sleep, hibernate, restart, shut down, lock, sign out,
+    turn the display off (in-stream menu > PC power, or the PC card's options).
+  - Microphone: the handheld's mic on this PC. Install VB-Audio Virtual Cable (free,
+    https://vb-audio.com/Cable/) and pick "CABLE Output" as the microphone in your game
+    or chat app. Turn it on in the in-stream menu > Microphone to PC.
+
+Over Wi-Fi: stream once over the cable and the handheld links itself, or use the PC card's
+options > "PC helper PIN" and type the PIN shown in this window.
+
+If you used the old "ArtemisPocket-USB-Bridge" window: close it, this one replaces it.
 
 Handhelds that DO have USB tethering:
   -> other-handhelds\ArtemisPocket-USB-Setup.bat  (run once)

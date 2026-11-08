@@ -574,6 +574,9 @@ public abstract class ConsoleActivity extends AppCompatActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (launchLayer != null) {
+            return true; // a game is launching: buttons wait
+        }
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0 && !isConsolePanelShowing()) {
             // (an open panel pulses its own hints)
             pulseHint(findViewById(R.id.pocketHintBar), event.getKeyCode());
@@ -958,9 +961,12 @@ public abstract class ConsoleActivity extends AppCompatActivity {
      * stream screen takes over exactly where this ends, so it reads as one motion.
      */
     public void playLaunchZoom(final Runnable start) {
+        if (launchLayer != null) {
+            return; // already launching: a second press must not start the game twice
+        }
         View focus = getCurrentFocus();
         View artView = focus != null ? focus.findViewById(R.id.grid_image) : null;
-        if (launchLayer != null || !(artView instanceof android.widget.ImageView)
+        if (!(artView instanceof android.widget.ImageView)
                 || ((android.widget.ImageView) artView).getDrawable() == null
                 || artView.getWidth() == 0 || !PocketPrefs.animationsEnabled(this)) {
             start.run();

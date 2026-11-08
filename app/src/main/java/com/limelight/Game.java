@@ -2606,6 +2606,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             sub.append(pcName).append("  \u00b7  ");
         }
         sub.append(getString(UsbLink.isUsbAddress(host) ? R.string.pocket_link_usb : R.string.pocket_link_wifi));
+        // Which screen the PC was asked for, so a mirrored picture is easy to explain
+        sub.append("  \u00b7  ").append(getString(vDisplay ? R.string.pocket_sm_vdisplay : R.string.pocket_sm_main_screen));
         if (pocketSessionStartMs > 0) {
             long secs = (android.os.SystemClock.elapsedRealtime() - pocketSessionStartMs) / 1000;
             sub.append("  \u00b7  ").append(getString(R.string.pocket_sm_played,

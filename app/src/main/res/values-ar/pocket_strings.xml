@@ -496,4 +496,6 @@
     <string name="pocket_recover_sub">محاولة %1$d من %2$d</string>
     <string name="pocket_graph_ping">PING</string>
     <string name="pocket_graph_decode">DECODE</string>
+    <string name="pocket_sm_vdisplay">شاشة افتراضية</string>
+    <string name="pocket_sm_main_screen">شاشة الكمبيوتر الأساسية</string>
 </resources>

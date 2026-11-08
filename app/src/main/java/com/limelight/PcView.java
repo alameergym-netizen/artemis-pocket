@@ -863,7 +863,10 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
                     return true;
                 }
 
-                ServerHelper.doStart(this, new NvApp("app", null, computer.details.runningGameId, false), computer.details, managerBinder, false);
+                // Ask for the virtual display too: if the PC's session ended meanwhile this becomes a
+                // fresh launch, which would otherwise mirror the main screen
+                ServerHelper.doStart(this, new NvApp("app", null, computer.details.runningGameId, false), computer.details, managerBinder,
+                        PreferenceConfiguration.readPreferences(this).useVirtualDisplay);
                 return true;
 
             case QUIT_ID:
@@ -1552,8 +1555,10 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         }
         String action = PocketPrefs.usbOnConnect(this);
         if (computer.runningGameId != 0) {
-            // A game is already running on the PC: jump right back in
-            ServerHelper.doStart(this, new NvApp("app", null, computer.runningGameId, false), computer, managerBinder, false);
+            // A game is already running on the PC: jump right back in (with the virtual display
+            // setting, in case the PC's session has ended and this turns into a fresh launch)
+            ServerHelper.doStart(this, new NvApp("app", null, computer.runningGameId, false), computer, managerBinder,
+                    PreferenceConfiguration.readPreferences(this).useVirtualDisplay);
             return;
         }
         if (PocketPrefs.ON_CONNECT_LAST_GAME.equals(action)) {

@@ -360,9 +360,17 @@ public class StreamMenuView extends FrameLayout {
             activate();
         });
 
-        TextView title = text(13.5f, 0xFFFFFFFF, false);
+        boolean note = item.action == null && item.stepper == null && item.value == null && !item.submenu;
+        TextView title = text(note ? 12f : 13.5f, 0xFFFFFFFF, false);
         title.setText(item.title);
-        title.setSingleLine(true);
+        if (note) {
+            // A plain note (tips, explanations): wrap instead of cutting it off
+            title.setMaxLines(5);
+            title.setLineSpacing(0, 1.12f);
+        }
+        else {
+            title.setSingleLine(true);
+        }
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);
         row.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 

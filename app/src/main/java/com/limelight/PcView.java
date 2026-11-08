@@ -2,6 +2,8 @@ package com.limelight;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.net.UnknownHostException;
 
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
@@ -1044,6 +1046,14 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         // Notify the view that the data has changed
         pcGridAdapter.notifyDataSetChanged();
         updateHero(carouselAdapter != null ? carouselAdapter.getFocusedPosition() : -1);
+        if (pocketWakingUuid != null && pocketWakingUuid.equals(details.uuid)
+                && details.state == ComputerDetails.State.ONLINE) {
+            // It woke up: straight into its library
+            pocketStopWaking();
+            hideBlockingCard();
+            doAppList(details, false, false);
+            return;
+        }
         maybeOpenLastPc(details);
         if (pcCarousel != null) {
             pcCarousel.post(this::focusFirstPcIfNeeded);
@@ -1058,7 +1068,12 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             return;
         }
         ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(pos);
-        if (computer.details.state == ComputerDetails.State.UNKNOWN ||
+        if (computer.details.state == ComputerDetails.State.OFFLINE
+                && computer.details.pairState == PairState.PAIRED && computer.details.macAddress != null) {
+            // Artemis Pocket: a sleeping PC is woken up and opened as soon as it answers
+            pocketWakeAndOpen(computer.details);
+        }
+        else if (computer.details.state == ComputerDetails.State.UNKNOWN ||
             computer.details.state == ComputerDetails.State.OFFLINE) {
             // Open the context menu if a PC is offline or refreshing
             onItemOptions(pos, itemView);
@@ -1076,9 +1091,70 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             return;
         }
         contextPosition = pos;
-        registerForContextMenu(itemView);
-        openContextMenu(itemView);
-        unregisterForContextMenu(itemView);
+        // Artemis Pocket: the options open as a console panel instead of Android's menu
+        final ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(pos);
+        List<com.limelight.pocket.ui.StreamMenuView.Item> extra = new ArrayList<>();
+        if (computer.details.state == ComputerDetails.State.ONLINE) {
+            extra.add(com.limelight.pocket.ui.StreamMenuView.Item.action(getString(R.string.pocket_nettest),
+                    () -> {
+                        String usb = UsbLink.getUsbAddressFor(this, computer.details.uuid);
+                        if (usb == null && computer.details.activeAddress == null) {
+                            return;
+                        }
+                        String host = usb != null ? usb : computer.details.activeAddress.address;
+                        int port = usb != null ? UsbLink.HTTP_PORT : computer.details.activeAddress.port;
+                        com.limelight.pocket.ConnectionTest.run(this, host, port, usb != null, computer.details.name);
+                    }));
+        }
+        showOptionsFor(itemView, describeComputer(computer.details, false), extra);
+    }
+
+    // ---- Artemis Pocket: wake a sleeping PC and open it when it answers --------------------
+
+    private String pocketWakingUuid;
+    private ComputerDetails pocketWakingPc;
+    private final Runnable pocketWakeResend = new Runnable() {
+        @Override
+        public void run() {
+            final ComputerDetails pc = pocketWakingPc;
+            if (pc == null) {
+                return;
+            }
+            new Thread(() -> {
+                try {
+                    WakeOnLanSender.sendWolPacket(pc);
+                } catch (IOException ignored) {
+                }
+            }, "WoL").start();
+            getWindow().getDecorView().postDelayed(this, 8000);
+        }
+    };
+    private final Runnable pocketWakeTimeout = () -> {
+        if (pocketWakingUuid != null) {
+            pocketStopWaking();
+            hideBlockingCard();
+            Toast.makeText(PcView.this, R.string.pocket_wake_failed, Toast.LENGTH_LONG).show();
+        }
+    };
+
+    private void pocketWakeAndOpen(ComputerDetails details) {
+        pocketWakingUuid = details.uuid;
+        pocketWakingPc = details;
+        View decor = getWindow().getDecorView();
+        decor.removeCallbacks(pocketWakeResend);
+        decor.removeCallbacks(pocketWakeTimeout);
+        decor.post(pocketWakeResend);
+        decor.postDelayed(pocketWakeTimeout, 75000);
+        showBlockingCard(getString(R.string.pocket_wake_caption), details.name,
+                getString(R.string.pocket_wake_sub), 75000, this::pocketStopWaking);
+    }
+
+    private void pocketStopWaking() {
+        pocketWakingUuid = null;
+        pocketWakingPc = null;
+        View decor = getWindow().getDecorView();
+        decor.removeCallbacks(pocketWakeResend);
+        decor.removeCallbacks(pocketWakeTimeout);
     }
 
     @Override

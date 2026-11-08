@@ -2,6 +2,7 @@ package com.limelight;
 
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
@@ -872,9 +873,126 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         }
         contextPosition = pos;
         contextView = itemView;
-        registerForContextMenu(itemView);
-        openContextMenu(itemView);
-        unregisterForContextMenu(itemView);
+        // Artemis Pocket: options as a console panel, with this game's own settings
+        final AppObject obj = (AppObject) appGridAdapter.getItem(pos);
+        final int appId = obj.app.getAppId();
+        final String gameName = obj.app.getAppName();
+        List<com.limelight.pocket.ui.StreamMenuView.Item> extra = new ArrayList<>();
+        if (computer != null) {
+            final String title = getString(R.string.pocket_gs_title);
+            String summary = com.limelight.pocket.GameProfile.summary(this, computer.uuid, appId);
+            extra.add(com.limelight.pocket.ui.StreamMenuView.Item.submenu(title,
+                    () -> pushConsolePage(title, pocketGameSettings(appId, gameName)))
+                    .withValue(summary.isEmpty() ? null : getString(R.string.pocket_gs_custom)));
+        }
+        showOptionsFor(itemView, pocketHeroDetails(appId), extra);
+    }
+
+    // ---- Artemis Pocket: per-game settings ----------------------------------------------------
+
+    private String pocketHeroDetails(int appId) {
+        if (computer == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        long played = PocketPrefs.getPlaytime(this, computer.uuid, appId);
+        if (played >= 60) {
+            sb.append(getString(R.string.pocket_playtime, formatPlaytime(played)));
+        }
+        long last = PocketPrefs.getLastPlayed(this, computer.uuid, appId);
+        if (last > 0) {
+            if (sb.length() > 0) {
+                sb.append("  \u00b7  ");
+            }
+            sb.append(android.text.format.DateUtils.getRelativeTimeSpanString(last, System.currentTimeMillis(),
+                    android.text.format.DateUtils.MINUTE_IN_MILLIS));
+        }
+        String custom = com.limelight.pocket.GameProfile.summary(this, computer.uuid, appId);
+        if (!custom.isEmpty()) {
+            if (sb.length() > 0) {
+                sb.append("  \u00b7  ");
+            }
+            sb.append(getString(R.string.pocket_gs_custom_line, custom));
+        }
+        return sb.toString();
+    }
+
+    private String pocketDefaultLabel() {
+        return getString(R.string.pocket_gs_default);
+    }
+
+    private List<com.limelight.pocket.ui.StreamMenuView.Item> pocketGameSettings(final int appId, final String gameName) {
+        final String uuid = computer.uuid;
+        final android.content.Context ctx = this;
+        List<com.limelight.pocket.ui.StreamMenuView.Item> page = new ArrayList<>();
+
+        page.add(com.limelight.pocket.ui.StreamMenuView.Item.value(getString(R.string.pocket_sm_bitrate),
+                pocketBitrateLabel(com.limelight.pocket.GameProfile.bitrateKbps(ctx, uuid, appId)), direction -> {
+                    int[] values = com.limelight.pocket.GameProfile.BITRATES_MBPS;
+                    int i = com.limelight.pocket.GameProfile.indexOf(values,
+                            com.limelight.pocket.GameProfile.bitrateKbps(ctx, uuid, appId) / 1000);
+                    i = Math.max(0, Math.min(values.length - 1, i + direction));
+                    com.limelight.pocket.GameProfile.setBitrateKbps(ctx, uuid, appId, values[i] * 1000);
+                    return pocketBitrateLabel(values[i] * 1000);
+                }));
+
+        page.add(com.limelight.pocket.ui.StreamMenuView.Item.value(getString(R.string.pocket_sm_fps),
+                pocketFpsLabel(com.limelight.pocket.GameProfile.fps(ctx, uuid, appId)), direction -> {
+                    int[] values = com.limelight.pocket.GameProfile.FPS;
+                    int i = com.limelight.pocket.GameProfile.indexOf(values, com.limelight.pocket.GameProfile.fps(ctx, uuid, appId));
+                    i = Math.max(0, Math.min(values.length - 1, i + direction));
+                    com.limelight.pocket.GameProfile.setFps(ctx, uuid, appId, values[i]);
+                    return pocketFpsLabel(values[i]);
+                }));
+
+        page.add(com.limelight.pocket.ui.StreamMenuView.Item.value(getString(R.string.pocket_gs_resolution),
+                pocketResLabel(com.limelight.pocket.GameProfile.resolution(ctx, uuid, appId)), direction -> {
+                    String[] values = com.limelight.pocket.GameProfile.RESOLUTIONS;
+                    int i = com.limelight.pocket.GameProfile.indexOf(values,
+                            com.limelight.pocket.GameProfile.resolution(ctx, uuid, appId));
+                    i = Math.max(0, Math.min(values.length - 1, i + direction));
+                    com.limelight.pocket.GameProfile.setResolution(ctx, uuid, appId, values[i]);
+                    return pocketResLabel(values[i]);
+                }));
+
+        page.add(com.limelight.pocket.ui.StreamMenuView.Item.value(getString(R.string.pocket_sm_framegen),
+                pocketFgLabel(com.limelight.pocket.GameProfile.frameGen(ctx, uuid, appId)), direction -> {
+                    int mode = com.limelight.pocket.GameProfile.frameGen(ctx, uuid, appId);
+                    mode = (mode + (direction > 0 ? 1 : 2)) % 3;
+                    com.limelight.pocket.GameProfile.setFrameGen(ctx, uuid, appId, mode);
+                    return pocketFgLabel(mode);
+                }));
+
+        page.add(com.limelight.pocket.ui.StreamMenuView.Item.action(getString(R.string.pocket_gs_reset), () -> {
+            com.limelight.pocket.GameProfile.clear(ctx, uuid, appId);
+            Toast.makeText(ctx, R.string.pocket_gs_reset_done, Toast.LENGTH_SHORT).show();
+            updateHero(carouselAdapter != null ? carouselAdapter.getFocusedPosition() : -1, null);
+        }));
+        page.add(com.limelight.pocket.ui.StreamMenuView.Item.repeatable(getString(R.string.pocket_gs_note, gameName), null));
+        return page;
+    }
+
+    private String pocketBitrateLabel(int kbps) {
+        return kbps <= 0 ? pocketDefaultLabel() : (kbps / 1000) + " Mbps";
+    }
+
+    private String pocketFpsLabel(int fps) {
+        return fps <= 0 ? pocketDefaultLabel() : fps + " FPS";
+    }
+
+    private String pocketResLabel(String res) {
+        int[] wh = com.limelight.pocket.GameProfile.parseResolution(res);
+        return wh == null ? pocketDefaultLabel() : wh[0] + "\u00d7" + wh[1];
+    }
+
+    private String pocketFgLabel(int mode) {
+        if (mode == com.limelight.pocket.GameProfile.FRAME_GEN_ON) {
+            return getString(R.string.pocket_on);
+        }
+        if (mode == com.limelight.pocket.GameProfile.FRAME_GEN_OFF) {
+            return getString(R.string.pocket_off);
+        }
+        return pocketDefaultLabel();
     }
 
     @Override
@@ -918,11 +1036,11 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         AppObject obj = (AppObject) appGridAdapter.getItem(position);
         PocketUi.swapText(title, obj.app.getAppName());
         heroTitleForLaunch = obj.app.getAppName();
-        long played = computer != null ? PocketPrefs.getPlaytime(this, computer.uuid, obj.app.getAppId()) : 0;
         TextView playtime = findViewById(R.id.pocketHeroPlaytime);
         if (playtime != null) {
-            playtime.setText(played >= 60 ? getString(R.string.pocket_playtime, formatPlaytime(played)) : "");
-            playtime.setVisibility(played >= 60 ? View.VISIBLE : View.GONE);
+            String line = pocketHeroDetails(obj.app.getAppId());
+            playtime.setText(line);
+            playtime.setVisibility(line.isEmpty() ? View.GONE : View.VISIBLE);
         }
 
         int lastAppId = computer != null ? PocketPrefs.getLastAppId(this, computer.uuid) : 0;

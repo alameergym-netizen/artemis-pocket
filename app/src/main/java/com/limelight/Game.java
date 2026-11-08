@@ -326,6 +326,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private final java.util.ArrayDeque<Long> pocketPoorEvents = new java.util.ArrayDeque<>();
     private boolean pocketSwitching;
     private boolean pocketFrameGen;
+    private int pocketProfileBitrate;
+    private int pocketProfileFrameGen;
+    private boolean pocketWarned24;
     private com.limelight.pocket.ui.LaunchOverlay pocketLaunchOverlay;
 
     // ---- SpinnerDialog.Host: the console "Starting..." screen ------------------------------
@@ -433,13 +436,31 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         // Read the stream preferences
         prefConfig = PreferenceConfiguration.readPreferences(this);
         applyPocketBatterySaver();
+        // Artemis Pocket: this game's own settings win over the normal ones
+        String pocketProfileUuid = getIntent().getStringExtra(EXTRA_PC_UUID);
+        int pocketProfileApp = getIntent().getIntExtra(EXTRA_APP_ID, 0);
+        if (pocketProfileUuid != null && pocketProfileApp != 0) {
+            int profileFps = com.limelight.pocket.GameProfile.fps(this, pocketProfileUuid, pocketProfileApp);
+            if (profileFps > 0) {
+                prefConfig.fps = profileFps;
+            }
+            int[] profileRes = com.limelight.pocket.GameProfile.parseResolution(
+                    com.limelight.pocket.GameProfile.resolution(this, pocketProfileUuid, pocketProfileApp));
+            if (profileRes != null) {
+                prefConfig.width = profileRes[0];
+                prefConfig.height = profileRes[1];
+            }
+            pocketProfileBitrate = com.limelight.pocket.GameProfile.bitrateKbps(this, pocketProfileUuid, pocketProfileApp);
+            pocketProfileFrameGen = com.limelight.pocket.GameProfile.frameGen(this, pocketProfileUuid, pocketProfileApp);
+        }
         // Artemis Pocket: a quality switch comes back with its own frame rate
         int pocketFpsOverride = getIntent().getIntExtra(ResumeTicket.EXTRA_FPS, 0);
         if (pocketFpsOverride > 0) {
             prefConfig.fps = pocketFpsOverride;
         }
         // Frame generation: stream at half the screen's refresh rate, show at the full rate
-        pocketFrameGen = PocketPrefs.frameGenEnabled(this);
+        pocketFrameGen = pocketProfileFrameGen == com.limelight.pocket.GameProfile.FRAME_GEN_ON
+                || (pocketProfileFrameGen == com.limelight.pocket.GameProfile.FRAME_GEN_DEFAULT && PocketPrefs.frameGenEnabled(this));
         if (pocketFrameGen) {
             float maxHz = pocketMaxRefreshRate();
             if (maxHz >= 89) {
@@ -2578,7 +2599,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
         if (prefConfig != null) {
             stats.append(prefConfig.width).append("\u00d7").append(prefConfig.height)
-                    .append("  \u00b7  ").append(prefConfig.fps).append(" fps  \u00b7  ");
+                    .append("  \u00b7  ").append(Math.round(prefConfig.fps)).append(" fps  \u00b7  ");
         }
         stats.append(android.text.format.DateFormat.getTimeFormat(this).format(new Date()));
         String live = pocketLiveStats();
@@ -2637,7 +2658,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 .withValue(Math.round(pocketStreamBitrate / 1000f) + " Mbps"));
         final String fpsTitle = getString(R.string.pocket_sm_fps);
         items.add(StreamMenuView.Item.submenu(fpsTitle, () -> streamMenu.push(fpsTitle, pocketFpsItems()))
-                .withValue(prefConfig.fps + " FPS"));
+                .withValue(Math.round(prefConfig.fps) + " FPS"));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_framegen), () -> {
             boolean on = !PocketPrefs.frameGenEnabled(this);
             PocketPrefs.prefs(this).edit().putString(PocketPrefs.KEY_FRAME_GEN,
@@ -2730,8 +2751,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     private int pocketChooseBitrate(boolean metered) {
         boolean usb = UsbLink.isUsbAddress(host);
-        int configured = metered ? prefConfig.meteredBitrate
-                : (usb ? PocketPrefs.usbBitrateKbps(this) : prefConfig.bitrate);
+        int configured = pocketProfileBitrate > 0 ? pocketProfileBitrate
+                : (metered ? prefConfig.meteredBitrate : (usb ? PocketPrefs.usbBitrateKbps(this) : prefConfig.bitrate));
         int override = getIntent().getIntExtra(ResumeTicket.EXTRA_BITRATE, 0);
         if (override > 0) {
             return override;
@@ -2828,7 +2849,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         for (final int fps : values) {
             StreamMenuView.Item item = StreamMenuView.Item.action(fps + " FPS",
                     () -> pocketSwitchStream(ResumeTicket.REASON_QUALITY, 0, fps, -1));
-            if (prefConfig.fps == fps) {
+            if (Math.round(prefConfig.fps) == fps) {
                 item.withValue("\u25cf");
             }
             page.add(item);
@@ -2857,10 +2878,27 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         return getString(R.string.pocket_on);
     }
 
+    /** A friendly "what to check" line under connection errors. */
+    private String pocketTroubleshootHint() {
+        return "\n\n" + getString(UsbLink.isUsbAddress(host) ? R.string.pocket_error_hint_usb : R.string.pocket_error_hint_wifi);
+    }
+
     private void pocketOnStreamStarted() {
         pocketApplyBrightness(PocketPrefs.streamBrightness(this));
+        if (!UsbLink.isUsbAddress(host) && !pocketWarned24) {
+            try {
+                android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+                @SuppressWarnings("deprecation")
+                android.net.wifi.WifiInfo info = wm != null ? wm.getConnectionInfo() : null;
+                if (info != null && info.getNetworkId() != -1 && info.getFrequency() > 0 && info.getFrequency() < 4900) {
+                    pocketWarned24 = true;
+                    timerHandler.postDelayed(() -> showPocketToast(getString(R.string.pocket_tip_24ghz), true, 4000), 3000);
+                }
+            } catch (RuntimeException ignored) {
+            }
+        }
         if (pocketFrameGen) {
-            showPocketToast(getString(R.string.pocket_framegen_toast, prefConfig.fps,
+            showPocketToast(getString(R.string.pocket_framegen_toast, Math.round(prefConfig.fps),
                     Math.round(pocketMaxRefreshRate())), true, 2500);
         }
         String uuid = pocketPcUuid();
@@ -4815,7 +4853,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                         dialogText += "\n\n" + getResources().getString(R.string.nettest_text_blocked);
                     }
 
-                    Dialog.displayDialog(Game.this, getResources().getString(R.string.conn_error_title), dialogText, true);
+                    Dialog.displayDialog(Game.this, getResources().getString(R.string.conn_error_title),
+                            dialogText + pocketTroubleshootHint(), true);
                     finishSecondScreen();
                 }
             }
@@ -4911,7 +4950,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                         }
 
                         Dialog.displayDialog(Game.this, getResources().getString(R.string.conn_terminated_title),
-                                message, true);
+                                message + pocketTroubleshootHint(), true);
                     }
                     else {
                         finish();

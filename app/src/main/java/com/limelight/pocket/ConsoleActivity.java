@@ -18,7 +18,14 @@ import android.view.WindowManager;
 import android.text.format.DateFormat;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.ContextMenu;
+import android.view.InputDevice;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.SubMenu;
+import android.widget.PopupMenu;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.LinearLayout;
@@ -32,6 +39,10 @@ import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.limelight.R;
 import com.limelight.pocket.ui.PocketUi;
+import com.limelight.pocket.ui.StreamMenuView;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import java.util.Date;
 
@@ -400,8 +411,198 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }).start();
     }
 
+    // ---- Console panels (options, game settings, connection test) -------------------------
+
+    private StreamMenuView consolePanel;
+    private int swallowKeyUp = -1;
+
+    private StreamMenuView consolePanel() {
+        if (consolePanel == null) {
+            consolePanel = new StreamMenuView(this);
+            consolePanel.setConfirmLabel(getString(R.string.pocket_sm_confirm));
+            consolePanel.setListener(() -> PocketUi.setBackdropBlur(blurTarget(), false));
+            ViewGroup content = findViewById(android.R.id.content);
+            content.addView(consolePanel, new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        consolePanel.bringToFront();
+        return consolePanel;
+    }
+
+    /** The screen behind a panel, softly blurred while the panel is open. */
+    private View blurTarget() {
+        View main = findViewById(R.id.pocketMain);
+        if (main != null) {
+            return main;
+        }
+        ViewGroup content = findViewById(android.R.id.content);
+        View first = content != null && content.getChildCount() > 0 ? content.getChildAt(0) : null;
+        return first != consolePanel ? first : null;
+    }
+
+    public boolean isConsolePanelShowing() {
+        return consolePanel != null && consolePanel.isShowing();
+    }
+
+    /** A glass side panel driven by the controller, like the in-stream menu. */
+    public void showConsolePanel(String title, String subtitle, String stats, List<StreamMenuView.Item> items) {
+        PocketUi.setBackdropBlur(blurTarget(), true);
+        consolePanel().show(title != null ? title : "", subtitle != null ? subtitle : "", stats, items,
+                hintA(this, R.string.pocket_hint_select), hintB(this, R.string.pocket_hint_back),
+                new Hint("\u25c0\u25b6", 0xFFFFFFFF, getString(R.string.pocket_hint_change)));
+    }
+
+    public void pushConsolePage(String title, List<StreamMenuView.Item> items) {
+        if (consolePanel != null && consolePanel.isShowing()) {
+            consolePanel.push(title, items);
+        }
+    }
+
+    public void hideConsolePanel() {
+        if (consolePanel != null) {
+            consolePanel.hide();
+        }
+    }
+
+    /**
+     * Shows this screen's options for a card (its context menu) as a console panel instead of
+     * Android's plain menu. extra items go first.
+     */
+    protected void showOptionsFor(View anchor, String subtitle, List<StreamMenuView.Item> extra) {
+        final String[] header = {null};
+        final Menu base = new PopupMenu(this, anchor != null ? anchor : getWindow().getDecorView()).getMenu();
+        ContextMenu menu = (ContextMenu) java.lang.reflect.Proxy.newProxyInstance(ContextMenu.class.getClassLoader(),
+                new Class<?>[]{ContextMenu.class}, (proxy, method, args) -> {
+                    switch (method.getName()) {
+                        case "setHeaderTitle":
+                            header[0] = args[0] instanceof Integer ? getString((Integer) args[0]) : String.valueOf(args[0]);
+                            return proxy;
+                        case "setHeaderIcon":
+                        case "setHeaderView":
+                            return proxy;
+                        case "clearHeader":
+                            header[0] = null;
+                            return null;
+                        default:
+                            return method.invoke(base, args);
+                    }
+                });
+        try {
+            onCreateContextMenu(menu, anchor, null);
+        } catch (RuntimeException e) {
+            CrashReporter.saveCaught(this, e);
+            return;
+        }
+        List<StreamMenuView.Item> items = new ArrayList<>();
+        if (extra != null) {
+            items.addAll(extra);
+        }
+        addMenuItems(base, items);
+        if (!items.isEmpty()) {
+            showConsolePanel(header[0], subtitle, null, items);
+        }
+    }
+
+    private void addMenuItems(Menu menu, List<StreamMenuView.Item> out) {
+        for (int i = 0; i < menu.size(); i++) {
+            final MenuItem item = menu.getItem(i);
+            if (!item.isVisible()) {
+                continue;
+            }
+            final String title = String.valueOf(item.getTitle());
+            if (item.hasSubMenu()) {
+                final SubMenu sub = item.getSubMenu();
+                out.add(StreamMenuView.Item.submenu(title, () -> {
+                    List<StreamMenuView.Item> page = new ArrayList<>();
+                    addMenuItems(sub, page);
+                    pushConsolePage(title, page);
+                }));
+            }
+            else if (item.isCheckable()) {
+                out.add(StreamMenuView.Item.action(title, () -> onContextItemSelected(item))
+                        .withValue(getString(item.isChecked() ? R.string.pocket_on : R.string.pocket_off)));
+            }
+            else {
+                out.add(StreamMenuView.Item.action(title, () -> onContextItemSelected(item)));
+            }
+        }
+    }
+
+    // ---- Blocking card (waking a PC, ...) ---------------------------------------------------
+
+    private com.limelight.pocket.ui.ResumeOverlay blockingCard;
+    private Runnable blockingCancel;
+
+    public void showBlockingCard(String caption, String title, String subtitle, long durationMs, Runnable onCancel) {
+        hideBlockingCard();
+        blockingCard = new com.limelight.pocket.ui.ResumeOverlay(this);
+        blockingCard.bind(caption, title, subtitle, hintB(this, R.string.pocket_hint_cancel));
+        ViewGroup content = findViewById(android.R.id.content);
+        content.addView(blockingCard, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        blockingCard.start(durationMs);
+        blockingCancel = onCancel;
+    }
+
+    public void hideBlockingCard() {
+        if (blockingCard != null) {
+            blockingCard.dismiss();
+            blockingCard = null;
+        }
+        blockingCancel = null;
+    }
+
+    public boolean isBlockingCardShowing() {
+        return blockingCard != null;
+    }
+
+    @Override
+    public boolean dispatchGenericMotionEvent(MotionEvent event) {
+        if (isConsolePanelShowing() && (event.getSource() & InputDevice.SOURCE_CLASS_JOYSTICK) != 0) {
+            float hx = event.getAxisValue(MotionEvent.AXIS_HAT_X);
+            float hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y);
+            float x = Math.abs(hx) > 0.5f ? hx : event.getAxisValue(MotionEvent.AXIS_X);
+            float y = Math.abs(hy) > 0.5f ? hy : event.getAxisValue(MotionEvent.AXIS_Y);
+            consolePanel.onStick(x, y);
+            return true;
+        }
+        return super.dispatchGenericMotionEvent(event);
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (blockingCard != null) {
+            int k = event.getKeyCode();
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0
+                    && (k == KeyEvent.KEYCODE_BUTTON_B || k == KeyEvent.KEYCODE_BACK || k == KeyEvent.KEYCODE_ESCAPE)) {
+                Runnable cancel = blockingCancel;
+                hideBlockingCard();
+                swallowKeyUp = k;
+                PocketSounds.play(this, PocketSounds.BACK);
+                if (cancel != null) {
+                    cancel.run();
+                }
+            }
+            return true;
+        }
+        if (isConsolePanelShowing()) {
+            boolean handled = consolePanel.handleKey(event);
+            if (event.getAction() == KeyEvent.ACTION_DOWN && !consolePanel.isShowing()) {
+                // The panel closed on this press: its release must not act on the screen below
+                swallowKeyUp = event.getKeyCode();
+            }
+            return handled;
+        }
+        if (swallowKeyUp >= 0 && event.getKeyCode() == swallowKeyUp) {
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                swallowKeyUp = -1;
+                return true;
+            }
+            if (event.getRepeatCount() > 0) {
+                return true;
+            }
+            swallowKeyUp = -1; // a fresh press
+        }
         if (introOverlay != null) {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 dismissIntro();

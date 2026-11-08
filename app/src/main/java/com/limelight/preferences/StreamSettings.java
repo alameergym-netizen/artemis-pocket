@@ -999,10 +999,62 @@ public class StreamSettings extends AppCompatActivity {
                     "option_follow_update",
                     "option_software_release",
             };
+            // Everything that goes, including the children of removed groups
+            java.util.Set<String> gone = new java.util.HashSet<>();
+            java.util.List<Preference> toRemove = new java.util.ArrayList<>();
             for (String key : keys) {
                 Preference pref = findPreference(key);
-                if (pref != null && pref.getParent() != null) {
+                if (pref != null) {
+                    toRemove.add(pref);
+                    collectKeys(pref, gone);
+                }
+            }
+            // A setting that depends on a removed one makes the screen crash when it attaches
+            // ("Dependency ... not found"), so it goes too (e.g. Auto invert resolution needs
+            // Auto orientation)
+            java.util.List<Preference> all = new java.util.ArrayList<>();
+            collectAll(getPreferenceScreen(), all);
+            boolean changed = true;
+            while (changed) {
+                changed = false;
+                for (Preference p : all) {
+                    String dependency = p.getDependency();
+                    if (dependency != null && gone.contains(dependency) && !toRemove.contains(p)
+                            && (p.getKey() == null || !gone.contains(p.getKey()))) {
+                        toRemove.add(p);
+                        collectKeys(p, gone);
+                        changed = true;
+                    }
+                }
+            }
+            for (Preference pref : toRemove) {
+                if (pref.getParent() != null) {
                     pref.getParent().removePreference(pref);
+                }
+            }
+        }
+
+        private static void collectKeys(Preference pref, java.util.Set<String> out) {
+            if (pref.getKey() != null) {
+                out.add(pref.getKey());
+            }
+            if (pref instanceof androidx.preference.PreferenceGroup) {
+                androidx.preference.PreferenceGroup group = (androidx.preference.PreferenceGroup) pref;
+                for (int i = 0; i < group.getPreferenceCount(); i++) {
+                    collectKeys(group.getPreference(i), out);
+                }
+            }
+        }
+
+        private static void collectAll(androidx.preference.PreferenceGroup group, java.util.List<Preference> out) {
+            if (group == null) {
+                return;
+            }
+            for (int i = 0; i < group.getPreferenceCount(); i++) {
+                Preference p = group.getPreference(i);
+                out.add(p);
+                if (p instanceof androidx.preference.PreferenceGroup) {
+                    collectAll((androidx.preference.PreferenceGroup) p, out);
                 }
             }
         }

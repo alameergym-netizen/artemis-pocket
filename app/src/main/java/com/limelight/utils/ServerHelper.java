@@ -164,6 +164,10 @@ public class ServerHelper {
 
         Intent intent = createStartIntent(parent, app, computer, managerBinder, withVDisplay);
         parent.startActivity(intent);
+        // Artemis Pocket: the console "Starting..." screen grows out of the library
+        if (com.limelight.pocket.PocketPrefs.animationsEnabled(parent)) {
+            parent.overridePendingTransition(R.anim.pocket_launch_in, R.anim.pocket_launch_out);
+        }
     }
 
     public static void doNetworkTest(final Activity parent) {

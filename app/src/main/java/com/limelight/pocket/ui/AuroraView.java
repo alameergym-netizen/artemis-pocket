@@ -32,7 +32,14 @@ public class AuroraView extends View {
         init();
     }
 
+    private boolean pureBlack;
+
     private void init() {
+        String backdrop = com.limelight.pocket.PocketPrefs.backdrop(getContext());
+        pureBlack = com.limelight.pocket.PocketPrefs.BACKDROP_BLACK.equals(backdrop);
+        int accent = com.limelight.pocket.PocketPrefs.accentColor(getContext());
+        colorA = PocketTheme.withAlpha(accent, 0x1F);
+        colorB = PocketTheme.withAlpha(accent, 0x12);
         setWillNotDraw(false);
         setFocusable(false);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
@@ -69,7 +76,7 @@ public class AuroraView extends View {
         int w = getWidth();
         int h = getHeight();
         canvas.drawColor(Color.BLACK);
-        if (glowA.getShader() == null) {
+        if (pureBlack || glowA.getShader() == null) {
             return;
         }
         canvas.drawRect(0, 0, w, h, glowA);

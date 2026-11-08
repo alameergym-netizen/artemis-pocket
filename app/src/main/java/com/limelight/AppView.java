@@ -78,6 +78,16 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
     private int contextPosition = -1;
     private View contextView;
     private boolean heroArtOnA = true;
+    private String heroTitleForLaunch;
+
+    private String formatPlaytime(long seconds) {
+        long hours = seconds / 3600;
+        long minutes = (seconds % 3600) / 60;
+        if (hours > 0) {
+            return getString(R.string.pocket_playtime_hm, hours, minutes);
+        }
+        return getString(R.string.pocket_playtime_m, Math.max(1, minutes));
+    }
     private Bitmap heroBitmap;
     private boolean initialFocusDone;
     private boolean carouselAnimated;
@@ -907,6 +917,13 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         }
         AppObject obj = (AppObject) appGridAdapter.getItem(position);
         PocketUi.swapText(title, obj.app.getAppName());
+        heroTitleForLaunch = obj.app.getAppName();
+        long played = computer != null ? PocketPrefs.getPlaytime(this, computer.uuid, obj.app.getAppId()) : 0;
+        TextView playtime = findViewById(R.id.pocketHeroPlaytime);
+        if (playtime != null) {
+            playtime.setText(played >= 60 ? getString(R.string.pocket_playtime, formatPlaytime(played)) : "");
+            playtime.setVisibility(played >= 60 ? View.VISIBLE : View.GONE);
+        }
 
         int lastAppId = computer != null ? PocketPrefs.getLastAppId(this, computer.uuid) : 0;
         if (obj.isRunning) {
@@ -930,6 +947,14 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
 
     private void showHeroArt(Bitmap bitmap) {
         if (bitmap == null || bitmap == heroBitmap || bitmap.isRecycled()) {
+            return;
+        }
+        // The art also becomes the backdrop of the "Starting..." screen
+        if (heroTitleForLaunch != null) {
+            com.limelight.pocket.ui.LaunchOverlay.rememberArt(heroTitleForLaunch, bitmap);
+        }
+        if (!PocketPrefs.BACKDROP_ART.equals(PocketPrefs.backdrop(this))) {
+            heroBitmap = bitmap;
             return;
         }
         heroBitmap = bitmap;

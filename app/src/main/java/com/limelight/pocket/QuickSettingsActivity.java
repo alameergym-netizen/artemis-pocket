@@ -108,7 +108,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
             tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
             tab.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
             tab.setTextColor(ContextCompat.getColorStateList(this, R.color.pocket_tab_text));
-            tab.setBackgroundResource(R.drawable.pocket_tab_bg);
+            tab.setBackground(com.limelight.pocket.ui.PocketTheme.tab(this));
             tab.setFocusable(true);
             tab.setClickable(true);
             tab.setOnFocusChangeListener((v, hasFocus) -> {
@@ -333,6 +333,32 @@ public class QuickSettingsActivity extends ConsoleActivity {
         addToggle(getString(R.string.pocket_set_auto_battery), getString(R.string.pocket_set_auto_battery_sub),
                 () -> PocketPrefs.autoBatterySaver(this),
                 value -> prefs().edit().putBoolean(PocketPrefs.KEY_AUTO_BATTERY, value).apply());
+
+        addHeader(R.string.pocket_header_smart);
+
+        final String[] fgValues = {PocketPrefs.FRAME_GEN_OFF, PocketPrefs.FRAME_GEN_2X};
+        final String[] fgLabels = {getString(R.string.pocket_off), getString(R.string.pocket_framegen_2x)};
+        addChoice(getString(R.string.pocket_set_framegen), getString(R.string.pocket_set_framegen_sub), fgLabels,
+                () -> indexOf(fgValues, PocketPrefs.frameGen(this)),
+                index -> prefs().edit().putString(PocketPrefs.KEY_FRAME_GEN, fgValues[index]).apply(), null);
+
+        addToggle(getString(R.string.pocket_set_adaptive), getString(R.string.pocket_set_adaptive_sub),
+                () -> PocketPrefs.adaptiveStream(this),
+                value -> prefs().edit().putBoolean(PocketPrefs.KEY_ADAPTIVE, value).apply());
+
+        addToggle(getString(R.string.pocket_set_resume), getString(R.string.pocket_set_resume_sub),
+                () -> PocketPrefs.seamlessResume(this),
+                value -> prefs().edit().putBoolean(PocketPrefs.KEY_SEAMLESS_RESUME, value).apply());
+
+        addToggle(getString(R.string.pocket_set_mic), getString(R.string.pocket_set_mic_sub),
+                () -> PocketPrefs.micPassthrough(this),
+                value -> {
+                    prefs().edit().putBoolean(PocketPrefs.KEY_MIC, value).apply();
+                    if (value && !PocketMic.hasPermission(this)) {
+                        androidx.core.app.ActivityCompat.requestPermissions(this,
+                                new String[]{android.Manifest.permission.RECORD_AUDIO}, 4712);
+                    }
+                });
 
         addHeader(R.string.pocket_header_video);
 
@@ -636,6 +662,40 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 () -> indexOf(focusValues, PocketPrefs.focusStyle(this)),
                 index -> prefs().edit().putString(PocketPrefs.KEY_FOCUS_STYLE, focusValues[index]).apply(), null);
 
+        final String[] accentLabels = {getString(R.string.pocket_accent_white), getString(R.string.pocket_accent_ice),
+                getString(R.string.pocket_accent_mint), getString(R.string.pocket_accent_lilac),
+                getString(R.string.pocket_accent_rose), getString(R.string.pocket_accent_amber)};
+        addChoice(getString(R.string.pocket_set_accent), getString(R.string.pocket_set_accent_sub), accentLabels,
+                () -> {
+                    int current = PocketPrefs.accentColor(this);
+                    for (int i = 0; i < com.limelight.pocket.ui.PocketTheme.ACCENTS.length; i++) {
+                        if (com.limelight.pocket.ui.PocketTheme.ACCENTS[i] == current) {
+                            return i;
+                        }
+                    }
+                    return -1;
+                },
+                index -> {
+                    prefs().edit().putInt(PocketPrefs.KEY_ACCENT, com.limelight.pocket.ui.PocketTheme.ACCENTS[index]).apply();
+                    getIntent().putExtra("tab", TAB_SYSTEM);
+                    rowsContainer.postDelayed(this::recreate, 250);
+                }, null);
+
+        final String[] backdropValues = {PocketPrefs.BACKDROP_ART, PocketPrefs.BACKDROP_GLOW, PocketPrefs.BACKDROP_BLACK};
+        final String[] backdropLabels = {getString(R.string.pocket_backdrop_art), getString(R.string.pocket_backdrop_glow),
+                getString(R.string.pocket_backdrop_black)};
+        addChoice(getString(R.string.pocket_set_backdrop), getString(R.string.pocket_set_backdrop_sub), backdropLabels,
+                () -> indexOf(backdropValues, PocketPrefs.backdrop(this)),
+                index -> {
+                    prefs().edit().putString(PocketPrefs.KEY_BACKDROP, backdropValues[index]).apply();
+                    getIntent().putExtra("tab", TAB_SYSTEM);
+                    rowsContainer.postDelayed(this::recreate, 250);
+                }, null);
+
+        addToggle(getString(R.string.pocket_set_intro), getString(R.string.pocket_set_intro_sub),
+                () -> PocketPrefs.introAnimation(this),
+                value -> prefs().edit().putBoolean(PocketPrefs.KEY_INTRO, value).apply());
+
         addToggle(getString(R.string.pocket_set_animations), getString(R.string.pocket_set_animations_sub),
                 () -> PocketPrefs.animationsEnabled(this),
                 value -> prefs().edit().putBoolean(PocketPrefs.KEY_ANIMATIONS, value).apply());
@@ -741,7 +801,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setMinimumHeight(dp(46));
         row.setPaddingRelative(dp(14), dp(7), dp(10), dp(7));
-        row.setBackgroundResource(R.drawable.pocket_row_bg);
+        row.setBackground(com.limelight.pocket.ui.PocketTheme.row(this));
         row.setFocusable(true);
         row.setClickable(true);
         row.setOnFocusChangeListener((v, hasFocus) -> {
@@ -865,7 +925,12 @@ public class QuickSettingsActivity extends ConsoleActivity {
         final Runnable refresh = () -> {
             boolean on = getter.get();
             pill.setText(on ? R.string.pocket_on : R.string.pocket_off);
-            pill.setBackgroundResource(on ? R.drawable.pocket_toggle_on : R.drawable.pocket_toggle_off);
+            if (on) {
+                pill.setBackground(com.limelight.pocket.ui.PocketTheme.toggleOn(this));
+            }
+            else {
+                pill.setBackgroundResource(R.drawable.pocket_toggle_off);
+            }
             pill.setTextColor(ContextCompat.getColorStateList(this, on ? R.color.pocket_toggle_on_text : R.color.pocket_toggle_off_text));
         };
         refresh.run();

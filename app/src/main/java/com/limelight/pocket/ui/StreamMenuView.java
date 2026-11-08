@@ -405,7 +405,7 @@ public class StreamMenuView extends FrameLayout {
             boolean selected = i == page.selected;
             GradientDrawable bg = new GradientDrawable();
             bg.setCornerRadius(12 * d);
-            bg.setColor(selected ? 0xF2FFFFFF : 0x00000000);
+            bg.setColor(selected ? PocketTheme.withAlpha(PocketTheme.accent(getContext()), 0xF2) : 0x00000000);
             row.setBackground(bg);
             TextView[] views = (TextView[]) row.getTag();
             views[0].setTextColor(selected ? 0xFF000000 : 0xFFFFFFFF);

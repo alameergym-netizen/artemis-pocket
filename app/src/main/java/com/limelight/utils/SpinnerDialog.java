@@ -9,6 +9,17 @@ import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
 
 public class SpinnerDialog implements Runnable,OnCancelListener {
+    /**
+     * Artemis Pocket: an activity that draws its own progress screen instead of the Android
+     * dialog (the stream shows a console-style "Starting..." screen).
+     */
+    public interface Host {
+        void onSpinnerShow(String title, String message);
+        void onSpinnerMessage(String message);
+        void onSpinnerHide();
+    }
+
+    private boolean hostShown;
     private final String title;
     private final String message;
     private final Activity activity;
@@ -41,8 +52,12 @@ public class SpinnerDialog implements Runnable,OnCancelListener {
                 SpinnerDialog dialog = i.next();
                 if (dialog.activity == activity) {
                     i.remove();
-                    if (dialog.progress.isShowing()) {
+                    if (dialog.progress != null && dialog.progress.isShowing()) {
                         dialog.progress.dismiss();
+                    }
+                    else if (dialog.hostShown && activity instanceof Host) {
+                        dialog.hostShown = false;
+                        ((Host) activity).onSpinnerHide();
                     }
                 }
             }
@@ -60,7 +75,12 @@ public class SpinnerDialog implements Runnable,OnCancelListener {
         activity.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                progress.setMessage(message);
+                if (progress != null) {
+                    progress.setMessage(message);
+                }
+                else if (hostShown && activity instanceof Host) {
+                    ((Host) activity).onSpinnerMessage(message);
+                }
             }
         });
     }
@@ -70,6 +90,22 @@ public class SpinnerDialog implements Runnable,OnCancelListener {
 
         // If we're dying, don't bother doing anything
         if (activity.isFinishing()) {
+            return;
+        }
+
+        if (activity instanceof Host) {
+            synchronized (rundownDialogs) {
+                if (!hostShown) {
+                    hostShown = true;
+                    rundownDialogs.add(this);
+                    ((Host) activity).onSpinnerShow(title, message);
+                }
+                else {
+                    hostShown = false;
+                    rundownDialogs.remove(this);
+                    ((Host) activity).onSpinnerHide();
+                }
+            }
             return;
         }
 

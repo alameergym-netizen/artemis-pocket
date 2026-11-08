@@ -84,7 +84,7 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         GradientDrawable ring = new GradientDrawable();
         ring.setShape(GradientDrawable.RECTANGLE);
         ring.setColor(0x00000000);
-        ring.setStroke(Math.round(RING_WIDTH_DP * d), 0xFFFFFFFF);
+        ring.setStroke(Math.round(RING_WIDTH_DP * d), PocketTheme.accent(frame.getContext()));
         ring.setCornerRadius((cardRadiusDp + RING_GAP_DP - 1) * d);
         int inset = Math.round((CARD_PADDING_DP - RING_GAP_DP) * d);
         Drawable drawable = new InsetDrawable(ring, inset);

@@ -17,6 +17,7 @@ import com.limelight.Game;
 import com.limelight.LimeLog;
 import com.limelight.preferences.PreferenceConfiguration;
 import com.limelight.utils.Stereo3DRenderer;
+import com.limelight.pocket.video.FrameGenRenderer;
 
 /**
  * A container that manages different stream display modes and now correctly
@@ -36,12 +37,15 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
     public enum StreamMode {
         MODE_2D,
         MODE_AI_3D,
-        MODE_AI_3D_MOVIE
+        MODE_AI_3D_MOVIE,
+        MODE_FRAME_GEN
     }
 
     private Game game;
     private PreferenceConfiguration prefConfig;
     private Stereo3DRenderer mStereoRenderer;
+    private FrameGenRenderer mFrameGen;
+    private boolean frameGenRequested;
 
     private SurfaceView mSurfaceView;
     private Surface mCurrentSurface;
@@ -69,8 +73,8 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
 
         this.game = game;
         this.prefConfig = prefConfig;
-        // Artemis Pocket: AI 3D modes were removed, always render in 2D
-        this.renderMode = StreamMode.MODE_2D;
+        // Artemis Pocket: AI 3D modes were removed; the GL path is used for frame generation
+        this.renderMode = frameGenRequested ? StreamMode.MODE_FRAME_GEN : StreamMode.MODE_2D;
 
         Stereo3DRenderer.isMovieMode = renderMode == StreamMode.MODE_AI_3D_MOVIE;
 
@@ -84,7 +88,17 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
         mSurfaceView = new SurfaceView(context);
         addView(mSurfaceView, childParams);
 
-        if (renderMode != StreamMode.MODE_2D) {
+        if (renderMode == StreamMode.MODE_FRAME_GEN) {
+            GLSurfaceView glSurfaceView = new GLSurfaceView(context);
+            glSurfaceView.setEGLContextClientVersion(3);
+            glSurfaceView.setPreserveEGLContextOnPause(true);
+            mFrameGen = new FrameGenRenderer(glSurfaceView, this, prefConfig.width, prefConfig.height);
+            glSurfaceView.setRenderer(mFrameGen);
+            glSurfaceView.setRenderMode(GLSurfaceView.RENDERMODE_CONTINUOUSLY);
+            mSurfaceView = glSurfaceView;
+            addView(mSurfaceView, childParams);
+        }
+        else if (renderMode != StreamMode.MODE_2D) {
             GLSurfaceView glSurfaceView = new GLSurfaceView(context);
             glSurfaceView.setEGLContextClientVersion(3);
             mStereoRenderer = new Stereo3DRenderer(glSurfaceView, this, context, prefConfig);
@@ -113,7 +127,7 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        if (renderMode != StreamMode.MODE_2D) {
+        if (renderMode == StreamMode.MODE_AI_3D || renderMode == StreamMode.MODE_AI_3D_MOVIE) {
             super.onMeasure(widthMeasureSpec, heightMeasureSpec);
             return;
         }
@@ -251,6 +265,8 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
         if (renderMode == StreamMode.MODE_2D) {
             isSurfaceReady = false;
             mCurrentSurface = null;
+        } else if (mFrameGen != null) {
+            isSurfaceReady = false;
         } else if (mStereoRenderer != null) {
             mStereoRenderer.onSurfaceDestroyed();
         }
@@ -270,5 +286,17 @@ public class StreamContainer extends FrameLayout implements SurfaceHolder.Callba
         if (mStereoRenderer != null) {
             mStereoRenderer.onSurfaceDestroyed();
         }
+        if (mFrameGen != null) {
+            mFrameGen.release();
+        }
+    }
+
+    /** Artemis Pocket: call before init() to show the stream through frame generation. */
+    public void setFrameGeneration(boolean enabled) {
+        frameGenRequested = enabled;
+    }
+
+    public boolean isFrameGeneration() {
+        return renderMode == StreamMode.MODE_FRAME_GEN;
     }
 }

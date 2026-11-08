@@ -157,6 +157,7 @@ import android.view.ViewGroup;
 public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         OnGenericMotionListener, OnTouchListener, NvConnectionListener, EvdevListener,
         OnSystemUiVisibilityChangeListener, GameGestures, StreamContainer.InputCallbacks,
+        com.limelight.utils.SpinnerDialog.Host,
         ExternalControllerView.InputCallbacks,
         PerfOverlayListener, UsbDriverService.UsbDriverStateListener, View.OnKeyListener {
     public static Game instance;
@@ -324,6 +325,43 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private long pocketPoorSince;
     private final java.util.ArrayDeque<Long> pocketPoorEvents = new java.util.ArrayDeque<>();
     private boolean pocketSwitching;
+    private boolean pocketFrameGen;
+    private com.limelight.pocket.ui.LaunchOverlay pocketLaunchOverlay;
+
+    // ---- SpinnerDialog.Host: the console "Starting..." screen ------------------------------
+
+    @Override
+    public void onSpinnerShow(String title, String message) {
+        if (pocketLaunchOverlay != null) {
+            return;
+        }
+        String host = getIntent().getStringExtra(EXTRA_HOST);
+        String pc = getIntent().getStringExtra(EXTRA_PC_NAME);
+        String detail = (pc != null ? pc + "  \u00b7  " : "")
+                + getString(UsbLink.isUsbAddress(host) ? R.string.pocket_link_usb : R.string.pocket_link_wifi);
+        String name = getIntent().getStringExtra(EXTRA_APP_NAME);
+        pocketLaunchOverlay = new com.limelight.pocket.ui.LaunchOverlay(this, name != null ? name : title, detail,
+                ConsoleActivity.hintB(this, R.string.pocket_hint_cancel));
+        pocketLaunchOverlay.setStatus(message);
+        ViewGroup content = findViewById(android.R.id.content);
+        content.addView(pocketLaunchOverlay, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    @Override
+    public void onSpinnerMessage(String message) {
+        if (pocketLaunchOverlay != null) {
+            pocketLaunchOverlay.setStatus(message);
+        }
+    }
+
+    @Override
+    public void onSpinnerHide() {
+        if (pocketLaunchOverlay != null) {
+            pocketLaunchOverlay.dismiss();
+            pocketLaunchOverlay = null;
+        }
+    }
     private final PocketMic pocketMic = new PocketMic();
     private static final int POCKET_MIC_PERMISSION_REQUEST = 4711;
     private final Runnable pocketPoorCheck = () -> pocketMaybeStepDown(false);
@@ -399,6 +437,19 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         int pocketFpsOverride = getIntent().getIntExtra(ResumeTicket.EXTRA_FPS, 0);
         if (pocketFpsOverride > 0) {
             prefConfig.fps = pocketFpsOverride;
+        }
+        // Frame generation: stream at half the screen's refresh rate, show at the full rate
+        pocketFrameGen = PocketPrefs.frameGenEnabled(this);
+        if (pocketFrameGen) {
+            float maxHz = pocketMaxRefreshRate();
+            if (maxHz >= 89) {
+                int half = Math.round(maxHz / 2f);
+                if (prefConfig.fps > half) {
+                    prefConfig.fps = half;
+                }
+            }
+            // The generated frames are 8-bit
+            prefConfig.enableHdr = false;
         }
         tombstonePrefs = Game.this.getSharedPreferences("DecoderTombstone", 0);
 
@@ -506,6 +557,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         // Listen for non-touch events on the game surface
         streamContainer = findViewById(R.id.streamContainer);
+        if (onExternelDisplay) {
+            pocketFrameGen = false;
+        }
+        streamContainer.setFrameGeneration(pocketFrameGen);
         streamContainer.init(this, prefConfig);
         streamContainer.setOnGenericMotionListener(this);
         streamContainer.setOnKeyListener(this);
@@ -1499,6 +1554,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     private boolean mayReduceRefreshRate() {
+        if (pocketFrameGen) {
+            return false; // frame generation needs the screen at its fastest
+        }
         return prefConfig.framePacing == PreferenceConfiguration.FRAME_PACING_CAP_FPS ||
                 prefConfig.framePacing == PreferenceConfiguration.FRAME_PACING_MAX_SMOOTHNESS ||
                 (prefConfig.framePacing == PreferenceConfiguration.FRAME_PACING_BALANCED && prefConfig.reduceRefreshRate);
@@ -2580,6 +2638,13 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         final String fpsTitle = getString(R.string.pocket_sm_fps);
         items.add(StreamMenuView.Item.submenu(fpsTitle, () -> streamMenu.push(fpsTitle, pocketFpsItems()))
                 .withValue(prefConfig.fps + " FPS"));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_framegen), () -> {
+            boolean on = !PocketPrefs.frameGenEnabled(this);
+            PocketPrefs.prefs(this).edit().putString(PocketPrefs.KEY_FRAME_GEN,
+                    on ? PocketPrefs.FRAME_GEN_2X : PocketPrefs.FRAME_GEN_OFF).apply();
+            // The picture path changes, so the stream restarts (the game keeps running)
+            pocketSwitchStream(ResumeTicket.REASON_QUALITY, 0, on ? 0 : -1, -1);
+        }).withValue(pocketFrameGenLabel()));
         items.add(StreamMenuView.Item.value(getString(R.string.pocket_sm_adaptive),
                 onOff(PocketPrefs.adaptiveStream(this)), direction -> {
                     boolean on = !PocketPrefs.adaptiveStream(this);
@@ -2771,8 +2836,33 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         return page;
     }
 
+    private float pocketMaxRefreshRate() {
+        Display display = getWindowManager().getDefaultDisplay();
+        float max = display.getRefreshRate();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            for (Display.Mode mode : display.getSupportedModes()) {
+                max = Math.max(max, mode.getRefreshRate());
+            }
+        }
+        return max;
+    }
+
+    private String pocketFrameGenLabel() {
+        if (!PocketPrefs.frameGenEnabled(this)) {
+            return getString(R.string.pocket_off);
+        }
+        if (pocketFrameGen && com.limelight.pocket.video.FrameGenRenderer.generating) {
+            return getString(R.string.pocket_framegen_active, Math.round(com.limelight.pocket.video.FrameGenRenderer.outputFps));
+        }
+        return getString(R.string.pocket_on);
+    }
+
     private void pocketOnStreamStarted() {
         pocketApplyBrightness(PocketPrefs.streamBrightness(this));
+        if (pocketFrameGen) {
+            showPocketToast(getString(R.string.pocket_framegen_toast, prefConfig.fps,
+                    Math.round(pocketMaxRefreshRate())), true, 2500);
+        }
         String uuid = pocketPcUuid();
         if (UsbLink.isUsbAddress(host)) {
             // Through the cable the PC helper hands over its key, so Wi-Fi works later too
@@ -3295,6 +3385,16 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
      * the radial menu, then Back / Home / the menu button with their tap, double and hold actions.
      */
     private boolean handlePocketKey(KeyEvent event, boolean down) {
+        // While the "Starting..." screen is up: B cancels, nothing else goes anywhere
+        if (pocketLaunchOverlay != null && !connected) {
+            int k = event.getKeyCode();
+            if (down && event.getRepeatCount() == 0 && (k == KeyEvent.KEYCODE_BUTTON_B
+                    || k == KeyEvent.KEYCODE_BACK || k == KeyEvent.KEYCODE_ESCAPE)) {
+                PocketSounds.play(this, PocketSounds.BACK);
+                finish();
+            }
+            return true;
+        }
         if (pocketGestures == null) {
             return false;
         }
@@ -5010,6 +5110,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             // prepareDisplayForRendering(). This will usually be the highest refresh rate that our
             // frame rate evenly divides into, which ensures the lowest possible display latency.
             desiredFrameRate = desiredRefreshRate;
+        }
+
+        if (pocketFrameGen) {
+            desiredFrameRate = Math.max(desiredFrameRate, pocketMaxRefreshRate());
         }
 
         // Tell the OS about our frame rate to allow it to adapt the display refresh rate appropriately

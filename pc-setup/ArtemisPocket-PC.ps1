@@ -678,8 +678,8 @@ while ($true) {
         $lastSessions = $sessions
     }
     if ($companionOk) {
-        $event = $null
-        while ([PocketCompanion]::Events.TryDequeue([ref]$event)) { Stamp $event "Cyan" }
+        $evt = $null
+        while ([PocketCompanion]::Events.TryDequeue([ref]$evt)) { Stamp $evt "Cyan" }
     }
     Start-Sleep -Seconds 2
 }

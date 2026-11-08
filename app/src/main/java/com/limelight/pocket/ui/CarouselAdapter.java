@@ -193,10 +193,10 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         }
         final float base = frame.getScaleX();
         frame.animate().cancel();
-        frame.animate().scaleX(base * 0.96f).scaleY(base * 0.96f).setDuration(70)
+        frame.animate().scaleX(base * 0.95f).scaleY(base * 0.95f).setDuration(70)
                 .setInterpolator(PocketUi.EASE)
-                .withEndAction(() -> frame.animate().scaleX(base).scaleY(base).setDuration(140)
-                        .setInterpolator(PocketUi.EASE).start())
+                .withEndAction(() -> frame.animate().scaleX(base).scaleY(base).setDuration(360)
+                        .setInterpolator(Spring.POP).start())
                 .start();
     }
 
@@ -214,16 +214,22 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
             content.setActivated(focused);
         }
 
+        // The focused card lifts towards you (a soft spring in, a quick settle out)
+        float d = frame.getResources().getDisplayMetrics().density;
+        float lift = focused ? -4 * d : 0f;
+        float z = focused ? 10 * d : 0f;
         frame.animate().cancel();
         if (animated) {
-            frame.animate().scaleX(scale).scaleY(scale)
-                    .setDuration(focused ? 170 : 130)
-                    .setInterpolator(PocketUi.EASE)
+            frame.animate().scaleX(scale).scaleY(scale).translationY(lift).translationZ(z)
+                    .setDuration(focused ? 420 : 200)
+                    .setInterpolator(focused ? Spring.SOFT : PocketUi.EASE)
                     .start();
         }
         else {
             frame.setScaleX(scale);
             frame.setScaleY(scale);
+            frame.setTranslationY(lift);
+            frame.setTranslationZ(z);
         }
 
         final Drawable fg = frame.getForeground();

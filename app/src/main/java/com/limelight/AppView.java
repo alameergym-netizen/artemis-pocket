@@ -958,7 +958,8 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         page.add(com.limelight.pocket.ui.StreamMenuView.Item.value(getString(R.string.pocket_sm_framegen),
                 pocketFgLabel(com.limelight.pocket.GameProfile.frameGen(ctx, uuid, appId)), direction -> {
                     int mode = com.limelight.pocket.GameProfile.frameGen(ctx, uuid, appId);
-                    mode = (mode + (direction > 0 ? 1 : 2)) % 3;
+                    int n = com.limelight.pocket.GameProfile.FRAME_GEN_MODES;
+                    mode = (mode + (direction > 0 ? 1 : n - 1)) % n;
                     com.limelight.pocket.GameProfile.setFrameGen(ctx, uuid, appId, mode);
                     return pocketFgLabel(mode);
                 }));
@@ -991,6 +992,9 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         }
         if (mode == com.limelight.pocket.GameProfile.FRAME_GEN_OFF) {
             return getString(R.string.pocket_off);
+        }
+        if (mode == com.limelight.pocket.GameProfile.FRAME_GEN_LSFG) {
+            return getString(R.string.pocket_framegen_lsfg_short);
         }
         return pocketDefaultLabel();
     }

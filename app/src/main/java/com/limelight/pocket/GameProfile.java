@@ -14,6 +14,8 @@ public final class GameProfile {
     public static final int FRAME_GEN_DEFAULT = 0;
     public static final int FRAME_GEN_ON = 1;
     public static final int FRAME_GEN_OFF = 2;
+    public static final int FRAME_GEN_LSFG = 3;
+    public static final int FRAME_GEN_MODES = 4;
 
     public static final int[] BITRATES_MBPS = {0, 10, 15, 20, 30, 40, 50, 60, 80, 100, 120, 150};
     public static final int[] FPS = {0, 30, 45, 60, 90, 120};
@@ -117,7 +119,7 @@ public final class GameProfile {
             if (sb.length() > 0) {
                 sb.append("  ·  ");
             }
-            sb.append(fg == FRAME_GEN_ON ? "FG 2×" : "FG off");
+            sb.append(fg == FRAME_GEN_ON ? "FG 2×" : fg == FRAME_GEN_LSFG ? "LSFG" : "FG off");
         }
         return sb.toString();
     }

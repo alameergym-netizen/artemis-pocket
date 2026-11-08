@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Artemis Pocket: a new screen comes forward (shared Z axis), the old one steps back -->
 <set xmlns:android="http://schemas.android.com/apk/res/android"
-    android:interpolator="@android:interpolator/decelerate_cubic"
-    android:shareInterpolator="true">
-    <alpha android:fromAlpha="0.0" android:toAlpha="1.0" android:duration="180" />
-    <scale android:fromXScale="0.985" android:toXScale="1.0"
-        android:fromYScale="0.985" android:toYScale="1.0"
-        android:pivotX="50%" android:pivotY="50%" android:duration="220" />
+    android:shareInterpolator="false"
+    android:zAdjustment="top">
+    <alpha android:interpolator="@interpolator/pocket_emphasized"
+        android:fromAlpha="0.0" android:toAlpha="1.0"
+        android:startOffset="40" android:duration="260" />
+    <scale android:interpolator="@interpolator/pocket_emphasized"
+        android:fromXScale="0.94" android:toXScale="1.0"
+        android:fromYScale="0.94" android:toYScale="1.0"
+        android:pivotX="50%" android:pivotY="50%" android:duration="420" />
 </set>

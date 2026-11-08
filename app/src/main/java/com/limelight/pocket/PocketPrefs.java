@@ -317,6 +317,8 @@ public final class PocketPrefs {
 
     public static final String FRAME_GEN_OFF = "off";
     public static final String FRAME_GEN_2X = "2x";
+    /** LSFG-Android (a separate overlay app) makes the frames; the stream only prepares for it. */
+    public static final String FRAME_GEN_LSFG = "lsfg";
 
     public static final String BACKDROP_GLOW = "glow";
     public static final String BACKDROP_ART = "art";
@@ -338,6 +340,10 @@ public final class PocketPrefs {
 
     public static boolean frameGenEnabled(Context context) {
         return FRAME_GEN_2X.equals(frameGen(context));
+    }
+
+    public static boolean frameGenLsfg(Context context) {
+        return FRAME_GEN_LSFG.equals(frameGen(context));
     }
 
     public static boolean micPassthrough(Context context) {

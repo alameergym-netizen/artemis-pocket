@@ -337,10 +337,10 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
     }
 
-    // ---- Intro (once per app start) ------------------------------------------------------
+    // ---- Boot sequence (once per app start) -----------------------------------------------
 
     private static boolean introShown;
-    private android.widget.FrameLayout introOverlay;
+    private com.limelight.pocket.ui.BootOverlay bootOverlay;
 
     private void maybeShowIntro() {
         if (introShown || !allowsAutoResume()) {
@@ -350,65 +350,21 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         if (!PocketPrefs.introAnimation(this) || !PocketPrefs.animationsEnabled(this)) {
             return;
         }
-        float d = getResources().getDisplayMetrics().density;
-        introOverlay = new android.widget.FrameLayout(this);
-        introOverlay.setBackgroundColor(0xFF000000);
-        introOverlay.setClickable(true);
-        introOverlay.setOnClickListener(v -> dismissIntro());
-
-        LinearLayout column = new LinearLayout(this);
-        column.setOrientation(LinearLayout.VERTICAL);
-        column.setGravity(Gravity.CENTER_HORIZONTAL);
-        introOverlay.addView(column, new android.widget.FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER));
-
-        android.widget.ImageView logo = new android.widget.ImageView(this);
-        logo.setImageResource(R.drawable.ic_pocket_logo);
-        logo.setColorFilter(PocketPrefs.accentColor(this));
-        column.addView(logo, new LinearLayout.LayoutParams(Math.round(96 * d), Math.round(96 * d)));
-
-        TextView name = new TextView(this);
-        name.setText(R.string.app_label);
-        name.setAllCaps(true);
-        name.setTextColor(0xFFFFFFFF);
-        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        name.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
-        name.setLetterSpacing(0.6f);
-        name.setPadding(0, Math.round(14 * d), 0, 0);
-        column.addView(name);
-
         ViewGroup content = findViewById(android.R.id.content);
-        content.addView(introOverlay, new ViewGroup.LayoutParams(
+        if (content == null) {
+            return;
+        }
+        bootOverlay = new com.limelight.pocket.ui.BootOverlay(this);
+        bootOverlay.setReveal(content.getChildCount() > 0 ? content.getChildAt(0) : null);
+        bootOverlay.setListener(() -> bootOverlay = null);
+        content.addView(bootOverlay, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        logo.setAlpha(0f);
-        logo.setScaleX(0.86f);
-        logo.setScaleY(0.86f);
-        logo.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(460).setInterpolator(PocketUi.EASE).start();
-        name.setAlpha(0f);
-        name.animate().alpha(1f).setStartDelay(160).setDuration(420).start();
-        android.animation.ValueAnimator spacing = android.animation.ValueAnimator.ofFloat(0.6f, 0.32f);
-        spacing.setDuration(900);
-        spacing.setInterpolator(PocketUi.EASE);
-        spacing.addUpdateListener(a -> name.setLetterSpacing((Float) a.getAnimatedValue()));
-        spacing.start();
-        PocketSounds.play(this, PocketSounds.OPEN);
-        statusHandler.postDelayed(this::dismissIntro, 1150);
     }
 
     private void dismissIntro() {
-        final android.widget.FrameLayout overlay = introOverlay;
-        if (overlay == null) {
-            return;
+        if (bootOverlay != null) {
+            bootOverlay.skip();
         }
-        introOverlay = null;
-        statusHandler.removeCallbacks(this::dismissIntro);
-        overlay.animate().alpha(0f).setDuration(300).withEndAction(() -> {
-            ViewGroup parent = (ViewGroup) overlay.getParent();
-            if (parent != null) {
-                parent.removeView(overlay);
-            }
-        }).start();
     }
 
     // ---- Console panels (options, game settings, connection test) -------------------------
@@ -603,8 +559,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             }
             swallowKeyUp = -1; // a fresh press
         }
-        if (introOverlay != null) {
-            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+        if (bootOverlay != null) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
                 dismissIntro();
             }
             return true;

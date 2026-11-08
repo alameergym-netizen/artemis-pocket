@@ -391,7 +391,7 @@
     <string name="pocket_header_smart">بث ذكي</string>
     <string name="pocket_framegen_2x">2× (60 → 120)</string>
     <string name="pocket_set_framegen">توليد الإطارات</string>
-    <string name="pocket_set_framegen_sub">بيبث بنص سرعة شاشتك وبيرسم الإطارات اللي بينهم على الجهاز. أنعم، مع تأخير بسيط كم ملي ثانية.</string>
+    <string name="pocket_set_framegen_sub">المدمج: بيبث بنص سرعة شاشتك وبيرسم الإطارات اللي بينهم على الجهاز. LSFG-Android: نفس الفكرة بتطبيق Lossless Scaling وملف DLL تبعك.</string>
     <string name="pocket_set_adaptive">جودة متكيّفة</string>
     <string name="pocket_set_adaptive_sub">بتبلش حسب قدرة الواي فاي وبتنزل لحالها إذا الاتصال ضعف</string>
     <string name="pocket_set_resume">استكمال تلقائي</string>
@@ -453,4 +453,19 @@
     <string name="pocket_gs_note">هدول بس لـ %1$s وبيغلبوا الإعدادات العادية. يمين ويسار للتغيير.</string>
     <string name="pocket_error_hint_usb">تشييك USB-C: برنامج Artemis Pocket PC مفتوح على الكمبيوتر ومكتوب Connected، الكيبل موصول، تصحيح USB شغال، و Apollo شغال.</string>
     <string name="pocket_error_hint_wifi">تشييك الواي فاي: الكمبيوتر صاحي و Apollo شغال، نفس الشبكة، و 5 GHz إذا بتقدر. بطاقة الكمبيوتر › الخيارات › فحص الاتصال بيوضّح المشكلة.</string>
+    <string name="pocket_radial_hint">اترك الزر أو اضغط A</string>
+    <string name="pocket_framegen_lsfg">LSFG-Android (تطبيق خارجي)</string>
+    <string name="pocket_framegen_lsfg_short">LSFG</string>
+    <string name="pocket_framegen_builtin">المدمج 2×</string>
+    <string name="pocket_sm_current">الحالي</string>
+    <string name="pocket_sm_lsfg_open">افتح LSFG-Android</string>
+    <string name="pocket_sm_lsfg_open_value">اللعبة بترجع بعدها</string>
+    <string name="pocket_sm_framegen_note">تغيير هذا بيعيد تشغيل الصورة لحظة، واللعبة بتضل شغالة على الكمبيوتر. LSFG-Android تطبيق منفصل بيستخدم ملف Lossless.dll تبعك من Lossless Scaling.</string>
+    <string name="pocket_lsfg_toast">وضع LSFG: بث %1$d FPS لشاشة %2$d Hz. شغّل طبقة LSFG-Android.</string>
+    <string name="pocket_lsfg_missing_toast">تطبيق LSFG-Android مش مثبت. ثبّته واعطيه ملف Lossless.dll تبعك (من Lossless Scaling).</string>
+    <string name="pocket_set_lsfg_open">LSFG-Android</string>
+    <string name="pocket_set_lsfg_open_sub">توليد إطارات Lossless Scaling كتطبيق طبقة فوق الشاشة، بملف Lossless.dll تبعك. اختاره من توليد الإطارات، شغّل الطبقة، وبعدين العب.</string>
+    <string name="pocket_lsfg_installed">افتح</string>
+    <string name="pocket_lsfg_missing">مش مثبت</string>
+    <string name="pocket_boot_tagline">جهازك بين إيديك</string>
 </resources>

@@ -32,7 +32,16 @@ public enum PcPower {
         this.label = label;
         this.endsStream = endsStream;
         this.runBox = runBox;
+        this.icon = command.equals("sleep") || command.equals("hibernate") ? "MOON"
+                : command.equals("restart") ? "RESTART"
+                : command.equals("shutdown") ? "QUIT"
+                : command.equals("lock") ? "LOCK"
+                : command.equals("signout") ? "ESC"
+                : "DESKTOP";
     }
+
+    /** Line icon name (PocketIcons). */
+    public final String icon;
 
     public String label(Context context) {
         return context.getString(label);

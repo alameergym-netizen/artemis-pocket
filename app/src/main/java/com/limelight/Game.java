@@ -328,6 +328,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private boolean pocketFrameGen;
     private int pocketProfileBitrate;
     private int pocketProfileFrameGen;
+    /** LSFG-Android (external overlay app) makes the in-between frames. */
+    private boolean pocketLsfg;
     private boolean pocketWarned24;
     private com.limelight.pocket.ui.LaunchOverlay pocketLaunchOverlay;
 
@@ -461,7 +463,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         // Frame generation: stream at half the screen's refresh rate, show at the full rate
         pocketFrameGen = pocketProfileFrameGen == com.limelight.pocket.GameProfile.FRAME_GEN_ON
                 || (pocketProfileFrameGen == com.limelight.pocket.GameProfile.FRAME_GEN_DEFAULT && PocketPrefs.frameGenEnabled(this));
-        if (pocketFrameGen) {
+        pocketLsfg = pocketProfileFrameGen == com.limelight.pocket.GameProfile.FRAME_GEN_LSFG
+                || (pocketProfileFrameGen == com.limelight.pocket.GameProfile.FRAME_GEN_DEFAULT && PocketPrefs.frameGenLsfg(this));
+        if (pocketFrameGen || pocketLsfg) {
             float maxHz = pocketMaxRefreshRate();
             if (maxHz >= 89) {
                 int half = Math.round(maxHz / 2f);
@@ -1575,7 +1579,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     private boolean mayReduceRefreshRate() {
-        if (pocketFrameGen) {
+        if (pocketFrameGen || pocketLsfg) {
             return false; // frame generation needs the screen at its fastest
         }
         return prefConfig.framePacing == PreferenceConfiguration.FRAME_PACING_CAP_FPS ||
@@ -2440,7 +2444,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             public void releaseRadialHeld(int button) {
                 if (radialMenu != null && radialMenu.isShowing() && radialHeldBy == button) {
                     PocketAction chosen = radialMenu.getSelectedAction();
-                    closeRadial();
+                    closeRadial(chosen != null);
                     if (chosen != null) {
                         performPocketAction(chosen, -1, true);
                     }
@@ -2611,6 +2615,58 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 ConsoleActivity.hintA(this, R.string.pocket_hint_select),
                 ConsoleActivity.hintB(this, R.string.pocket_hint_back),
                 new ConsoleActivity.Hint("\u25c0\u25b6", 0xFFFFFFFF, getString(R.string.pocket_hint_change)));
+        // Frosted glass made from the game picture
+        com.limelight.pocket.ui.FrostedGlass.snapshot(streamContainer != null ? streamContainer.getSurfaceView() : null,
+                bitmap -> streamMenu.setBackdrop(bitmap));
+    }
+
+    /** Frame generation mode for this game: the game's own setting if it has one, else the global one. */
+    private void pocketSetFrameGenMode(int profileMode, String globalValue) {
+        String uuid = getIntent().getStringExtra(EXTRA_PC_UUID);
+        int appId = getIntent().getIntExtra(EXTRA_APP_ID, 0);
+        if (pocketProfileFrameGen != com.limelight.pocket.GameProfile.FRAME_GEN_DEFAULT && uuid != null && appId != 0) {
+            com.limelight.pocket.GameProfile.setFrameGen(this, uuid, appId, profileMode);
+        }
+        else {
+            PocketPrefs.prefs(this).edit().putString(PocketPrefs.KEY_FRAME_GEN, globalValue).apply();
+        }
+        // The picture path changes, so the stream restarts (the game keeps running)
+        pocketSwitchStream(ResumeTicket.REASON_QUALITY, 0, -1, -1);
+    }
+
+    private List<StreamMenuView.Item> pocketFrameGenItems() {
+        List<StreamMenuView.Item> page = new ArrayList<>();
+        String current = getString(R.string.pocket_sm_current);
+        StreamMenuView.Item off = StreamMenuView.Item.action(getString(R.string.pocket_off), () ->
+                pocketSetFrameGenMode(com.limelight.pocket.GameProfile.FRAME_GEN_OFF, PocketPrefs.FRAME_GEN_OFF));
+        StreamMenuView.Item builtIn = StreamMenuView.Item.action(getString(R.string.pocket_framegen_builtin), () ->
+                pocketSetFrameGenMode(com.limelight.pocket.GameProfile.FRAME_GEN_ON, PocketPrefs.FRAME_GEN_2X))
+                .withIcon("SPARKLE");
+        StreamMenuView.Item lsfg = StreamMenuView.Item.action(getString(R.string.pocket_framegen_lsfg), () ->
+                pocketSetFrameGenMode(com.limelight.pocket.GameProfile.FRAME_GEN_LSFG, PocketPrefs.FRAME_GEN_LSFG))
+                .withIcon("STAR");
+        off.withIcon("NONE");
+        if (pocketLsfg) {
+            lsfg.withValue(current);
+        }
+        else if (pocketFrameGen) {
+            builtIn.withValue(current);
+        }
+        else {
+            off.withValue(current);
+        }
+        page.add(off);
+        page.add(builtIn);
+        page.add(lsfg);
+        if (pocketLsfg) {
+            page.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_lsfg_open), () -> {
+                if (!com.limelight.pocket.LsfgApp.open(this)) {
+                    showPocketToast(getString(R.string.pocket_lsfg_missing_toast), true, 3500);
+                }
+            }).withIcon("SWAP").withValue(getString(R.string.pocket_sm_lsfg_open_value)));
+        }
+        page.add(StreamMenuView.Item.repeatable(getString(R.string.pocket_sm_framegen_note), null));
+        return page;
     }
 
     private String onOff(boolean on) {
@@ -2619,59 +2675,57 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     private StreamMenuView.Item actionItem(final PocketAction action, boolean confirm) {
         Runnable run = () -> performPocketAction(action, -1, true);
-        return confirm ? StreamMenuView.Item.confirm(action.shortLabel(this), run)
+        StreamMenuView.Item item = confirm ? StreamMenuView.Item.confirm(action.shortLabel(this), run)
                 : StreamMenuView.Item.action(action.shortLabel(this), run);
+        return com.limelight.pocket.ui.PocketIcons.has(action.name()) ? item.withIcon(action.name()) : item;
     }
 
     private List<StreamMenuView.Item> buildStreamMenuItems() {
         List<StreamMenuView.Item> items = new ArrayList<>();
 
         items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_play)));
-        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_resume), () -> { }));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_resume), () -> { }).withIcon("PLAY"));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_guide),
-                () -> performPocketAction(PocketAction.GUIDE, -1, true)));
+                () -> performPocketAction(PocketAction.GUIDE, -1, true)).withIcon("GUIDE"));
         items.add(StreamMenuView.Item.value(getString(R.string.pocket_sm_stats),
                 onOff(prefConfig != null && prefConfig.enablePerfOverlay), direction -> {
                     toggleHUD();
                     return onOff(prefConfig.enablePerfOverlay);
-                }));
-        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_screenshot), this::pocketHandheldScreenshot));
+                }).withIcon("STATS"));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_screenshot), this::pocketHandheldScreenshot)
+                .withIcon("SCREENSHOT"));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_mouse),
-                () -> performPocketAction(PocketAction.MOUSE, -1, true)));
+                () -> performPocketAction(PocketAction.MOUSE, -1, true)).withIcon("MOUSE"));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_keyboard),
-                () -> performPocketAction(PocketAction.KEYBOARD, -1, false)));
-        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_radial), () -> openRadial(-1)));
+                () -> performPocketAction(PocketAction.KEYBOARD, -1, false)).withIcon("KEYBOARD"));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_radial), () -> openRadial(-1)).withIcon("RADIAL"));
 
         items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_handheld)));
         items.add(StreamMenuView.Item.value(getString(R.string.pocket_sm_brightness),
-                pocketBrightnessLabel(PocketPrefs.streamBrightness(this)), this::pocketStepBrightness));
+                pocketBrightnessLabel(PocketPrefs.streamBrightness(this)), this::pocketStepBrightness).withIcon("SUN"));
         items.add(StreamMenuView.Item.value(getString(R.string.pocket_sm_volume),
-                pocketVolumeLabel(), this::pocketStepVolume));
+                pocketVolumeLabel(), this::pocketStepVolume).withIcon("VOLUME_UP"));
         items.add(StreamMenuView.Item.value(getString(R.string.pocket_sm_mic), pocketMicLabel(), direction -> {
             pocketToggleMic();
             return pocketMicLabel();
-        }));
+        }).withIcon("MIC"));
 
         items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_quality)));
         final String bitrateTitle = getString(R.string.pocket_sm_bitrate);
         items.add(StreamMenuView.Item.submenu(bitrateTitle, () -> streamMenu.push(bitrateTitle, pocketBitrateItems()))
-                .withValue(Math.round(pocketStreamBitrate / 1000f) + " Mbps"));
+                .withValue(Math.round(pocketStreamBitrate / 1000f) + " Mbps").withIcon("SPEED"));
         final String fpsTitle = getString(R.string.pocket_sm_fps);
         items.add(StreamMenuView.Item.submenu(fpsTitle, () -> streamMenu.push(fpsTitle, pocketFpsItems()))
-                .withValue(Math.round(prefConfig.fps) + " FPS"));
-        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_framegen), () -> {
-            boolean on = !PocketPrefs.frameGenEnabled(this);
-            PocketPrefs.prefs(this).edit().putString(PocketPrefs.KEY_FRAME_GEN,
-                    on ? PocketPrefs.FRAME_GEN_2X : PocketPrefs.FRAME_GEN_OFF).apply();
-            // The picture path changes, so the stream restarts (the game keeps running)
-            pocketSwitchStream(ResumeTicket.REASON_QUALITY, 0, on ? 0 : -1, -1);
-        }).withValue(pocketFrameGenLabel()));
+                .withValue(Math.round(prefConfig.fps) + " FPS").withIcon("PULSE"));
+        final String fgTitle = getString(R.string.pocket_sm_framegen);
+        items.add(StreamMenuView.Item.submenu(fgTitle, () -> streamMenu.push(fgTitle, pocketFrameGenItems()))
+                .withValue(pocketFrameGenLabel()).withIcon("SPARKLE"));
         items.add(StreamMenuView.Item.value(getString(R.string.pocket_sm_adaptive),
                 onOff(PocketPrefs.adaptiveStream(this)), direction -> {
                     boolean on = !PocketPrefs.adaptiveStream(this);
                     PocketPrefs.prefs(this).edit().putBoolean(PocketPrefs.KEY_ADAPTIVE, on).apply();
                     return onOff(on);
-                }));
+                }).withIcon("WIFI"));
 
         items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_pc)));
         final String powerTitle = getString(R.string.pocket_sm_power);
@@ -2679,11 +2733,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             List<StreamMenuView.Item> page = new ArrayList<>();
             for (final PcPower p : PcPower.values()) {
                 Runnable run = () -> pocketPower(p);
-                page.add(p.endsStream ? StreamMenuView.Item.confirm(p.label(this), run)
-                        : StreamMenuView.Item.action(p.label(this), run));
+                page.add((p.endsStream ? StreamMenuView.Item.confirm(p.label(this), run)
+                        : StreamMenuView.Item.action(p.label(this), run)).withIcon(p.icon));
             }
             streamMenu.push(powerTitle, page);
-        }));
+        }).withIcon("QUIT"));
         final String shortcutsTitle = getString(R.string.pocket_sm_shortcuts);
         items.add(StreamMenuView.Item.submenu(shortcutsTitle, () -> {
             List<StreamMenuView.Item> page = new ArrayList<>();
@@ -2695,19 +2749,22 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             }
             page.add(actionItem(PocketAction.ALT_F4, true));
             streamMenu.push(shortcutsTitle, page);
-        }));
+        }).withIcon("WIN"));
         final String mediaTitle = getString(R.string.pocket_sm_media);
         items.add(StreamMenuView.Item.submenu(mediaTitle, () -> {
             List<StreamMenuView.Item> page = new ArrayList<>();
             PocketAction[] repeat = {PocketAction.VOLUME_UP, PocketAction.VOLUME_DOWN, PocketAction.MUTE};
             for (final PocketAction a : repeat) {
-                page.add(StreamMenuView.Item.repeatable(a.shortLabel(this), () -> performPocketAction(a, -1, false)));
+                page.add(StreamMenuView.Item.repeatable(a.shortLabel(this), () -> performPocketAction(a, -1, false))
+                        .withIcon(a.name()));
             }
             page.add(actionItem(PocketAction.PLAY_PAUSE, false));
             streamMenu.push(mediaTitle, page);
-        }));
-        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_clip_send), () -> sendClipboard(true)));
-        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_clip_get), () -> getClipboard(0)));
+        }).withIcon("PLAY_PAUSE"));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_clip_send), () -> sendClipboard(true))
+                .withIcon("CLIPBOARD"));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_clip_get), () -> getClipboard(0))
+                .withIcon("SWAP"));
         final String commandsTitle = getString(R.string.pocket_sm_commands);
         items.add(StreamMenuView.Item.submenu(commandsTitle, () -> {
             List<StreamMenuView.Item> page = new ArrayList<>();
@@ -2718,28 +2775,28 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             else {
                 for (int i = 0; i < cmds.size(); i++) {
                     final int id = i;
-                    page.add(StreamMenuView.Item.action(cmds.get(i), () -> sendExecServerCmd(id)));
+                    page.add(StreamMenuView.Item.action(cmds.get(i), () -> sendExecServerCmd(id)).withIcon("TERMINAL"));
                 }
             }
             streamMenu.push(commandsTitle, page);
-        }));
+        }).withIcon("TERMINAL"));
 
         items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_tools)));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_button_check), () -> {
             pocketKeyMonitorUntil = android.os.SystemClock.uptimeMillis() + 15000;
             showPocketToast(getString(R.string.pocket_sm_button_check_toast), true, 2500);
-        }));
+        }).withIcon("GAMEPAD"));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_classic), () -> {
             if (gameMenuCallbacks != null) {
                 gameMenuCallbacks.showMenu(null);
             }
-        }));
+        }).withIcon("LIST"));
 
         items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_session)));
         items.add(actionItem(PocketAction.ANDROID_HOME, false));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_disconnect), this::disconnect)
-                .withValue(getString(R.string.pocket_sm_disconnect_value)));
-        items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_sm_quit), this::quitNow));
+                .withValue(getString(R.string.pocket_sm_disconnect_value)).withIcon("DISCONNECT"));
+        items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_sm_quit), this::quitNow).withIcon("ALT_F4"));
         return items;
     }
 
@@ -2869,7 +2926,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     }
 
     private String pocketFrameGenLabel() {
-        if (!PocketPrefs.frameGenEnabled(this)) {
+        if (pocketLsfg) {
+            return getString(R.string.pocket_framegen_lsfg_short);
+        }
+        if (!pocketFrameGen) {
             return getString(R.string.pocket_off);
         }
         if (pocketFrameGen && com.limelight.pocket.video.FrameGenRenderer.generating) {
@@ -2900,6 +2960,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if (pocketFrameGen) {
             showPocketToast(getString(R.string.pocket_framegen_toast, Math.round(prefConfig.fps),
                     Math.round(pocketMaxRefreshRate())), true, 2500);
+        }
+        else if (pocketLsfg) {
+            showPocketToast(com.limelight.pocket.LsfgApp.isInstalled(this)
+                    ? getString(R.string.pocket_lsfg_toast, Math.round(prefConfig.fps), Math.round(pocketMaxRefreshRate()))
+                    : getString(R.string.pocket_lsfg_missing_toast), true, 4000);
         }
         String uuid = pocketPcUuid();
         if (UsbLink.isUsbAddress(host)) {
@@ -3327,12 +3392,25 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             controllerHandler.releaseAllInputs();
         }
         radialMenu.show(slots, time, battery);
+        // Frosted glass made from the game picture itself
+        com.limelight.pocket.ui.FrostedGlass.snapshot(streamContainer != null ? streamContainer.getSurfaceView() : null,
+                bitmap -> radialMenu.setBackdrop(bitmap));
     }
 
     private void closeRadial() {
+        closeRadial(false);
+    }
+
+    /** confirmed: a slot was chosen (it flashes and the ring opens out), else it just closes. */
+    private void closeRadial(boolean confirmed) {
         radialHeldBy = -1;
         if (radialMenu != null) {
-            radialMenu.hide();
+            if (confirmed) {
+                radialMenu.confirm();
+            }
+            else {
+                radialMenu.hide();
+            }
         }
     }
 
@@ -3355,7 +3433,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 case KeyEvent.KEYCODE_DPAD_CENTER:
                 case KeyEvent.KEYCODE_ENTER: {
                     PocketAction chosen = radialMenu.getSelectedAction();
-                    closeRadial();
+                    closeRadial(chosen != null);
                     if (chosen != null) {
                         performPocketAction(chosen, -1, true);
                     }
@@ -5151,7 +5229,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             desiredFrameRate = desiredRefreshRate;
         }
 
-        if (pocketFrameGen) {
+        if (pocketFrameGen || pocketLsfg) {
             desiredFrameRate = Math.max(desiredFrameRate, pocketMaxRefreshRate());
         }
 

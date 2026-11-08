@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<alpha xmlns:android="http://schemas.android.com/apk/res/android"
-    android:interpolator="@android:interpolator/decelerate_cubic"
-    android:fromAlpha="0.0" android:toAlpha="1.0" android:duration="160" />
+<!-- Artemis Pocket: going back, the previous screen settles into place again -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shareInterpolator="false">
+    <alpha android:interpolator="@interpolator/pocket_emphasized"
+        android:fromAlpha="0.0" android:toAlpha="1.0"
+        android:startOffset="40" android:duration="260" />
+    <scale android:interpolator="@interpolator/pocket_emphasized"
+        android:fromXScale="1.05" android:toXScale="1.0"
+        android:fromYScale="1.05" android:toYScale="1.0"
+        android:pivotX="50%" android:pivotY="50%" android:duration="420" />
+</set>

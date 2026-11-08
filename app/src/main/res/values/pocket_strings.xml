@@ -398,7 +398,7 @@
     <string name="pocket_header_smart">Smart streaming</string>
     <string name="pocket_framegen_2x">2× (60 → 120)</string>
     <string name="pocket_set_framegen">Frame generation</string>
-    <string name="pocket_set_framegen_sub">Streams at half your screen\'s rate and draws the frames in between on the handheld. Smoother, a few ms more delay.</string>
+    <string name="pocket_set_framegen_sub">Built-in: streams at half your screen\'s rate and draws the frames in between on the handheld. LSFG-Android: the same, made by the Lossless Scaling app with your own DLL.</string>
     <string name="pocket_set_adaptive">Adaptive quality</string>
     <string name="pocket_set_adaptive_sub">Starts at what your Wi-Fi can carry and lowers it by itself if the connection struggles</string>
     <string name="pocket_set_resume">Seamless resume</string>
@@ -460,4 +460,19 @@
     <string name="pocket_gs_note">These apply only to %1$s and win over the normal settings. Left / right to change.</string>
     <string name="pocket_error_hint_usb">USB-C checklist: Artemis Pocket PC open on the PC and showing Connected, cable plugged in, USB debugging on, Apollo running.</string>
     <string name="pocket_error_hint_wifi">Wi-Fi checklist: PC awake with Apollo running, same network, 5 GHz if possible. PC card › Options › Connection test shows what\'s wrong.</string>
+    <string name="pocket_radial_hint">Release or press A</string>
+    <string name="pocket_framegen_lsfg">LSFG-Android (external app)</string>
+    <string name="pocket_framegen_lsfg_short">LSFG</string>
+    <string name="pocket_framegen_builtin">Built-in 2×</string>
+    <string name="pocket_sm_current">current</string>
+    <string name="pocket_sm_lsfg_open">Open LSFG-Android</string>
+    <string name="pocket_sm_lsfg_open_value">game resumes after</string>
+    <string name="pocket_sm_framegen_note">Changing this restarts the picture for a moment; the game keeps running on the PC. LSFG-Android is a separate app that uses your own Lossless.dll from Lossless Scaling.</string>
+    <string name="pocket_lsfg_toast">LSFG mode: %1$d FPS stream for %2$d Hz. Turn on LSFG-Android\'s overlay.</string>
+    <string name="pocket_lsfg_missing_toast">LSFG-Android isn\'t installed. Install it and give it your Lossless.dll (from Lossless Scaling).</string>
+    <string name="pocket_set_lsfg_open">LSFG-Android</string>
+    <string name="pocket_set_lsfg_open_sub">Lossless Scaling frame generation as an overlay app, with your own Lossless.dll. Pick it under Frame generation, start its overlay, then play.</string>
+    <string name="pocket_lsfg_installed">Open</string>
+    <string name="pocket_lsfg_missing">Not installed</string>
+    <string name="pocket_boot_tagline">YOUR PC, IN YOUR HANDS</string>
 </resources>

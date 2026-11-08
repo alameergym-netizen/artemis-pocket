@@ -336,11 +336,23 @@ public class QuickSettingsActivity extends ConsoleActivity {
 
         addHeader(R.string.pocket_header_smart);
 
-        final String[] fgValues = {PocketPrefs.FRAME_GEN_OFF, PocketPrefs.FRAME_GEN_2X};
-        final String[] fgLabels = {getString(R.string.pocket_off), getString(R.string.pocket_framegen_2x)};
+        final String[] fgValues = {PocketPrefs.FRAME_GEN_OFF, PocketPrefs.FRAME_GEN_2X, PocketPrefs.FRAME_GEN_LSFG};
+        final String[] fgLabels = {getString(R.string.pocket_off), getString(R.string.pocket_framegen_2x),
+                getString(R.string.pocket_framegen_lsfg)};
         addChoice(getString(R.string.pocket_set_framegen), getString(R.string.pocket_set_framegen_sub), fgLabels,
                 () -> indexOf(fgValues, PocketPrefs.frameGen(this)),
-                index -> prefs().edit().putString(PocketPrefs.KEY_FRAME_GEN, fgValues[index]).apply(), null);
+                index -> {
+                    prefs().edit().putString(PocketPrefs.KEY_FRAME_GEN, fgValues[index]).apply();
+                    refreshRows();
+                }, null);
+        addAction(getString(R.string.pocket_set_lsfg_open), getString(R.string.pocket_set_lsfg_open_sub),
+                () -> getString(LsfgApp.isInstalled(this) ? R.string.pocket_lsfg_installed : R.string.pocket_lsfg_missing),
+                () -> {
+                    if (!LsfgApp.open(this)) {
+                        android.widget.Toast.makeText(this, R.string.pocket_lsfg_missing_toast,
+                                android.widget.Toast.LENGTH_LONG).show();
+                    }
+                });
 
         addToggle(getString(R.string.pocket_set_adaptive), getString(R.string.pocket_set_adaptive_sub),
                 () -> PocketPrefs.adaptiveStream(this),
@@ -937,9 +949,17 @@ public class QuickSettingsActivity extends ConsoleActivity {
         rowRefreshers.add(refresh);
 
         row.setOnClickListener(v -> {
-            setter.set(!getter.get());
+            boolean on = !getter.get();
+            setter.set(on);
             refresh.run();
-            PocketUi.tick(this);
+            PocketSounds.play(this, on ? PocketSounds.TOGGLE_ON : PocketSounds.TOGGLE_OFF);
+            if (PocketPrefs.animationsEnabled(this)) {
+                // The pill springs a little when it flips
+                pill.setScaleX(0.86f);
+                pill.setScaleY(0.86f);
+                pill.animate().scaleX(1f).scaleY(1f).setDuration(320)
+                        .setInterpolator(com.limelight.pocket.ui.Spring.POP).start();
+            }
         });
         rowsContainer.addView(row);
     }

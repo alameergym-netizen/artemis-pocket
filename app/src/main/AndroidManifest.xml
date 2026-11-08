@@ -44,6 +44,14 @@
         android:name="android.hardware.type.pc"
         android:required="false"/>
 
+    <!-- Artemis Pocket: find LSFG-Android (external frame generation) to open it -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
         android:name=".ArtemisApplication"
         android:allowBackup="true"

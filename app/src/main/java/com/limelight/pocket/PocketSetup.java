@@ -29,11 +29,16 @@ public final class PocketSetup {
                 e.putBoolean("checkbox_back_as_guide", false);
                 e.putBoolean("checkbox_ultra_low_latency", true);
             }
-            e.putInt("pocket_defaults_version", 3).apply();
+            // v4: stream to a virtual display at the handheld's own resolution (Apollo), so
+            // resumes never fall back to mirroring the PC's main screen
+            if (version < 4) {
+                e.putBoolean("checkbox_use_virtual_display", true);
+            }
+            e.putInt("pocket_defaults_version", 4).apply();
             return;
         }
         applyRp6Defaults(context);
-        prefs.edit().putBoolean(PocketPrefs.KEY_FIRST_RUN_DONE, true).putInt("pocket_defaults_version", 3).apply();
+        prefs.edit().putBoolean(PocketPrefs.KEY_FIRST_RUN_DONE, true).putInt("pocket_defaults_version", 4).apply();
     }
 
     public static void applyRp6Defaults(Context context) {
@@ -49,6 +54,7 @@ public final class PocketSetup {
         e.putBoolean("checkbox_unlock_fps", false);
         e.putString("list_video_scale_mode", "fit");
         e.putBoolean("checkbox_enable_hdr", false);          // the RP6 panel is SDR-tuned
+        e.putBoolean("checkbox_use_virtual_display", true);  // Apollo: a screen made for the handheld
 
         // Controls: built-in pad, Back acts as Xbox Guide, device motor for rumble
         e.putBoolean("checkbox_back_as_guide", false); // Back is handled by Button actions

@@ -704,6 +704,12 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         appId = Game.this.getIntent().getIntExtra(EXTRA_APP_ID, StreamConfiguration.INVALID_APP_ID);
         uniqueId = Game.this.getIntent().getStringExtra(EXTRA_UNIQUEID);
         vDisplay = Game.this.getIntent().getBooleanExtra(EXTRA_VDISPLAY, false);
+        // Artemis Pocket: with "Virtual display" on, every start AND every resume asks for it.
+        // A resume without it makes Apollo join the PC's main screen (a mirror; and on laptops
+        // whose screen runs on the integrated GPU the encoder can't even capture it).
+        if (prefConfig != null && prefConfig.useVirtualDisplay) {
+            vDisplay = true;
+        }
         serverCommands = Game.this.getIntent().getStringArrayListExtra(EXTRA_SERVER_COMMANDS);
         boolean appSupportsHdr = Game.this.getIntent().getBooleanExtra(EXTRA_APP_HDR, false);
         byte[] derCertData = Game.this.getIntent().getByteArrayExtra(EXTRA_SERVER_CERT);
@@ -3467,6 +3473,29 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     private com.limelight.pocket.ui.FrostedGlass.Live pocketFrost;
 
     /**
+     * Right after a stream ends, Apollo can still be releasing that stream's display and turns
+     * the next start away (RTSP error 500/503). That clears in a few seconds, so go back to the
+     * console screen, which tries again by itself (up to three times) instead of an error.
+     */
+    private boolean pocketRetryStart(String stage, int errorCode) {
+        if (!PocketPrefs.autoRecover(this) || pocketSwitching || stage == null) {
+            return false;
+        }
+        boolean busy = stage.toUpperCase(java.util.Locale.ROOT).contains("RTSP") && (errorCode == 500 || errorCode == 503);
+        if (!busy) {
+            return false;
+        }
+        int attempt = getIntent().getIntExtra(ResumeTicket.EXTRA_RECOVER, 0);
+        if (attempt >= 3) {
+            return false;
+        }
+        pocketSwitching = true;
+        ResumeTicket.arm(this, ResumeTicket.REASON_RECOVER, 0, 0, -1, attempt + 1);
+        finish();
+        return true;
+    }
+
+    /**
      * Auto-recovery: when a stream that was playing fine drops (Wi-Fi blip, PC hiccup), go back
      * to the console screen, which reconnects to the same game straight away. Gives up after
      * three tries in a row, then the normal error explains what happened.
@@ -5002,6 +5031,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     spinner = null;
                 }
 
+                if (!displayedFailureDialog && pocketRetryStart(stage, errorCode)) {
+                    displayedFailureDialog = true;
+                    LimeLog.warning(stage + " failed: " + errorCode + " (PC busy, retrying)");
+                    return;
+                }
                 if (!displayedFailureDialog) {
                     displayedFailureDialog = true;
                     LimeLog.severe(stage + " failed: " + errorCode);

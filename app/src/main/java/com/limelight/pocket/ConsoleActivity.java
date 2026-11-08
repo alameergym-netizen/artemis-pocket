@@ -197,6 +197,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         pausedSinceLaunch = true;
+        abandonBoot();
         if (pendingResume != null) {
             // Left before the stream came back: keep the ticket for next time
             statusHandler.removeCallbacks(resumeLaunch);
@@ -399,9 +400,57 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             bootOverlay = null;
             entrancePlayed = true;
             playEntrance();
+            // Whatever waited for the boot to finish (opening the last PC, USB connect) goes now
+            List<Runnable> waiting = new ArrayList<>(afterBoot);
+            afterBoot.clear();
+            for (Runnable r : waiting) {
+                r.run();
+            }
         });
         content.addView(bootOverlay, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    private final List<Runnable> afterBoot = new ArrayList<>();
+
+    /** Runs r now, or once the boot sequence on this screen has finished. */
+    protected void runAfterBoot(Runnable r) {
+        if (bootOverlay != null && !bootOverlay.isFinished()) {
+            afterBoot.add(r);
+        }
+        else {
+            r.run();
+        }
+    }
+
+    protected boolean isBooting() {
+        return bootOverlay != null && !bootOverlay.isFinished();
+    }
+
+    /**
+     * Left mid-boot (another screen opened on top, or the app went to the background): stop it
+     * here, silently, and let the next console screen that comes up play it from the start.
+     */
+    private void abandonBoot() {
+        com.limelight.pocket.ui.BootOverlay overlay = bootOverlay;
+        if (overlay == null) {
+            return;
+        }
+        bootOverlay = null;
+        afterBoot.clear();
+        introShown = false;
+        PocketSounds.releaseBoot();
+        ViewGroup parent = (ViewGroup) overlay.getParent();
+        if (parent != null) {
+            parent.removeView(overlay);
+        }
+        View root = findViewById(R.id.pocketRoot);
+        if (root != null) {
+            root.setAlpha(1f);
+            root.setScaleX(1f);
+            root.setScaleY(1f);
+        }
+        entrancePlayed = false;
     }
 
     private void dismissIntro() {

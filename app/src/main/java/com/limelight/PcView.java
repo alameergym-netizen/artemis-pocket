@@ -1274,6 +1274,11 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         if (autoOpenedLastPc || usbState != USB_IDLE || !PocketPrefs.openLastPc(this) || !inForeground) {
             return;
         }
+        if (isBooting()) {
+            // Let the boot sequence play here first, then go to the library
+            runAfterBoot(() -> maybeOpenLastPc(details));
+            return;
+        }
         String last = PocketPrefs.getLastPcUuid(this);
         if (last != null && last.equals(details.uuid) && details.state == ComputerDetails.State.ONLINE
                 && details.pairState == PairState.PAIRED) {
@@ -1403,6 +1408,10 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
 
     private void startUsbFlow() {
         if (usbThread != null) {
+            return;
+        }
+        if (isBooting()) {
+            runAfterBoot(this::startUsbFlow);
             return;
         }
         usbState = USB_SEARCHING;

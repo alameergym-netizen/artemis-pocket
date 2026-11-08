@@ -1038,16 +1038,30 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
             return;
         }
         AppObject obj = (AppObject) appGridAdapter.getItem(position);
-        PocketUi.swapText(title, obj.app.getAppName());
+        int dir = pocketHeroPos < 0 ? 0 : Integer.signum(position - pocketHeroPos);
+        if (title.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) {
+            dir = -dir;
+        }
+        boolean moved = position != pocketHeroPos;
+        pocketHeroPos = position;
+        com.limelight.pocket.ui.PocketMotion.swapText(title, obj.app.getAppName(), dir);
         heroTitleForLaunch = obj.app.getAppName();
         TextView playtime = findViewById(R.id.pocketHeroPlaytime);
         if (playtime != null) {
             String line = pocketHeroDetails(obj.app.getAppId());
+            if (moved && !line.isEmpty() && com.limelight.pocket.ui.PocketMotion.on(playtime)) {
+                playtime.animate().cancel();
+                playtime.setAlpha(0f);
+                playtime.animate().alpha(1f).setStartDelay(140).setDuration(320).start();
+            }
             playtime.setText(line);
             playtime.setVisibility(line.isEmpty() ? View.GONE : View.VISIBLE);
         }
 
         int lastAppId = computer != null ? PocketPrefs.getLastAppId(this, computer.uuid) : 0;
+        if (moved) {
+            com.limelight.pocket.ui.PocketMotion.bump(subtitle);
+        }
         if (obj.isRunning) {
             subtitle.setText(R.string.pocket_now_playing);
             subtitle.setTextColor(ContextCompat.getColor(this, R.color.pocket_bg));
@@ -1066,6 +1080,8 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
             }
         }
     }
+
+    private int pocketHeroPos = -1;
 
     private void showHeroArt(Bitmap bitmap) {
         if (bitmap == null || bitmap == heroBitmap || bitmap.isRecycled()) {

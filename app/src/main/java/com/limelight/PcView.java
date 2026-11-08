@@ -1207,15 +1207,25 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             position = 0;
         }
         ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(position);
-        PocketUi.swapText(title, computer.details.name);
+        int dir = pocketHeroPos < 0 ? 0 : Integer.signum(position - pocketHeroPos);
+        if (title.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) {
+            dir = -dir;
+        }
+        pocketHeroPos = position;
+        com.limelight.pocket.ui.PocketMotion.swapText(title, computer.details.name, dir);
         String sub = describeComputer(computer.details, true);
         if (latencyText != null && computer.details.uuid.equals(latencyForUuid)
                 && computer.details.state == ComputerDetails.State.ONLINE) {
             sub += " · " + latencyText;
         }
-        subtitle.setText(sub);
+        if (!sub.contentEquals(subtitle.getText())) {
+            subtitle.setText(sub);
+            com.limelight.pocket.ui.PocketMotion.bump(subtitle);
+        }
         probeLatency(computer.details);
     }
+
+    private int pocketHeroPos = -1;
 
     /** Measures how long a TCP handshake to the PC takes, as a rough "ping" in the hero line. */
     private void probeLatency(final ComputerDetails details) {

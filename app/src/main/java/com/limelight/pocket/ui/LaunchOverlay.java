@@ -57,6 +57,7 @@ public class LaunchOverlay extends FrameLayout {
     }
 
     private final float d;
+    private final LinearLayout column;
     private final TextView status;
     private final View bar;
     private final ImageView image;
@@ -92,7 +93,7 @@ public class LaunchOverlay extends FrameLayout {
         scrim.setBackground(shade);
         addView(scrim, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        LinearLayout column = new LinearLayout(context);
+        column = new LinearLayout(context);
         column.setOrientation(LinearLayout.VERTICAL);
         LayoutParams colLp = new LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
                 Gravity.START | Gravity.CENTER_VERTICAL);
@@ -180,6 +181,8 @@ public class LaunchOverlay extends FrameLayout {
             image.setScaleX(1.1f);
             image.setScaleY(1.1f);
             image.animate().scaleX(1f).scaleY(1f).setDuration(9000).setInterpolator(PocketUi.EASE).start();
+            // Caption, title, details and the light bar arrive one after another
+            PocketMotion.cascade(column, 90, 70, -26, 0, 6);
         }
     }
 
@@ -198,7 +201,11 @@ public class LaunchOverlay extends FrameLayout {
             return;
         }
         if (PocketPrefs.animationsEnabled(getContext())) {
-            animate().alpha(0f).setDuration(260).withEndAction(() -> parent.removeView(this)).start();
+            // The text lifts away first, then the screen opens onto the game
+            column.animate().alpha(0f).translationX(-dp(16)).setStartDelay(0).setDuration(160)
+                    .setInterpolator(PocketUi.EASE).start();
+            animate().alpha(0f).scaleX(1.05f).scaleY(1.05f).setStartDelay(80).setDuration(340)
+                    .setInterpolator(PocketUi.EASE).withEndAction(() -> parent.removeView(this)).start();
         }
         else {
             parent.removeView(this);

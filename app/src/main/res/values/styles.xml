@@ -59,8 +59,8 @@
     </style>
 
     <style name="PocketDialogAnimations" parent="@android:style/Animation.Dialog">
-        <item name="android:windowEnterAnimation">@anim/pocket_pop_enter</item>
-        <item name="android:windowExitAnimation">@anim/pocket_exit</item>
+        <item name="android:windowEnterAnimation">@anim/pocket_dialog_in</item>
+        <item name="android:windowExitAnimation">@anim/pocket_dialog_out</item>
     </style>
 
     <style name="StreamBaseTheme" parent="AppBaseTheme">

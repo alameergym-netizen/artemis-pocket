@@ -52,6 +52,7 @@ public final class LiveGlass {
     public static final class Backdrop {
         final View source;
         final List<View> hosts = new ArrayList<>();
+        final List<GlassDrawable> glasses = new ArrayList<>();
         Object node; // RenderNode (API 29+), kept as Object so this class loads anywhere
         boolean ready;
         boolean failed;
@@ -102,11 +103,12 @@ public final class LiveGlass {
                 ready = false;
             }
             // Panels that moved need to look through a different part of the backdrop
-            for (int i = 0; i < hosts.size(); i++) {
-                View host = hosts.get(i);
-                Drawable bg = host.getBackground();
-                if (bg instanceof GlassDrawable && ((GlassDrawable) bg).moved()) {
-                    host.invalidate();
+            for (int i = 0; i < glasses.size(); i++) {
+                GlassDrawable glass = glasses.get(i);
+                if (glass.moved()) {
+                    // Also when the glass is wrapped by another background (a focus glider)
+                    glass.host.invalidate();
+                    glass.invalidateSelf();
                 }
             }
         }
@@ -127,6 +129,7 @@ public final class LiveGlass {
         host.setClipToOutline(true);
         if (backdrop != null && !backdrop.hosts.contains(host)) {
             backdrop.hosts.add(host);
+            backdrop.glasses.add(glass);
         }
     }
 
@@ -153,7 +156,7 @@ public final class LiveGlass {
     // ---- The glass surface --------------------------------------------------------------
 
     static final class GlassDrawable extends Drawable {
-        private final View host;
+        final View host;
         private final Backdrop backdrop;
         private final int style;
         private final float d;

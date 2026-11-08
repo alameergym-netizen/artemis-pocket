@@ -174,12 +174,10 @@
                 android:paddingStart="28dp"
                 android:paddingEnd="28dp">
 
-                <ProgressBar
+                <com.limelight.pocket.ui.PulseRingsView
                     android:id="@+id/pcs_loading"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:indeterminate="true"
-                    android:indeterminateTint="@color/pocket_text" />
+                    android:layout_width="72dp"
+                    android:layout_height="72dp" />
 
                 <TextView
                     android:layout_width="wrap_content"

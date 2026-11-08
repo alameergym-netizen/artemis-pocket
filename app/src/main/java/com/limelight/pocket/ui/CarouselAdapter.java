@@ -193,7 +193,7 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         }
         final float base = frame.getScaleX();
         frame.animate().cancel();
-        frame.animate().scaleX(base * 0.95f).scaleY(base * 0.95f).setDuration(70)
+        frame.animate().setStartDelay(0).scaleX(base * 0.95f).scaleY(base * 0.95f).setDuration(70)
                 .setInterpolator(PocketUi.EASE)
                 .withEndAction(() -> frame.animate().scaleX(base).scaleY(base).setDuration(360)
                         .setInterpolator(Spring.POP).start())
@@ -214,13 +214,19 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
             content.setActivated(focused);
         }
 
-        // The focused card lifts towards you (a soft spring in, a quick settle out)
+        // The focused card lifts towards you (a soft spring in, a quick settle out) and its
+        // shadow becomes a soft glow in the accent colour
         float d = frame.getResources().getDisplayMetrics().density;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            int glow = PocketTheme.accent(frame.getContext());
+            frame.setOutlineSpotShadowColor(glow);
+            frame.setOutlineAmbientShadowColor(glow);
+        }
         float lift = focused ? -4 * d : 0f;
         float z = focused ? 10 * d : 0f;
         frame.animate().cancel();
         if (animated) {
-            frame.animate().scaleX(scale).scaleY(scale).translationY(lift).translationZ(z)
+            frame.animate().setStartDelay(0).scaleX(scale).scaleY(scale).translationY(lift).translationZ(z)
                     .setDuration(focused ? 420 : 200)
                     .setInterpolator(focused ? Spring.SOFT : PocketUi.EASE)
                     .start();

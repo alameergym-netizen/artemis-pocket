@@ -108,7 +108,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
             tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
             tab.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
             tab.setTextColor(ContextCompat.getColorStateList(this, R.color.pocket_tab_text));
-            tab.setBackground(com.limelight.pocket.ui.PocketTheme.tab(this));
+            tab.setBackground(com.limelight.pocket.ui.PocketTheme.tabGlide(this));
             tab.setFocusable(true);
             tab.setClickable(true);
             tab.setOnFocusChangeListener((v, hasFocus) -> {
@@ -130,6 +130,12 @@ public class QuickSettingsActivity extends ConsoleActivity {
         setHints(hintA(this, R.string.pocket_hint_select),
                 hintB(this, R.string.pocket_hint_back),
                 hintShoulders(this, R.string.pocket_hint_tabs));
+
+        // One lit highlight glides between tabs, and one between rows, as focus moves
+        int accent = com.limelight.pocket.ui.PocketTheme.accent(this);
+        com.limelight.pocket.ui.FocusGlider.install(tabBar, accent, 100 * getResources().getDisplayMetrics().density);
+        com.limelight.pocket.ui.FocusGlider.install(rowsContainer, com.limelight.pocket.ui.PocketTheme.withAlpha(accent, 0xF2),
+                14 * getResources().getDisplayMetrics().density);
 
         int startTab = getIntent().getIntExtra("tab", TAB_STREAM);
         selectTab(startTab, true);
@@ -211,6 +217,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
     // ---- Tabs ---------------------------------------------------------------------------
 
     private void selectTab(int index, boolean animate) {
+        int from = currentTab;
         currentTab = index;
         for (int i = 0; i < tabs.size(); i++) {
             tabs.get(i).setSelected(i == index);
@@ -236,9 +243,10 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 break;
         }
         rowsScroll.scrollTo(0, 0);
-        if (animate && PocketPrefs.animationsEnabled(this)) {
-            rowsContainer.setAlpha(0f);
-            rowsContainer.animate().alpha(1f).setDuration(140).start();
+        if (animate && PocketPrefs.animationsEnabled(this) && from != index) {
+            // The new rows come in from the side of the tab you moved to
+            float dy = index > from ? 16 : -16;
+            com.limelight.pocket.ui.PocketMotion.cascade(rowsContainer, 0, 22, 0, dy, 10);
         }
     }
 
@@ -867,7 +875,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setMinimumHeight(dp(46));
         row.setPaddingRelative(dp(14), dp(7), dp(10), dp(7));
-        row.setBackground(com.limelight.pocket.ui.PocketTheme.row(this));
+        row.setBackground(com.limelight.pocket.ui.PocketTheme.rowGlide(this));
         row.setFocusable(true);
         row.setClickable(true);
         row.setOnFocusChangeListener((v, hasFocus) -> {
@@ -1012,7 +1020,12 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 next = (index + direction + labels.length) % labels.length;
             }
             setter.set(next);
-            refresh.run();
+            // The new value slides in from the side you pressed, and that arrow gives a tap
+            boolean rtl = row.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+            int now = getter.get();
+            CharSequence label = now >= 0 && now < labels.length ? labels[now] : (unknownLabel != null ? unknownLabel : "\u2014");
+            com.limelight.pocket.ui.PocketMotion.swapText(value, label, rtl ? -direction : direction);
+            com.limelight.pocket.ui.PocketMotion.pop(direction > 0 ? right : left, 0.7f);
             PocketUi.tick(this);
         };
         row.setOnKeyListener((v, keyCode, event) -> {

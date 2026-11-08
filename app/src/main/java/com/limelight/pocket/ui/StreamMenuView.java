@@ -504,14 +504,16 @@ public class StreamMenuView extends FrameLayout {
         pillRetries = 0;
         list.post(() -> updateSelection(false, false));
 
-        if (animated() && direction != 0) {
-            listFrame.setTranslationX(direction * dp(28));
-            listFrame.setAlpha(0f);
-            listFrame.animate().translationX(0).alpha(1f).setDuration(340).setInterpolator(Spring.SOFT).start();
-        }
-        else if (animated()) {
-            listFrame.setAlpha(0f);
-            listFrame.animate().alpha(1f).setDuration(160).start();
+        if (animated()) {
+            // The rows arrive one after another, from the side the page came from
+            listFrame.animate().cancel();
+            listFrame.setAlpha(1f);
+            listFrame.setTranslationX(0);
+            float dx = direction > 0 ? 24 : (direction < 0 ? -24 : -16);
+            if (getLayoutDirection() == LAYOUT_DIRECTION_RTL) {
+                dx = -dx;
+            }
+            PocketMotion.cascade(list, direction == 0 ? 80 : 0, 16, dx, 0, 14);
         }
     }
 
@@ -781,6 +783,10 @@ public class StreamMenuView extends FrameLayout {
             return;
         }
         PocketSounds.play(getContext(), PocketSounds.SELECT);
+        Object tag = rowViews.get(page.selected).getTag();
+        if (tag instanceof RowViews && ((RowViews) tag).icon != null) {
+            PocketMotion.pop(((RowViews) tag).icon, 0.7f);
+        }
         if (animated()) {
             pill.animate().scaleX(0.97f).setDuration(70).withEndAction(() ->
                     pill.animate().scaleX(1f).setDuration(220).setInterpolator(Spring.POP).start()).start();
@@ -804,6 +810,9 @@ public class StreamMenuView extends FrameLayout {
     public boolean handleKey(KeyEvent event) {
         int keyCode = event.getKeyCode();
         boolean down = event.getAction() == KeyEvent.ACTION_DOWN;
+        if (down && event.getRepeatCount() == 0) {
+            ConsoleActivity.pulseHint(hints, keyCode);
+        }
         if (!down) {
             return true;
         }

@@ -162,9 +162,17 @@ public class ServerHelper {
             return;
         }
 
-        Intent intent = createStartIntent(parent, app, computer, managerBinder, withVDisplay);
+        final Intent intent = createStartIntent(parent, app, computer, managerBinder, withVDisplay);
+        // Artemis Pocket: the game's card grows into the "Starting..." screen
+        if (parent instanceof com.limelight.pocket.ConsoleActivity
+                && com.limelight.pocket.PocketPrefs.animationsEnabled(parent)) {
+            ((com.limelight.pocket.ConsoleActivity) parent).playLaunchZoom(() -> {
+                parent.startActivity(intent);
+                parent.overridePendingTransition(R.anim.pocket_launch_in, R.anim.pocket_hold);
+            });
+            return;
+        }
         parent.startActivity(intent);
-        // Artemis Pocket: the console "Starting..." screen grows out of the library
         if (com.limelight.pocket.PocketPrefs.animationsEnabled(parent)) {
             parent.overridePendingTransition(R.anim.pocket_launch_in, R.anim.pocket_launch_out);
         }

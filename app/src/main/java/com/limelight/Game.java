@@ -2492,12 +2492,35 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if (pocketActionToast == null || (!force && !PocketPrefs.actionFeedback(this))) {
             return;
         }
-        pocketActionToast.animate().cancel();
+        final View toast = pocketActionToast;
+        boolean hidden = toast.getVisibility() != View.VISIBLE || toast.getAlpha() < 0.05f;
+        toast.animate().cancel();
         pocketActionToast.setText(text);
-        pocketActionToast.setVisibility(View.VISIBLE);
-        pocketActionToast.setAlpha(1f);
-        pocketActionToast.animate().alpha(0f).setStartDelay(holdMs).setDuration(250)
-                .withEndAction(() -> pocketActionToast.setVisibility(View.GONE)).start();
+        toast.setVisibility(View.VISIBLE);
+        final Runnable leave = () -> toast.animate().alpha(0f).translationY(-6 * getResources().getDisplayMetrics().density)
+                .setStartDelay(holdMs).setDuration(260).setInterpolator(com.limelight.pocket.ui.PocketUi.EASE)
+                .withEndAction(() -> {
+                    toast.setVisibility(View.GONE);
+                    toast.setTranslationY(0);
+                    toast.animate().setStartDelay(0);
+                }).start();
+        if (hidden && PocketPrefs.animationsEnabled(this)) {
+            // Drops in with a little spring, then floats away
+            toast.setAlpha(0f);
+            toast.setTranslationY(-14 * getResources().getDisplayMetrics().density);
+            toast.setScaleX(0.9f);
+            toast.setScaleY(0.9f);
+            toast.animate().alpha(1f).translationY(0).scaleX(1f).scaleY(1f).setStartDelay(0).setDuration(420)
+                    .setInterpolator(com.limelight.pocket.ui.Spring.POP).withEndAction(leave).start();
+        }
+        else {
+            toast.setAlpha(1f);
+            toast.setTranslationY(0);
+            toast.setScaleX(1f);
+            toast.setScaleY(1f);
+            com.limelight.pocket.ui.PocketMotion.bump(toast);
+            leave.run();
+        }
     }
 
     private static String describeKeyForMonitor(KeyEvent event) {

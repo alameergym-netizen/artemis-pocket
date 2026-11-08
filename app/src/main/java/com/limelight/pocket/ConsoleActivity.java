@@ -172,6 +172,16 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         if (pendingResume == null) {
             maybeShowIntro();
         }
+        if (launchLayer != null) {
+            returnFromLaunch();
+        }
+        else if (!entrancePlayed && bootOverlay == null && pendingResume == null) {
+            entrancePlayed = true;
+            View main = findViewById(R.id.pocketMain);
+            if (main != null) {
+                main.post(this::playEntrance);
+            }
+        }
         menuHotkey = PocketPrefs.getMenuHotkey(this);
         enterImmersive();
         try {
@@ -186,6 +196,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        pausedSinceLaunch = true;
         if (pendingResume != null) {
             // Left before the stream came back: keep the ticket for next time
             statusHandler.removeCallbacks(resumeLaunch);
@@ -384,7 +395,11 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
         bootOverlay = new com.limelight.pocket.ui.BootOverlay(this);
         bootOverlay.setReveal(content.getChildCount() > 0 ? content.getChildAt(0) : null);
-        bootOverlay.setListener(() -> bootOverlay = null);
+        bootOverlay.setListener(() -> {
+            bootOverlay = null;
+            entrancePlayed = true;
+            playEntrance();
+        });
         content.addView(bootOverlay, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     }
@@ -559,6 +574,10 @@ public abstract class ConsoleActivity extends AppCompatActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0 && !isConsolePanelShowing()) {
+            // (an open panel pulses its own hints)
+            pulseHint(findViewById(R.id.pocketHintBar), event.getKeyCode());
+        }
         if (blockingCard != null) {
             int k = event.getKeyCode();
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0
@@ -798,6 +817,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             }
             bg.setColor(hint.color);
             glyph.setBackground(bg);
+            glyph.setTag("hint:" + hint.glyph);
             item.addView(glyph);
 
             TextView label = new TextView(context);
@@ -823,6 +843,251 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     }
 
     /** Fade+rise entrance used when a screen's content appears. */
+    // ---- Motion: entrance, button presses, launching a game ------------------------------
+
+    private boolean entrancePlayed;
+    private boolean pausedSinceLaunch;
+    private android.widget.FrameLayout launchLayer;
+
+    /**
+     * The screen arriving: the status bar drops in, the hero rises line by line, the cards
+     * sweep in from the right one after another and the button bar comes up last.
+     */
+    protected void playEntrance() {
+        ViewGroup main = findViewById(R.id.pocketMain);
+        if (main == null || !PocketPrefs.animationsEnabled(this)) {
+            return;
+        }
+        long delay = 0;
+        for (int i = 0; i < main.getChildCount(); i++) {
+            View child = main.getChildAt(i);
+            if (child.getVisibility() != View.VISIBLE) {
+                continue;
+            }
+            androidx.recyclerview.widget.RecyclerView list = findRecycler(child);
+            if (i == 0) {
+                com.limelight.pocket.ui.PocketMotion.arrive(child, delay, 0, -14, 1f);
+            }
+            else if (child.getId() == R.id.pocketHero && child instanceof ViewGroup) {
+                com.limelight.pocket.ui.PocketMotion.cascade((ViewGroup) child, delay, 55, 0, 14, 6);
+                delay += 60;
+            }
+            else if (list != null) {
+                com.limelight.pocket.ui.PocketMotion.cascade(list, delay, 45, 56, 0, 8);
+                delay += 120;
+            }
+            else if (child.getId() == R.id.pocketSettingsBody && child instanceof ViewGroup) {
+                ViewGroup body = (ViewGroup) child;
+                View tabs = body.findViewById(R.id.pocketTabs);
+                ViewGroup rows = body.findViewById(R.id.pocketRows);
+                if (tabs != null) {
+                    com.limelight.pocket.ui.PocketMotion.arrive(tabs, delay, -22, 0, 0.98f);
+                    if (tabs instanceof ViewGroup) {
+                        com.limelight.pocket.ui.PocketMotion.cascade((ViewGroup) tabs, delay + 60, 35, -10, 0, 8);
+                    }
+                }
+                com.limelight.pocket.ui.PocketMotion.cascade(rows, delay + 80, 30, 0, 14, 10);
+                delay += 120;
+            }
+            else {
+                com.limelight.pocket.ui.PocketMotion.arrive(child, delay, 0, 18, 1f);
+            }
+            delay += 70;
+        }
+    }
+
+    private static androidx.recyclerview.widget.RecyclerView findRecycler(View view) {
+        if (view instanceof androidx.recyclerview.widget.RecyclerView) {
+            return (androidx.recyclerview.widget.RecyclerView) view;
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                androidx.recyclerview.widget.RecyclerView found = findRecycler(group.getChildAt(i));
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
+    }
+
+    /** The button glyph in the hint bar gives a small press when its button is pressed. */
+    public static void pulseHint(View root, int keyCode) {
+        String glyph;
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_BUTTON_A:
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+                glyph = "A";
+                break;
+            case KeyEvent.KEYCODE_BUTTON_B:
+            case KeyEvent.KEYCODE_BACK:
+            case KeyEvent.KEYCODE_ESCAPE:
+                glyph = "B";
+                break;
+            case KeyEvent.KEYCODE_BUTTON_X:
+                glyph = "X";
+                break;
+            case KeyEvent.KEYCODE_BUTTON_Y:
+                glyph = "Y";
+                break;
+            case KeyEvent.KEYCODE_BUTTON_START:
+            case KeyEvent.KEYCODE_MENU:
+                glyph = "\u2630";
+                break;
+            case KeyEvent.KEYCODE_BUTTON_L1:
+            case KeyEvent.KEYCODE_BUTTON_R1:
+                glyph = "L1 R1";
+                break;
+            default:
+                return;
+        }
+        if (root == null) {
+            return;
+        }
+        View hit = root.findViewWithTag("hint:" + glyph);
+        if (hit != null && hit.isShown()) {
+            com.limelight.pocket.ui.PocketMotion.pop(hit, 0.82f);
+        }
+    }
+
+    /**
+     * Launching a game: the selected card's art grows to fill the screen, softening into the
+     * backdrop of the "Starting" screen, while the library falls back behind it. Then the
+     * stream screen takes over exactly where this ends, so it reads as one motion.
+     */
+    public void playLaunchZoom(final Runnable start) {
+        View focus = getCurrentFocus();
+        View artView = focus != null ? focus.findViewById(R.id.grid_image) : null;
+        if (launchLayer != null || !(artView instanceof android.widget.ImageView)
+                || ((android.widget.ImageView) artView).getDrawable() == null
+                || artView.getWidth() == 0 || !PocketPrefs.animationsEnabled(this)) {
+            start.run();
+            return;
+        }
+        final android.widget.ImageView art = (android.widget.ImageView) artView;
+        final ViewGroup content = findViewById(android.R.id.content);
+        final View main = findViewById(R.id.pocketMain);
+        int[] at = new int[2];
+        int[] origin = new int[2];
+        art.getLocationInWindow(at);
+        content.getLocationInWindow(origin);
+        float scale = 1f;
+        for (View v = art; v != null && v != content; v = v.getParent() instanceof View ? (View) v.getParent() : null) {
+            scale *= v.getScaleX();
+        }
+        final float fl = at[0] - origin[0];
+        final float ft = at[1] - origin[1];
+        final float fw = art.getWidth() * scale;
+        final float fh = art.getHeight() * scale;
+        final float d = getResources().getDisplayMetrics().density;
+        final int w = content.getWidth();
+        final int h = content.getHeight();
+
+        launchLayer = new android.widget.FrameLayout(this);
+        launchLayer.setClickable(true);
+        content.addView(launchLayer, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        final View black = new View(this);
+        black.setBackgroundColor(0xFF000000);
+        black.setAlpha(0f);
+        launchLayer.addView(black, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        final android.widget.ImageView zoom = new android.widget.ImageView(this);
+        Drawable.ConstantState state = art.getDrawable().getConstantState();
+        zoom.setImageDrawable(state != null ? state.newDrawable(getResources()) : art.getDrawable());
+        zoom.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        final float[] radius = {14 * d};
+        zoom.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override
+            public void getOutline(View view, android.graphics.Outline outline) {
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius[0]);
+            }
+        });
+        zoom.setClipToOutline(true);
+        launchLayer.addView(zoom, new ViewGroup.LayoutParams(Math.round(fw), Math.round(fh)));
+        final View shade = new View(this);
+        shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{0xE6000000, 0x99000000, 0x33000000}));
+        shade.setAlpha(0f);
+        launchLayer.addView(shade, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        final boolean mono = !PocketPrefs.colorBackgroundArt(this);
+        final android.view.animation.Interpolator curve = new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f);
+        // Ends a touch larger than the screen, where the "Starting" screen's slow zoom begins
+        final float over = 0.05f;
+        android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        anim.setDuration(560);
+        anim.addUpdateListener(a -> {
+            float t = (Float) a.getAnimatedValue();
+            float f = curve.getInterpolation(t);
+            float l = fl + (-w * over - fl) * f;
+            float top = ft + (-h * over - ft) * f;
+            float r = fl + fw + (w * (1 + over) - fl - fw) * f;
+            float b = ft + fh + (h * (1 + over) - ft - fh) * f;
+            zoom.layout(Math.round(l), Math.round(top), Math.round(r), Math.round(b));
+            radius[0] = 14 * d * (1 - f);
+            zoom.invalidateOutline();
+            black.setAlpha(Math.min(1f, t * 2f));
+            float soften = Math.max(0f, (t - 0.35f) / 0.65f);
+            zoom.setAlpha(1f - 0.5f * soften);
+            shade.setAlpha(soften);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                float blur = 36f * soften;
+                zoom.setRenderEffect(blur > 0.5f
+                        ? android.graphics.RenderEffect.createBlurEffect(blur, blur, android.graphics.Shader.TileMode.CLAMP) : null);
+            }
+            if (mono) {
+                android.graphics.ColorMatrix m = new android.graphics.ColorMatrix();
+                m.setSaturation(1f - soften);
+                zoom.setColorFilter(new android.graphics.ColorMatrixColorFilter(m));
+            }
+            if (main != null) {
+                main.setScaleX(1f - 0.06f * f);
+                main.setScaleY(1f - 0.06f * f);
+                main.setAlpha(1f - f);
+            }
+        });
+        anim.addListener(new android.animation.AnimatorListenerAdapter() {
+            @Override
+            public void onAnimationEnd(android.animation.Animator animation) {
+                pausedSinceLaunch = false;
+                start.run();
+                // If the stream screen never came up (it failed right away), come back
+                statusHandler.postDelayed(() -> {
+                    if (!pausedSinceLaunch && launchLayer != null) {
+                        returnFromLaunch();
+                    }
+                }, 2500);
+            }
+        });
+        zoom.layout(Math.round(fl), Math.round(ft), Math.round(fl + fw), Math.round(ft + fh));
+        PocketSounds.play(this, PocketSounds.OPEN);
+        anim.start();
+    }
+
+    /** Back from a game: the library settles forward again as the launch layer fades. */
+    private void returnFromLaunch() {
+        final android.widget.FrameLayout layer = launchLayer;
+        launchLayer = null;
+        View main = findViewById(R.id.pocketMain);
+        if (layer != null) {
+            layer.animate().alpha(0f).setDuration(220).withEndAction(() -> {
+                ViewGroup parent = (ViewGroup) layer.getParent();
+                if (parent != null) {
+                    parent.removeView(layer);
+                }
+            }).start();
+        }
+        if (main != null) {
+            main.animate().cancel();
+            main.setScaleX(0.94f);
+            main.setScaleY(0.94f);
+            main.animate().setStartDelay(60).alpha(1f).scaleX(1f).scaleY(1f).setDuration(620)
+                    .setInterpolator(com.limelight.pocket.ui.Spring.SOFT)
+                    .withEndAction(() -> main.animate().setStartDelay(0)).start();
+        }
+    }
+
     public static void reveal(View view, int delayMs) {
         if (view == null) {
             return;

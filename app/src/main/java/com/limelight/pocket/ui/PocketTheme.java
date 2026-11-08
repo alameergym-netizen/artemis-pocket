@@ -51,6 +51,34 @@ public final class PocketTheme {
         return s;
     }
 
+    /** A settings row under a FocusGlider: the glider draws the focus, the row only its glass. */
+    public static Drawable rowGlide(Context context) {
+        float d = context.getResources().getDisplayMetrics().density;
+        float r = 14 * d;
+        StateListDrawable s = new StateListDrawable();
+        s.addState(new int[]{android.R.attr.state_focused}, shape(r, 0x00000000, 0, 0));
+        s.addState(new int[]{android.R.attr.state_pressed}, shape(r, 0x33FFFFFF, 0, 0));
+        s.addState(new int[]{}, new LayerDrawable(new Drawable[]{
+                shape(r, 0x12FFFFFF, 0, 0),
+                shape(r, 0x00000000, Math.max(1, Math.round(d)), 0x1AFFFFFF)}));
+        s.setEnterFadeDuration(160);
+        s.setExitFadeDuration(220);
+        return s;
+    }
+
+    /** A settings tab under a FocusGlider. */
+    public static Drawable tabGlide(Context context) {
+        float d = context.getResources().getDisplayMetrics().density;
+        float r = 100 * d;
+        StateListDrawable s = new StateListDrawable();
+        s.addState(new int[]{android.R.attr.state_focused}, shape(r, 0x00000000, 0, 0));
+        s.addState(new int[]{android.R.attr.state_selected}, shape(r, 0x2EFFFFFF, Math.max(1, Math.round(d)), 0x33FFFFFF));
+        s.addState(new int[]{}, shape(r, 0x00000000, 0, 0));
+        s.setEnterFadeDuration(180);
+        s.setExitFadeDuration(180);
+        return s;
+    }
+
     /** Settings tab pill. */
     public static Drawable tab(Context context) {
         float d = context.getResources().getDisplayMetrics().density;

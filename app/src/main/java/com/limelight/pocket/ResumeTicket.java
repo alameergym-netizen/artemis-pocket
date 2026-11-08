@@ -29,6 +29,10 @@ public final class ResumeTicket {
     public static final int REASON_SUSPEND = 0;
     public static final int REASON_QUALITY = 1;
     public static final int REASON_ADAPTIVE = 2;
+    /** The stream dropped by itself: reconnect to the same game. */
+    public static final int REASON_RECOVER = 3;
+    /** How many reconnects in a row (so a dead link doesn't loop forever). */
+    public static final String EXTRA_RECOVER = "pocket_recover_attempt";
 
     private static final String PREFS = "pocket_resume";
     private static final String KEY_EXTRAS = "extras";
@@ -64,6 +68,11 @@ public final class ResumeTicket {
      * current values.
      */
     public static void arm(Context context, int reason, int bitrateKbps, int fps, int adaptiveSteps) {
+        arm(context, reason, bitrateKbps, fps, adaptiveSteps, -1);
+    }
+
+    /** recoverAttempt >= 0 marks a reconnect after a drop; -1 clears the count. */
+    public static void arm(Context context, int reason, int bitrateKbps, int fps, int adaptiveSteps, int recoverAttempt) {
         try {
             Bundle extras = memoryExtras != null ? new Bundle(memoryExtras) : decode(prefs(context).getString(KEY_EXTRAS, null));
             if (extras == null) {
@@ -83,6 +92,12 @@ public final class ResumeTicket {
             }
             if (adaptiveSteps >= 0) {
                 extras.putInt(EXTRA_ADAPTIVE_STEPS, adaptiveSteps);
+            }
+            if (recoverAttempt >= 0) {
+                extras.putInt(EXTRA_RECOVER, recoverAttempt);
+            }
+            else {
+                extras.remove(EXTRA_RECOVER);
             }
             memoryExtras = extras;
             prefs(context).edit()

@@ -2611,13 +2611,15 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             stats.append('\n').append(live);
         }
 
+        streamMenu.setHeaderExtra(pocketGraph != null && pocketGraph.hasData() ? pocketGraph : null);
         streamMenu.show(title, sub.toString(), stats.toString(), buildStreamMenuItems(),
                 ConsoleActivity.hintA(this, R.string.pocket_hint_select),
                 ConsoleActivity.hintB(this, R.string.pocket_hint_back),
                 new ConsoleActivity.Hint("\u25c0\u25b6", 0xFFFFFFFF, getString(R.string.pocket_hint_change)));
         // Frosted glass made from the game picture
-        com.limelight.pocket.ui.FrostedGlass.snapshot(streamContainer != null ? streamContainer.getSurfaceView() : null,
-                bitmap -> streamMenu.setBackdrop(bitmap));
+        // Live frosted glass: the game keeps moving behind the menu card
+        final android.view.SurfaceView frostSource = streamContainer != null ? streamContainer.getSurfaceView() : null;
+        pocketStartFrost(frostSource, streamMenu::isShowing, bitmap -> streamMenu.setBackdrop(bitmap, frostSource));
     }
 
     /** Frame generation mode for this game: the game's own setting if it has one, else the global one. */
@@ -2943,7 +2945,43 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         return "\n\n" + getString(UsbLink.isUsbAddress(host) ? R.string.pocket_error_hint_usb : R.string.pocket_error_hint_wifi);
     }
 
+    // Live graphs in the stream menu: one sample a second while streaming
+    private com.limelight.pocket.ui.PerfGraphView pocketGraph;
+    private final android.os.Handler pocketStatsHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable pocketStatsSampler = new Runnable() {
+        @Override
+        public void run() {
+            if (!connected || isFinishing()) {
+                return;
+            }
+            float fps = 0;
+            float decode = 0;
+            if (decoderRenderer != null) {
+                boolean fresh = android.os.SystemClock.uptimeMillis() - decoderRenderer.pocketStatsAt < 3000;
+                fps = fresh ? decoderRenderer.pocketFps : 0;
+                decode = fresh && decoderRenderer.pocketDecodeMs > 0 ? decoderRenderer.pocketDecodeMs
+                        : Math.max(0, decoderRenderer.getAverageDecoderLatency());
+            }
+            float ping = 0;
+            try {
+                long rtt = MoonBridge.getEstimatedRttInfo();
+                if (rtt != -1) {
+                    ping = (int) (rtt >> 32);
+                }
+            } catch (RuntimeException | UnsatisfiedLinkError ignored) {
+            }
+            if (pocketGraph == null) {
+                pocketGraph = new com.limelight.pocket.ui.PerfGraphView(Game.this, "FPS",
+                        getString(R.string.pocket_graph_ping), getString(R.string.pocket_graph_decode));
+            }
+            pocketGraph.push(fps, ping, decode);
+            pocketStatsHandler.postDelayed(this, 1000);
+        }
+    };
+
     private void pocketOnStreamStarted() {
+        pocketStatsHandler.removeCallbacks(pocketStatsSampler);
+        pocketStatsHandler.postDelayed(pocketStatsSampler, 1000);
         pocketApplyBrightness(PocketPrefs.streamBrightness(this));
         if (!UsbLink.isUsbAddress(host) && !pocketWarned24) {
             try {
@@ -3393,12 +3431,55 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
         radialMenu.show(slots, time, battery);
         // Frosted glass made from the game picture itself
-        com.limelight.pocket.ui.FrostedGlass.snapshot(streamContainer != null ? streamContainer.getSurfaceView() : null,
-                bitmap -> radialMenu.setBackdrop(bitmap));
+        pocketStartFrost(streamContainer != null ? streamContainer.getSurfaceView() : null,
+                radialMenu::isShowing, bitmap -> radialMenu.setBackdrop(bitmap));
     }
 
     private void closeRadial() {
         closeRadial(false);
+    }
+
+    private com.limelight.pocket.ui.FrostedGlass.Live pocketFrost;
+
+    /**
+     * Auto-recovery: when a stream that was playing fine drops (Wi-Fi blip, PC hiccup), go back
+     * to the console screen, which reconnects to the same game straight away. Gives up after
+     * three tries in a row, then the normal error explains what happened.
+     */
+    private boolean pocketTryRecover(int portTestResult) {
+        if (!PocketPrefs.autoRecover(this) || pocketSwitching || pocketSessionStartMs == 0) {
+            return false;
+        }
+        if (portTestResult != MoonBridge.ML_TEST_RESULT_INCONCLUSIVE && portTestResult != 0) {
+            return false; // blocked ports won't fix themselves
+        }
+        long played = android.os.SystemClock.elapsedRealtime() - pocketSessionStartMs;
+        if (played < 8000) {
+            return false;
+        }
+        int attempt = getIntent().getIntExtra(ResumeTicket.EXTRA_RECOVER, 0);
+        if (played > 90000) {
+            attempt = 0; // it had been fine for a while: a fresh run of tries
+        }
+        if (attempt >= 3) {
+            return false;
+        }
+        pocketSwitching = true;
+        ResumeTicket.arm(this, ResumeTicket.REASON_RECOVER, 0, 0, -1, attempt + 1);
+        PocketSounds.play(this, PocketSounds.ERROR);
+        finish();
+        return true;
+    }
+
+    /** One live frosted-glass feed at a time (radial menu or stream menu). */
+    private void pocketStartFrost(android.view.SurfaceView source,
+                                  com.limelight.pocket.ui.FrostedGlass.Condition showing,
+                                  com.limelight.pocket.ui.FrostedGlass.Callback callback) {
+        if (pocketFrost != null) {
+            pocketFrost.stop();
+        }
+        pocketFrost = new com.limelight.pocket.ui.FrostedGlass.Live(source, showing, callback);
+        pocketFrost.start();
     }
 
     /** confirmed: a slot was chosen (it flashes and the ring opens out), else it just closes. */
@@ -4978,6 +5059,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     displayedFailureDialog = true;
                     LimeLog.severe("Connection terminated: " + errorCode);
                     stopConnection();
+
+                    // Artemis Pocket: a running stream that dropped by itself reconnects
+                    if (errorCode != MoonBridge.ML_ERROR_GRACEFUL_TERMINATION && pocketTryRecover(portTestResult)) {
+                        return;
+                    }
 
                     // Display the error dialog if it was an unexpected termination.
                     // Otherwise, just finish the activity immediately.

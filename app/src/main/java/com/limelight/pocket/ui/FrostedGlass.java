@@ -49,6 +49,96 @@ public final class FrostedGlass {
         }
     }
 
+    /** Something that says whether a live glass should keep updating. */
+    public interface Condition {
+        boolean get();
+    }
+
+    /**
+     * Live frosted glass: re-copies the stream picture about 20 times a second (at an eighth of
+     * the size, so it's cheap) while the menu is open, so the game keeps moving behind the glass.
+     */
+    public static final class Live {
+        private final SurfaceView view;
+        private final Callback callback;
+        private final Condition keepGoing;
+        private final Handler main = new Handler(Looper.getMainLooper());
+        private final Bitmap[] buffers = new Bitmap[2];
+        private int next;
+        private boolean running;
+        private final Runnable capture = this::capture;
+
+        public Live(SurfaceView view, Condition keepGoing, Callback callback) {
+            this.view = view;
+            this.keepGoing = keepGoing;
+            this.callback = callback;
+        }
+
+        public void start() {
+            if (running || view == null) {
+                return;
+            }
+            running = true;
+            capture();
+        }
+
+        public void stop() {
+            running = false;
+            main.removeCallbacks(capture);
+        }
+
+        private void capture() {
+            if (!running) {
+                return;
+            }
+            if (!keepGoing.get() || view.getWidth() <= 0 || view.getHolder() == null
+                    || view.getHolder().getSurface() == null || !view.getHolder().getSurface().isValid()) {
+                stop();
+                return;
+            }
+            int w = Math.max(16, view.getWidth() / 8);
+            int h = Math.max(16, view.getHeight() / 8);
+            Bitmap target = buffers[next];
+            if (target == null || target.getWidth() != w || target.getHeight() != h) {
+                try {
+                    target = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+                } catch (OutOfMemoryError e) {
+                    stop();
+                    return;
+                }
+                buffers[next] = target;
+            }
+            final Bitmap filled = target;
+            try {
+                PixelCopy.request(view, filled, result -> {
+                    if (!running) {
+                        return;
+                    }
+                    if (result == PixelCopy.SUCCESS && keepGoing.get()) {
+                        callback.onSnapshot(filled);
+                        next ^= 1;
+                    }
+                    main.postDelayed(capture, 50);
+                }, main);
+            } catch (RuntimeException e) {
+                stop();
+            }
+        }
+    }
+
+    /** Like apply(), but for a live feed: the first frame fades in, later ones just replace it. */
+    public static void update(ImageView image, Bitmap bitmap, float brightness) {
+        if (bitmap == null) {
+            return;
+        }
+        if (image.getDrawable() == null) {
+            apply(image, bitmap, brightness);
+        }
+        else {
+            image.setImageBitmap(bitmap);
+        }
+    }
+
     /** Shows a snapshot as frosted glass in the ImageView (blur + dim + desaturate), fading in. */
     public static void apply(ImageView image, Bitmap bitmap, float brightness) {
         if (bitmap == null) {

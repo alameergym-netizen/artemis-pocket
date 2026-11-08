@@ -321,14 +321,30 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     refreshRows();
                 }, null);
 
-        addToggle(getString(R.string.pocket_set_turbo), getString(R.string.pocket_set_turbo_sub),
-                () -> prefs().getBoolean("checkbox_ultra_low_latency", false)
-                        && "latency".equals(prefs().getString("frame_pacing", "balanced")),
-                value -> prefs().edit()
-                        .putBoolean("checkbox_ultra_low_latency", value)
-                        .putBoolean("pref_low_latency_frame_balance", value)
-                        .putString("frame_pacing", value ? "latency" : "balanced")
-                        .apply());
+        // Stream mode: Competitive (least delay), Balanced, Cinematic (smoothest picture)
+        final String[] modeLabels = {getString(R.string.pocket_mode_competitive), getString(R.string.pocket_mode_balanced),
+                getString(R.string.pocket_mode_cinematic)};
+        addChoice(getString(R.string.pocket_set_stream_mode), getString(R.string.pocket_set_stream_mode_sub), modeLabels,
+                () -> {
+                    String pacing = prefs().getString("frame_pacing", "balanced");
+                    boolean ultra = prefs().getBoolean("checkbox_ultra_low_latency", false);
+                    if (ultra && "latency".equals(pacing)) {
+                        return 0;
+                    }
+                    if (!ultra && "balanced".equals(pacing)) {
+                        return 1;
+                    }
+                    if (!ultra && "smoothness".equals(pacing)) {
+                        return 2;
+                    }
+                    return -1;
+                },
+                index -> prefs().edit()
+                        .putBoolean("checkbox_ultra_low_latency", index == 0)
+                        .putBoolean("pref_low_latency_frame_balance", index == 0)
+                        .putString("frame_pacing", index == 0 ? "latency" : index == 1 ? "balanced" : "smoothness")
+                        .apply(),
+                getString(R.string.pocket_value_custom));
 
         addToggle(getString(R.string.pocket_set_auto_battery), getString(R.string.pocket_set_auto_battery_sub),
                 () -> PocketPrefs.autoBatterySaver(this),
@@ -631,6 +647,10 @@ public class QuickSettingsActivity extends ConsoleActivity {
         addAction(getString(R.string.pocket_usb_help_title), getString(R.string.pocket_usb_help_sub), null,
                 () -> showUsbHelp(this));
 
+        addToggle(getString(R.string.pocket_set_auto_recover), getString(R.string.pocket_set_auto_recover_sub),
+                () -> PocketPrefs.autoRecover(this),
+                value -> prefs().edit().putBoolean(PocketPrefs.KEY_AUTO_RECOVER, value).apply());
+
         addAction(getString(R.string.pocket_set_usb_tether), getString(R.string.pocket_set_usb_tether_sub), null,
                 () -> UsbLink.openTetherSettings(this));
 
@@ -712,9 +732,21 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 () -> PocketPrefs.animationsEnabled(this),
                 value -> prefs().edit().putBoolean(PocketPrefs.KEY_ANIMATIONS, value).apply());
 
+        if (com.limelight.pocket.ui.LiveGlass.supported()) {
+            addToggle(getString(R.string.pocket_set_live_glass), getString(R.string.pocket_set_live_glass_sub),
+                    () -> PocketPrefs.liveGlass(this),
+                    value -> {
+                        prefs().edit().putBoolean(PocketPrefs.KEY_LIVE_GLASS, value).apply();
+                        getIntent().putExtra("tab", TAB_SYSTEM);
+                        rowsContainer.postDelayed(this::recreate, 300);
+                    });
+        }
+
         addToggle(getString(R.string.pocket_set_haptics), getString(R.string.pocket_set_haptics_sub),
                 () -> PocketPrefs.hapticsEnabled(this),
                 value -> prefs().edit().putBoolean(PocketPrefs.KEY_HAPTICS, value).apply());
+
+        addHeader(R.string.pocket_header_sounds);
 
         addToggle(getString(R.string.pocket_set_sounds), getString(R.string.pocket_set_sounds_sub),
                 () -> PocketPrefs.uiSounds(this),
@@ -724,6 +756,28 @@ public class QuickSettingsActivity extends ConsoleActivity {
                         PocketSounds.preload(this);
                     }
                 });
+
+        final String[] styleLabels = {getString(R.string.pocket_sound_glass), getString(R.string.pocket_sound_soft),
+                getString(R.string.pocket_sound_crisp)};
+        addChoice(getString(R.string.pocket_set_sound_style), getString(R.string.pocket_set_sound_style_sub), styleLabels,
+                () -> PocketPrefs.soundStyleIndex(this),
+                index -> {
+                    prefs().edit().putString(PocketPrefs.KEY_SOUND_STYLE, PocketPrefs.SOUND_STYLES[index]).apply();
+                    PocketSounds.reload(this);
+                    // Let the new set load, then play a sample of it
+                    rowsContainer.postDelayed(() -> PocketSounds.preview(this, PocketSounds.CATEGORY_MENU), 260);
+                }, null);
+
+        addSlider(getString(R.string.pocket_set_vol_master), getString(R.string.pocket_set_vol_master_sub),
+                PocketPrefs.KEY_VOL_MASTER, PocketSounds.CATEGORY_MENU);
+        addSlider(getString(R.string.pocket_set_vol_nav), getString(R.string.pocket_set_vol_nav_sub),
+                PocketPrefs.KEY_VOL_NAV, PocketSounds.CATEGORY_NAV);
+        addSlider(getString(R.string.pocket_set_vol_menu), getString(R.string.pocket_set_vol_menu_sub),
+                PocketPrefs.KEY_VOL_MENU, PocketSounds.CATEGORY_MENU);
+        addSlider(getString(R.string.pocket_set_vol_boot), getString(R.string.pocket_set_vol_boot_sub),
+                PocketPrefs.KEY_VOL_BOOT, PocketSounds.CATEGORY_BOOT);
+
+        addHeader(R.string.pocket_header_extras);
 
         addToggle(getString(R.string.pocket_set_battery_alerts), getString(R.string.pocket_set_battery_alerts_sub),
                 () -> PocketPrefs.batteryAlerts(this),
@@ -865,6 +919,64 @@ public class QuickSettingsActivity extends ConsoleActivity {
         chev.setDuplicateParentStateEnabled(true);
         chev.setLayoutParams(new LinearLayout.LayoutParams(dp(18), dp(18)));
         return chev;
+    }
+
+    /** A 0-100% level. LEFT/RIGHT move it in steps of 5 (hold to sweep), touch drags it. */
+    private void addSlider(String title, String subtitle, final String key, final int previewCategory) {
+        LinearLayout row = newRow(title, subtitle);
+        final com.limelight.pocket.ui.PocketSlider slider = new com.limelight.pocket.ui.PocketSlider(this);
+        slider.setDuplicateParentStateEnabled(true);
+        LinearLayout.LayoutParams sliderLp = new LinearLayout.LayoutParams(dp(150), dp(30));
+        sliderLp.setMarginStart(dp(10));
+        row.addView(slider, sliderLp);
+        final TextView value = valueText();
+        value.setMinWidth(dp(50));
+        row.addView(value);
+
+        final long[] lastPreview = {0};
+        final Runnable preview = () -> {
+            long now = android.os.SystemClock.uptimeMillis();
+            if (now - lastPreview[0] > (previewCategory == PocketSounds.CATEGORY_BOOT ? 600 : 120)) {
+                lastPreview[0] = now;
+                PocketSounds.preview(this, previewCategory);
+            }
+        };
+        final Runnable refresh = () -> {
+            int v = PocketPrefs.soundVolume(this, key);
+            slider.setValue(v, false);
+            value.setText(v + "%");
+        };
+        refresh.run();
+        rowRefreshers.add(refresh);
+
+        final StepHandler step = direction -> {
+            int v = Math.max(0, Math.min(100, PocketPrefs.soundVolume(this, key) + direction * 5));
+            prefs().edit().putInt(key, v).apply();
+            slider.setValue(v, true);
+            value.setText(v + "%");
+            preview.run();
+        };
+        slider.setListener(v -> {
+            prefs().edit().putInt(key, v).apply();
+            value.setText(v + "%");
+            preview.run();
+        });
+        row.setOnKeyListener((v, keyCode, event) -> {
+            boolean rtl = v.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    int dir = keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1;
+                    step.step(rtl ? -dir : dir);
+                }
+                return true;
+            }
+            return false;
+        });
+        row.setOnClickListener(v -> {
+            lastPreview[0] = 0;
+            preview.run();
+        });
+        rowsContainer.addView(row);
     }
 
     /** A value picked from a list; LEFT/RIGHT step through it, A steps forward. */

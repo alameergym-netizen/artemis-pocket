@@ -1771,6 +1771,20 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
 
         // Flip stats windows roughly every second
         if (SystemClock.uptimeMillis() >= activeWindowVideoStats.measurementStartTimestamp + 1000) {
+            // Artemis Pocket: the numbers behind the stream menu's live graphs
+            try {
+                VideoStats pocketTwo = new VideoStats();
+                pocketTwo.add(lastWindowVideoStats);
+                pocketTwo.add(activeWindowVideoStats);
+                VideoStatsFps pocketRate = pocketTwo.getFps();
+                pocketFps = pocketRate.renderedFps > 0 ? pocketRate.renderedFps : pocketRate.totalFps;
+                pocketDecodeMs = pocketTwo.totalFramesReceived > 0
+                        ? (float) pocketTwo.decoderTimeMs / pocketTwo.totalFramesReceived : 0f;
+                int expected = pocketTwo.totalFrames + pocketTwo.framesLost;
+                pocketLossPct = expected > 0 ? 100f * pocketTwo.framesLost / expected : 0f;
+                pocketStatsAt = SystemClock.uptimeMillis();
+            } catch (RuntimeException ignored) {
+            }
             if (prefs.enablePerfOverlay || prefs.enablePerfLogging) {
                 VideoStats lastTwo = new VideoStats();
                 lastTwo.add(lastWindowVideoStats);
@@ -2234,6 +2248,12 @@ public class MediaCodecDecoderRenderer extends VideoDecoderRenderer implements C
         }
         return (int)(globalVideoStats.totalTimeMs / globalVideoStats.totalFramesReceived);
     }
+
+    // Artemis Pocket: refreshed about once a second (see the stats window flip)
+    public volatile float pocketFps;
+    public volatile float pocketDecodeMs;
+    public volatile float pocketLossPct;
+    public volatile long pocketStatsAt;
 
     public int getAverageDecoderLatency() {
         if (globalVideoStats.totalFramesReceived == 0) {

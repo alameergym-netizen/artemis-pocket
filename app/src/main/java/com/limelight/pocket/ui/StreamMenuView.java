@@ -134,8 +134,13 @@ public class StreamMenuView extends FrameLayout {
 
     private final float d;
     private final int accent;
-    private final ImageView backdrop;
     private final View scrim;
+    /** The floating glass card: base, live frosted game, then the content with its tint. */
+    private final FrameLayout card;
+    private final ImageView glass;
+    private final android.graphics.Matrix glassMatrix = new android.graphics.Matrix();
+    private final int[] cardLoc = new int[2];
+    private final int[] srcLoc = new int[2];
     private final LinearLayout panel;
     private final TextView titleView;
     private final TextView subtitleView;
@@ -176,37 +181,46 @@ public class StreamMenuView extends FrameLayout {
         setClickable(true);
         setFocusable(false);
 
-        backdrop = new ImageView(context);
-        backdrop.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        backdrop.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
-        addView(backdrop, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
         scrim = new View(context);
         scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                 new int[]{0xB3000000, 0x73000000, 0x40000000}));
         scrim.setOnClickListener(v -> hide());
         addView(scrim, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
+        float r = 26 * d;
+        card = new FrameLayout(context);
+        card.setClickable(true);
+        GradientDrawable base = new GradientDrawable();
+        base.setCornerRadius(r);
+        base.setColor(0xE60E0E10);
+        card.setBackground(base);
+        card.setClipToOutline(true);
+        card.setElevation(24 * d);
+        LayoutParams cardLp = new LayoutParams(dp(340), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.START);
+        cardLp.setMargins(dp(12), dp(12), 0, dp(12));
+        addView(card, cardLp);
+
+        // The game itself, frosted, seen through the card (live while the stream runs)
+        glass = new ImageView(context);
+        glass.setScaleType(ImageView.ScaleType.MATRIX);
+        glass.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+        card.addView(glass, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         panel = new LinearLayout(context);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setClickable(true);
-        float r = 26 * d;
         GradientDrawable body = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0xE6161618, 0xEB0C0C0E});
+                new int[]{0x66141416, 0x8C0A0A0C});
         body.setCornerRadius(r);
         GradientDrawable sheen = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0x14FFFFFF, 0x00FFFFFF, 0x00FFFFFF});
+                new int[]{0x1FFFFFFF, 0x05FFFFFF, 0x00FFFFFF});
         sheen.setCornerRadius(r);
         GradientDrawable edge = new GradientDrawable();
         edge.setCornerRadius(r);
         edge.setColor(0x00000000);
-        edge.setStroke(Math.max(1, Math.round(d)), 0x2EFFFFFF);
+        edge.setStroke(Math.max(1, Math.round(d)), 0x3DFFFFFF);
         panel.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[]{body, sheen, edge}));
-        panel.setElevation(24 * d);
         panel.setPadding(dp(20), dp(18), dp(14), dp(12));
-        LayoutParams panelLp = new LayoutParams(dp(340), ViewGroup.LayoutParams.MATCH_PARENT, Gravity.START);
-        panelLp.setMargins(dp(12), dp(12), 0, dp(12));
-        addView(panel, panelLp);
+        card.addView(panel, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         titleView = text(19, 0xFFFFFFFF, true);
         titleView.setSingleLine(true);
@@ -267,6 +281,40 @@ public class StreamMenuView extends FrameLayout {
         this.listener = listener;
     }
 
+    /**
+     * The card's own colour under the glass. Screens that already blur what's behind the menu
+     * use a lighter one, so the card reads as glass over them.
+     */
+    public void setBaseColor(int color) {
+        GradientDrawable base = new GradientDrawable();
+        base.setCornerRadius(26 * d);
+        base.setColor(color);
+        card.setBackground(base);
+    }
+
+    private View headerExtra;
+
+    /** A view shown under the stats line (e.g. live graphs), or null to remove it. */
+    public void setHeaderExtra(View view) {
+        if (headerExtra == view) {
+            return;
+        }
+        if (headerExtra != null) {
+            panel.removeView(headerExtra);
+        }
+        headerExtra = view;
+        if (view != null) {
+            if (view.getParent() instanceof ViewGroup) {
+                ((ViewGroup) view.getParent()).removeView(view);
+            }
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.bottomMargin = dp(10);
+            lp.setMarginEnd(dp(6));
+            panel.addView(view, panel.indexOfChild(statsView) + 1, lp);
+        }
+    }
+
     public void setConfirmLabel(String label) {
         confirmLabel = label;
     }
@@ -275,13 +323,41 @@ public class StreamMenuView extends FrameLayout {
         return showing;
     }
 
-    /** Frosted game picture behind the panel (from FrostedGlass.snapshot). */
-    public void setBackdrop(Bitmap bitmap) {
-        if (!showing) {
+    /**
+     * The game picture seen through the glass card (a frame from FrostedGlass; call again with
+     * each new frame for live glass). source is the view the picture was copied from.
+     */
+    public void setBackdrop(Bitmap bitmap, View source) {
+        if (!showing || bitmap == null || source == null) {
             return;
         }
-        hasBackdrop = bitmap != null;
-        FrostedGlass.apply(backdrop, bitmap, 0.55f);
+        // Line the picture up with where the game really is behind the card
+        card.getLocationInWindow(cardLoc);
+        source.getLocationInWindow(srcLoc);
+        glassMatrix.setScale(source.getWidth() / (float) bitmap.getWidth(), source.getHeight() / (float) bitmap.getHeight());
+        glassMatrix.postTranslate(srcLoc[0] - cardLoc[0], srcLoc[1] - cardLoc[1]);
+        glass.setImageMatrix(glassMatrix);
+        boolean first = !hasBackdrop;
+        hasBackdrop = true;
+        glass.setImageBitmap(bitmap);
+        if (first) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                android.graphics.ColorMatrix vibrancy = new android.graphics.ColorMatrix();
+                vibrancy.setSaturation(1.35f);
+                android.graphics.ColorMatrix dim = new android.graphics.ColorMatrix();
+                dim.setScale(0.62f, 0.62f, 0.62f, 1f);
+                vibrancy.postConcat(dim);
+                float radius = 22 * d;
+                glass.setRenderEffect(android.graphics.RenderEffect.createChainEffect(
+                        android.graphics.RenderEffect.createColorFilterEffect(new android.graphics.ColorMatrixColorFilter(vibrancy)),
+                        android.graphics.RenderEffect.createBlurEffect(radius, radius, android.graphics.Shader.TileMode.CLAMP)));
+            }
+            else {
+                glass.setColorFilter(0x99000000, android.graphics.PorterDuff.Mode.SRC_ATOP);
+            }
+            glass.setAlpha(0f);
+            glass.animate().alpha(1f).setDuration(240).start();
+        }
     }
 
     private int dp(float v) {
@@ -317,14 +393,15 @@ public class StreamMenuView extends FrameLayout {
         boolean wasShowing = showing;
         showing = true;
         if (!wasShowing) {
-            backdrop.setImageDrawable(null);
+            glass.animate().cancel();
+            glass.setImageDrawable(null);
             hasBackdrop = false;
         }
         render(0);
         PocketSounds.play(getContext(), PocketSounds.OPEN);
 
         animate().cancel();
-        panel.animate().cancel();
+        card.animate().cancel();
         scrim.animate().cancel();
         setVisibility(VISIBLE);
         boolean rtl = getLayoutDirection() == LAYOUT_DIRECTION_RTL;
@@ -333,19 +410,19 @@ public class StreamMenuView extends FrameLayout {
         if (animated() && !wasShowing) {
             scrim.setAlpha(0f);
             scrim.animate().alpha(1f).setDuration(180).start();
-            panel.setTranslationX(rtl ? dp(48) : -dp(48));
-            panel.setAlpha(0f);
-            panel.setScaleX(0.97f);
-            panel.setScaleY(0.97f);
-            panel.animate().translationX(0).alpha(1f).scaleX(1f).scaleY(1f).setDuration(460)
+            card.setTranslationX(rtl ? dp(48) : -dp(48));
+            card.setAlpha(0f);
+            card.setScaleX(0.97f);
+            card.setScaleY(0.97f);
+            card.animate().translationX(0).alpha(1f).scaleX(1f).scaleY(1f).setDuration(460)
                     .setInterpolator(Spring.SOFT).start();
         }
         else {
             scrim.setAlpha(1f);
-            panel.setTranslationX(0);
-            panel.setAlpha(1f);
-            panel.setScaleX(1f);
-            panel.setScaleY(1f);
+            card.setTranslationX(0);
+            card.setAlpha(1f);
+            card.setScaleX(1f);
+            card.setScaleY(1f);
         }
     }
 
@@ -359,18 +436,19 @@ public class StreamMenuView extends FrameLayout {
         handler.removeCallbacks(stickRepeat);
         if (animated()) {
             scrim.animate().alpha(0f).setDuration(150).start();
-            backdrop.animate().alpha(0f).setDuration(170).start();
             boolean rtl = getLayoutDirection() == LAYOUT_DIRECTION_RTL;
-            panel.animate().translationX(rtl ? dp(36) : -dp(36)).alpha(0f).scaleX(0.98f).scaleY(0.98f).setDuration(160)
+            card.animate().translationX(rtl ? dp(36) : -dp(36)).alpha(0f).scaleX(0.98f).scaleY(0.98f).setDuration(160)
                     .setInterpolator(PocketUi.EASE)
                     .withEndAction(() -> {
                         setVisibility(GONE);
-                        backdrop.setImageDrawable(null);
+                        glass.setImageDrawable(null);
+                        hasBackdrop = false;
                     }).start();
         }
         else {
             setVisibility(GONE);
-            backdrop.setImageDrawable(null);
+            glass.setImageDrawable(null);
+            hasBackdrop = false;
         }
         if (listener != null) {
             listener.onMenuClosed();

@@ -113,6 +113,29 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         applyFullscreenWindow(this);
     }
 
+    @Override
+    public void setContentView(int layoutResID) {
+        super.setContentView(layoutResID);
+        installLiveGlass();
+    }
+
+    /** Views tagged "glass" in the layout become real glass over the screen's backdrop. */
+    protected void installLiveGlass() {
+        View main = findViewById(R.id.pocketMain);
+        if (main == null) {
+            return;
+        }
+        View source = findViewById(R.id.pocketBackdrop);
+        if (source == null) {
+            source = findViewById(R.id.pocketAurora);
+        }
+        com.limelight.pocket.ui.LiveGlass.Backdrop backdrop = null;
+        if (source != null && com.limelight.pocket.ui.LiveGlass.supported() && PocketPrefs.liveGlass(this)) {
+            backdrop = new com.limelight.pocket.ui.LiveGlass.Backdrop(source, 22f);
+        }
+        com.limelight.pocket.ui.LiveGlass.attachTagged(main, backdrop);
+    }
+
     /** Edge-to-edge, behind the camera cutout, no system bars: the whole 1080p panel is ours. */
     public static void applyFullscreenWindow(android.app.Activity activity) {
         android.view.Window window = activity.getWindow();
@@ -248,6 +271,11 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             caption = getString(R.string.pocket_resume_caption);
             subtitle = getString(ResumeTicket.isUsb(intent) ? R.string.pocket_resume_sub_usb : R.string.pocket_resume_sub);
         }
+        else if (reason == ResumeTicket.REASON_RECOVER) {
+            caption = getString(R.string.pocket_recover_caption);
+            subtitle = getString(R.string.pocket_recover_sub,
+                    intent.getIntExtra(ResumeTicket.EXTRA_RECOVER, 1), 3);
+        }
         else {
             caption = getString(reason == ResumeTicket.REASON_ADAPTIVE
                     ? R.string.pocket_adaptive_caption : R.string.pocket_quality_caption);
@@ -273,7 +301,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         ViewGroup content = findViewById(android.R.id.content);
         content.addView(resumeOverlay, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        long delay = reason == ResumeTicket.REASON_SUSPEND ? 1500 : 700;
+        long delay = reason == ResumeTicket.REASON_SUSPEND ? 1500 : reason == ResumeTicket.REASON_RECOVER ? 1800 : 700;
         resumeOverlay.start(delay);
         PocketSounds.play(this, PocketSounds.OPEN);
         statusHandler.postDelayed(resumeLaunch, delay);
@@ -376,6 +404,10 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         if (consolePanel == null) {
             consolePanel = new StreamMenuView(this);
             consolePanel.setConfirmLabel(getString(R.string.pocket_sm_confirm));
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                // The screen behind is blurred while the panel is open: let it show through
+                consolePanel.setBaseColor(0x800E0E10);
+            }
             consolePanel.setListener(() -> PocketUi.setBackdropBlur(blurTarget(), false));
             ViewGroup content = findViewById(android.R.id.content);
             content.addView(consolePanel, new ViewGroup.LayoutParams(

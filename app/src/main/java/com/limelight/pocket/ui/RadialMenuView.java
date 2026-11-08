@@ -65,7 +65,7 @@ public class RadialMenuView extends FrameLayout {
     /** The frosted game picture behind the ring (from FrostedGlass.snapshot). */
     public void setBackdrop(Bitmap bitmap) {
         if (showing) {
-            FrostedGlass.apply(backdrop, bitmap, 0.5f);
+            FrostedGlass.update(backdrop, bitmap, 0.5f);
         }
     }
 

@@ -9,38 +9,45 @@
     android:background="@color/pocket_bg"
     tools:context=".AppView">
 
-    <com.limelight.pocket.ui.AuroraView
-        android:id="@+id/pocketAurora"
+    <!-- Everything behind the glass: lights, the selected game's art, scrims -->
+    <FrameLayout
+        android:id="@+id/pocketBackdrop"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent">
 
-    <!-- Blurred art of the selected game, cross-faded between two layers -->
-    <ImageView
-        android:id="@+id/pocketHeroArtA"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:alpha="0"
-        android:importantForAccessibility="no"
-        android:scaleType="centerCrop" />
+        <com.limelight.pocket.ui.AuroraView
+            android:id="@+id/pocketAurora"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
 
-    <ImageView
-        android:id="@+id/pocketHeroArtB"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:alpha="0"
-        android:importantForAccessibility="no"
-        android:scaleType="centerCrop" />
+        <!-- Blurred art of the selected game, cross-faded between two layers -->
+        <ImageView
+            android:id="@+id/pocketHeroArtA"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop" />
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="@drawable/pocket_hero_scrim" />
+        <ImageView
+            android:id="@+id/pocketHeroArtB"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop" />
 
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:layout_gravity="bottom"
-        android:background="@drawable/pocket_bottom_scrim" />
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/pocket_hero_scrim" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/pocket_bottom_scrim" />
+    </FrameLayout>
 
     <LinearLayout
         android:id="@+id/pocketMain"
@@ -62,6 +69,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/pocket_glass_pill"
+                android:tag="glass"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingStart="6dp"
@@ -98,6 +106,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/pocket_glass_pill"
+                android:tag="glass"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingStart="4dp"
@@ -256,6 +265,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/pocket_glass_pill"
+                android:tag="glass"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingStart="2dp"

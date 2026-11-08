@@ -346,6 +346,45 @@ public final class PocketPrefs {
         return FRAME_GEN_LSFG.equals(frameGen(context));
     }
 
+    // ---- v3: sound styles & levels, live glass, auto-recovery, stream modes --------------
+
+    public static final String KEY_SOUND_STYLE = "pocket_sound_style";
+    public static final String KEY_VOL_MASTER = "pocket_vol_master";
+    public static final String KEY_VOL_NAV = "pocket_vol_nav";
+    public static final String KEY_VOL_MENU = "pocket_vol_menu";
+    public static final String KEY_VOL_BOOT = "pocket_vol_boot";
+    public static final String KEY_LIVE_GLASS = "pocket_live_glass";
+    public static final String KEY_AUTO_RECOVER = "pocket_auto_recover";
+    public static final String KEY_STREAM_MODE = "pocket_stream_mode";
+
+    public static final String[] SOUND_STYLES = {"glass", "soft", "crisp"};
+
+    public static int soundStyleIndex(Context context) {
+        String style = prefs(context).getString(KEY_SOUND_STYLE, SOUND_STYLES[0]);
+        for (int i = 0; i < SOUND_STYLES.length; i++) {
+            if (SOUND_STYLES[i].equals(style)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    /** 0..100 */
+    public static int soundVolume(Context context, String key) {
+        int fallback = KEY_VOL_NAV.equals(key) ? 70 : KEY_VOL_MENU.equals(key) ? 90 : KEY_VOL_BOOT.equals(key) ? 100 : 85;
+        return Math.max(0, Math.min(100, prefs(context).getInt(key, fallback)));
+    }
+
+    /** Real frosted glass (live blur) on the console screens. */
+    public static boolean liveGlass(Context context) {
+        return prefs(context).getBoolean(KEY_LIVE_GLASS, true);
+    }
+
+    /** Reconnect by itself when the stream drops unexpectedly. */
+    public static boolean autoRecover(Context context) {
+        return prefs(context).getBoolean(KEY_AUTO_RECOVER, true);
+    }
+
     public static boolean micPassthrough(Context context) {
         return prefs(context).getBoolean(KEY_MIC, false);
     }

@@ -453,7 +453,17 @@ public class QuickSettingsActivity extends ConsoleActivity {
     private void addGestureRows(final int button) {
         for (int g = 0; g < 3; g++) {
             final int gesture = g;
-            addAction(getString(ButtonActions.gestureLabel(gesture)), null,
+            String sub = null;
+            if (gesture == ButtonActions.GESTURE_TAP && ButtonGestures.isLive(
+                    ButtonActions.get(this, button, ButtonActions.GESTURE_TAP),
+                    ButtonActions.get(this, button, ButtonActions.GESTURE_DOUBLE),
+                    ButtonActions.get(this, button, ButtonActions.GESTURE_HOLD))) {
+                sub = getString(R.string.pocket_gesture_live_sub);
+            }
+            else if (gesture == ButtonActions.GESTURE_HOLD) {
+                sub = getString(R.string.pocket_gesture_hold_sub);
+            }
+            addAction(getString(ButtonActions.gestureLabel(gesture)), sub,
                     () -> getString(ButtonActions.get(this, button, gesture).label),
                     () -> pickAction(getString(ButtonActions.buttonLabel(button)) + " · " + getString(ButtonActions.gestureLabel(gesture)),
                             PocketAction.forButtons(), ButtonActions.get(this, button, gesture),

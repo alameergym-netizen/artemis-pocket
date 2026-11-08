@@ -341,4 +341,6 @@
     <string name="pocket_crash_copied">Report copied</string>
     <string name="pocket_crash_dismiss">Close</string>
     <string name="pocket_advanced_failed">Advanced settings couldn\'t open. The error was saved; open the app again to see it.</string>
+    <string name="pocket_gesture_live_sub">Works like the real button: a tap is a tap, a long press stays held on the PC</string>
+    <string name="pocket_gesture_hold_sub">Guide, View and Start stay pressed on the PC for as long as you hold</string>
 </resources>

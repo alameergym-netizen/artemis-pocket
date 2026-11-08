@@ -2328,6 +2328,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             }
 
             @Override
+            public void holdAction(int button, PocketAction action, boolean down) {
+                pressPocketControllerButton(action, down);
+            }
+
+            @Override
             public void releaseRadialHeld(int button) {
                 if (radialMenu != null && radialMenu.isShowing() && radialHeldBy == button) {
                     PocketAction chosen = radialMenu.getSelectedAction();
@@ -2404,6 +2409,37 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         else {
             showGameMenu(null);
         }
+    }
+
+    /**
+     * Holds Guide, View or Start down on the PC until released, so a long press on the
+     * handheld is a long press on the PC (Windows: hold Guide for the app switcher).
+     */
+    private void pressPocketControllerButton(PocketAction action, boolean down) {
+        if (controllerHandler == null) {
+            return;
+        }
+        int flag;
+        switch (action) {
+            case GUIDE:
+                flag = ControllerHandler.POCKET_GUIDE;
+                break;
+            case VIEW:
+                flag = ControllerHandler.POCKET_VIEW;
+                break;
+            case START:
+                flag = ControllerHandler.POCKET_START;
+                break;
+            default:
+                if (down) {
+                    performPocketAction(action, -1, true);
+                }
+                return;
+        }
+        if (down) {
+            showPocketActionToast(action.shortLabel(this));
+        }
+        controllerHandler.setEmulatedFlag(flag, down);
     }
 
     /** Quits the game on the PC without another dialog (the in-stream menu already asked). */
@@ -2550,6 +2586,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }));
 
         items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_session)));
+        items.add(actionItem(PocketAction.ANDROID_HOME, false));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_disconnect), this::disconnect)
                 .withValue(getString(R.string.pocket_sm_disconnect_value)));
         items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_sm_quit), this::quitNow));

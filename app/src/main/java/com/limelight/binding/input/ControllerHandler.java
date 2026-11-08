@@ -2974,16 +2974,24 @@ public class ControllerHandler implements InputManager.InputDeviceListener, UsbD
         if (last != null && inputDeviceContexts.get(last.id) == last) {
             target = last;
         }
-        // Clear the flag from whichever context held it before, so nothing stays stuck
-        if (!down && target != defaultContext && (defaultContext.inputMap & flag) != 0) {
-            defaultContext.inputMap &= ~flag;
-            sendControllerInputPacket(defaultContext);
-        }
-        if (down) {
-            target.inputMap |= flag;
+        if (!down) {
+            // Release it wherever it is held (the active controller may have changed while it
+            // was down), so nothing stays stuck on the PC
+            for (int i = 0; i < inputDeviceContexts.size(); i++) {
+                GenericControllerContext c = inputDeviceContexts.valueAt(i);
+                if (c != target && (c.inputMap & flag) != 0) {
+                    c.inputMap &= ~flag;
+                    sendControllerInputPacket(c);
+                }
+            }
+            if (target != defaultContext && (defaultContext.inputMap & flag) != 0) {
+                defaultContext.inputMap &= ~flag;
+                sendControllerInputPacket(defaultContext);
+            }
+            target.inputMap &= ~flag;
         }
         else {
-            target.inputMap &= ~flag;
+            target.inputMap |= flag;
         }
         sendControllerInputPacket(target);
     }

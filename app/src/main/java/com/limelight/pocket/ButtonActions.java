@@ -28,8 +28,8 @@ public final class ButtonActions {
     private static final PocketAction[][] DEFAULTS = {
             // Back: tap = Xbox Guide, double = quick menu, hold = radial menu
             {PocketAction.GUIDE, PocketAction.QUICK_MENU, PocketAction.RADIAL},
-            // Home: tap = Xbox Guide, double = nothing, hold = go to Android home
-            {PocketAction.GUIDE, PocketAction.NONE, PocketAction.ANDROID_HOME},
+            // Home: a real Xbox Guide button (tap and long press both reach the PC as they are)
+            {PocketAction.GUIDE, PocketAction.NONE, PocketAction.GUIDE},
             // Menu button (M1/M2 or whatever was assigned): quick menu / radial
             {PocketAction.QUICK_MENU, PocketAction.NONE, PocketAction.RADIAL},
     };

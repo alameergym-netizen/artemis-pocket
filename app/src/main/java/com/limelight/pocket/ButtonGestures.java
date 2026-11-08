@@ -8,9 +8,13 @@ import android.os.Looper;
  * action. Rules:
  *  - If only "tap" is set to DEFAULT and nothing else is assigned, the button passes straight
  *    through (down/up as they happen) so it can still be held in games.
+ *  - "Live" controller buttons: when tap is Xbox Guide, View or Start, there is no double-press
+ *    action and hold is empty or the same button, the press goes to the PC exactly as long as
+ *    it is held (a tap is a tap, a long press is a long press, e.g. Windows' hold-Guide).
  *  - A tap waits for a possible second press only if a double-press action exists.
- *  - Hold fires after HOLD_MS. When the hold action is the radial menu, the menu stays open
- *    while the button is held and the highlighted slot runs on release.
+ *  - Hold fires after HOLD_MS. Guide, View or Start as the hold action stay pressed on the PC
+ *    until the button is let go. The radial menu stays open while the button is held and the
+ *    highlighted slot runs on release.
  */
 public class ButtonGestures {
 
@@ -25,6 +29,9 @@ public class ButtonGestures {
         void openRadialHeld(int button);
 
         void releaseRadialHeld(int button);
+
+        /** Press (down) or release a controller button action that can be held on the PC. */
+        void holdAction(int button, PocketAction action, boolean down);
     }
 
     private static final long HOLD_MS = 420;
@@ -41,6 +48,8 @@ public class ButtonGestures {
     private boolean down;
     private boolean holdFired;
     private boolean passingThrough;
+    private PocketAction liveAction;
+    private PocketAction heldAction;
     private boolean tapPending;
     private boolean secondPress;
 
@@ -55,6 +64,10 @@ public class ButtonGestures {
             handler.removeCallbacks(tapRunnable);
             if (hold == PocketAction.RADIAL) {
                 callbacks.openRadialHeld(button);
+            }
+            else if (canBeHeld(hold)) {
+                heldAction = hold;
+                callbacks.holdAction(button, hold, true);
             }
             else {
                 callbacks.runAction(button, hold);
@@ -81,6 +94,17 @@ public class ButtonGestures {
         this.tap = tap;
         this.doubleTap = doubleTap;
         this.hold = hold;
+    }
+
+    /** Controller buttons that can stay pressed on the PC for as long as the button is held. */
+    public static boolean canBeHeld(PocketAction action) {
+        return action == PocketAction.GUIDE || action == PocketAction.VIEW || action == PocketAction.START;
+    }
+
+    /** True when this combination makes the button behave exactly like that controller button. */
+    public static boolean isLive(PocketAction tap, PocketAction doubleTap, PocketAction hold) {
+        return canBeHeld(tap) && doubleTap == PocketAction.NONE
+                && (hold == PocketAction.NONE || hold == tap);
     }
 
     private boolean isPlainPassThrough() {
@@ -110,6 +134,15 @@ public class ButtonGestures {
         }
         passingThrough = false;
 
+        if (isLive(tap, doubleTap, hold)) {
+            // Straight to the PC, no waiting: held exactly as long as the button
+            tapPending = false;
+            handler.removeCallbacks(tapRunnable);
+            liveAction = tap;
+            callbacks.holdAction(button, tap, true);
+            return;
+        }
+
         secondPress = tapPending;
         if (secondPress) {
             // Second press of a double press
@@ -133,9 +166,20 @@ public class ButtonGestures {
             callbacks.passThrough(button, false);
             return;
         }
+        if (liveAction != null) {
+            PocketAction released = liveAction;
+            liveAction = null;
+            callbacks.holdAction(button, released, false);
+            return;
+        }
         if (holdFired) {
             holdFired = false;
-            if (hold == PocketAction.RADIAL) {
+            if (heldAction != null) {
+                PocketAction released = heldAction;
+                heldAction = null;
+                callbacks.holdAction(button, released, false);
+            }
+            else if (hold == PocketAction.RADIAL) {
                 callbacks.releaseRadialHeld(button);
             }
             return;
@@ -160,9 +204,17 @@ public class ButtonGestures {
         if (passingThrough) {
             callbacks.passThrough(button, false);
         }
+        if (liveAction != null) {
+            callbacks.holdAction(button, liveAction, false);
+        }
+        if (heldAction != null) {
+            callbacks.holdAction(button, heldAction, false);
+        }
         down = false;
         holdFired = false;
         passingThrough = false;
+        liveAction = null;
+        heldAction = null;
         tapPending = false;
         secondPress = false;
     }

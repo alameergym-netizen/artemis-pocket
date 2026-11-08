@@ -2433,7 +2433,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
         streamMenuConsumedKeys.clear();
 
-        String title = appName != null ? appName : getString(R.string.app_name);
+        String title = appName != null ? appName : getString(R.string.app_label);
         StringBuilder sub = new StringBuilder();
         if (pcName != null) {
             sub.append(pcName).append("  \u00b7  ");

@@ -283,6 +283,10 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             caption = getString(R.string.pocket_resume_caption);
             subtitle = getString(ResumeTicket.isUsb(intent) ? R.string.pocket_resume_sub_usb : R.string.pocket_resume_sub);
         }
+        else if (reason == ResumeTicket.REASON_SIGNIN) {
+            caption = getString(R.string.pocket_signin_switch_caption);
+            subtitle = getString(R.string.pocket_signin_switch_sub);
+        }
         else if (reason == ResumeTicket.REASON_RECOVER) {
             caption = getString(R.string.pocket_recover_caption);
             subtitle = getString(R.string.pocket_recover_sub,
@@ -313,7 +317,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         ViewGroup content = findViewById(android.R.id.content);
         content.addView(resumeOverlay, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        long delay = reason == ResumeTicket.REASON_SUSPEND ? 1500 : reason == ResumeTicket.REASON_RECOVER ? 1800 : 700;
+        long delay = reason == ResumeTicket.REASON_SUSPEND ? 1500
+                : (reason == ResumeTicket.REASON_RECOVER || reason == ResumeTicket.REASON_SIGNIN) ? 1800 : 700;
         resumeOverlay.start(delay);
         PocketSounds.play(this, PocketSounds.OPEN);
         statusHandler.postDelayed(resumeLaunch, delay);
@@ -359,82 +364,47 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }, this::removeResumeOverlay);
     }
 
-    // ---- Waiting for Windows sign-in ---------------------------------------------------------
+    // ---- Windows sign-in screen -------------------------------------------------------------
 
-    private boolean signInWatching;
+    private boolean signInChecking;
 
     /**
-     * Starts a stream only once someone is signed in to Windows on that PC. Streaming while the PC
-     * is still at its sign-in screen makes Vibepollo/Apollo restart its display helper at sign-in,
-     * which drops this device's virtual display, and Windows then remembers that screen as off
-     * (every later stream mirrors the main screen until the device is paired again).
-     * The Artemis Pocket PC helper only runs after sign-in, so when it has answered before but
-     * doesn't now, the PC is waiting at the sign-in screen: show a card and start by itself as
-     * soon as the helper answers. A starts anyway, B cancels. Without the helper: start right away.
+     * Starting a stream while the PC is still at the Windows sign-in screen: Vibepollo/Apollo
+     * restarts its display helper at sign-in, which drops a virtual display made before it, and
+     * Windows then remembers that screen as off (later streams mirror until the device is paired
+     * again). So at the sign-in screen the stream shows the PC's main screen (all you need to
+     * sign in remotely), and once you've signed in the stream switches to the virtual display by
+     * itself (see Game). The Artemis Pocket PC helper only runs after sign-in: when it has
+     * answered from this PC before but doesn't now, the PC is at the sign-in screen.
+     * Without the helper nothing changes.
      */
     public void runWhenSignedIn(final Intent gameIntent, final Runnable start, final Runnable onCancel) {
         final String uuid = gameIntent.getStringExtra(com.limelight.Game.EXTRA_PC_UUID);
         final String host = gameIntent.getStringExtra(com.limelight.Game.EXTRA_HOST);
-        if (signInWatching) {
-            return; // already waiting for this sign-in
+        if (signInChecking) {
+            return; // a second press while checking
         }
-        if (uuid == null || host == null || !PocketPrefs.companionRecentlySeen(this, uuid)) {
+        if (uuid == null || host == null || !PocketPrefs.companionRecentlySeen(this, uuid)
+                || !gameIntent.getBooleanExtra(com.limelight.Game.EXTRA_VDISPLAY,
+                com.limelight.preferences.PreferenceConfiguration.readPreferences(this).useVirtualDisplay)) {
             start.run();
             return;
         }
-        final String name = gameIntent.getStringExtra(com.limelight.Game.EXTRA_PC_NAME);
-        final long began = android.os.SystemClock.uptimeMillis();
-        final boolean[] cardShown = {false};
-        final boolean[] done = {false};
-        final Runnable finish = () -> {
-            done[0] = true;
-            signInWatching = false;
-        };
-        final Runnable[] poll = new Runnable[1];
-        poll[0] = () -> new Thread(() -> {
+        signInChecking = true;
+        new Thread(() -> {
             final boolean signedIn = PcCompanion.run(getApplicationContext(), host, uuid, "PING") != null;
             runOnUiThread(() -> {
-                if (done[0] || isFinishing()) {
+                signInChecking = false;
+                if (isFinishing()) {
                     return;
                 }
-                if (signedIn) {
-                    finish.run();
-                    if (cardShown[0]) {
-                        hideBlockingCard();
-                    }
-                    start.run();
-                    return;
+                if (!signedIn) {
+                    gameIntent.putExtra(com.limelight.Game.EXTRA_VDISPLAY, false);
+                    gameIntent.putExtra(com.limelight.Game.EXTRA_POCKET_SIGNIN, true);
                 }
-                if (!cardShown[0]) {
-                    cardShown[0] = true;
-                    showWaitCard(getString(R.string.pocket_signin_caption), name != null ? name : "PC",
-                            getString(R.string.pocket_signin_sub), 180000,
-                            () -> {
-                                finish.run();
-                                if (onCancel != null) {
-                                    onCancel.run();
-                                }
-                            },
-                            () -> {
-                                finish.run();
-                                hideBlockingCard();
-                                start.run();
-                            });
-                }
-                if (android.os.SystemClock.uptimeMillis() - began > 180000) {
-                    finish.run();
-                    hideBlockingCard();
-                    android.widget.Toast.makeText(this, R.string.pocket_signin_timeout, android.widget.Toast.LENGTH_LONG).show();
-                    if (onCancel != null) {
-                        onCancel.run();
-                    }
-                    return;
-                }
-                statusHandler.postDelayed(poll[0], 2500);
+                start.run();
             });
-        }, "PocketSignInWatch").start();
-        signInWatching = true;
-        poll[0].run();
+        }, "PocketSignInCheck").start();
     }
 
     private void cancelResume() {

@@ -284,6 +284,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     public static final String EXTRA_APP_HDR = "HDR";
     public static final String EXTRA_SERVER_CERT = "ServerCert";
     public static final String EXTRA_VDISPLAY = "VirtualDisplay";
+    /** Artemis Pocket: started at the Windows sign-in screen (main screen now, virtual display after sign-in). */
+    public static final String EXTRA_POCKET_SIGNIN = "PocketSignIn";
     public static final String EXTRA_SERVER_COMMANDS = "ServerCommands";
     public static final String EXTRA_DISPLAY_ID = "DisplayID";
 
@@ -707,7 +709,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         // Artemis Pocket: with "Virtual display" on, every start AND every resume asks for it.
         // A resume without it makes Apollo join the PC's main screen (a mirror; and on laptops
         // whose screen runs on the integrated GPU the encoder can't even capture it).
-        if (prefConfig != null && prefConfig.useVirtualDisplay) {
+        pocketSignInMode = Game.this.getIntent().getBooleanExtra(EXTRA_POCKET_SIGNIN, false);
+        if (pocketSignInMode) {
+            vDisplay = false; // the sign-in screen is on the main screen; see pocketWatchSignIn
+        }
+        else if (prefConfig != null && prefConfig.useVirtualDisplay) {
             vDisplay = true;
         }
         serverCommands = Game.this.getIntent().getStringArrayListExtra(EXTRA_SERVER_COMMANDS);
@@ -2718,6 +2724,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
         items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_play)));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_resume), () -> { }).withIcon("PLAY"));
+        if (pocketSignInMode && !pocketSwitching) {
+            // Signed in already (or the PC helper isn't running): move to the virtual display now
+            items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_switch_vdisplay),
+                    this::pocketSwitchToVirtualDisplay).withIcon("DESKTOP"));
+        }
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_guide),
                 () -> performPocketAction(PocketAction.GUIDE, -1, true)).withIcon("GUIDE"));
         items.add(StreamMenuView.Item.value(getString(R.string.pocket_sm_stats),
@@ -3010,7 +3021,61 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
     };
 
+    // ---- Started at the Windows sign-in screen ---------------------------------------------
+
+    private boolean pocketSignInMode;
+    private boolean pocketSignInWatching;
+
+    /**
+     * The stream shows the PC's main screen while Windows is at its sign-in screen. Watch for the
+     * sign-in (the Artemis Pocket PC helper starts with it), give Windows a few seconds to settle,
+     * then restart on a fresh virtual display: quit the session on the PC (it was only the sign-in
+     * screen) and start again with the virtual display.
+     */
+    private void pocketWatchSignIn() {
+        if (!pocketSignInMode || pocketSignInWatching) {
+            return;
+        }
+        pocketSignInWatching = true;
+        showPocketToast(getString(R.string.pocket_signin_mirror_toast), true, 5000);
+        final String uuid = pocketPcUuid();
+        final String companionHost = host;
+        new Thread(() -> {
+            while (!isFinishing() && connected && !pocketSwitching) {
+                if (PcCompanion.run(getApplicationContext(), companionHost, uuid, "PING") != null) {
+                    try {
+                        Thread.sleep(6000); // let the desktop finish appearing
+                    } catch (InterruptedException e) {
+                        return;
+                    }
+                    runOnUiThread(this::pocketSwitchToVirtualDisplay);
+                    return;
+                }
+                try {
+                    Thread.sleep(3000);
+                } catch (InterruptedException e) {
+                    return;
+                }
+            }
+        }, "PocketSignInWatch").start();
+    }
+
+    private void pocketSwitchToVirtualDisplay() {
+        if (pocketSwitching || isFinishing() || !connected) {
+            return;
+        }
+        Intent next = new Intent(getIntent());
+        next.removeExtra(EXTRA_POCKET_SIGNIN);
+        next.putExtra(EXTRA_VDISPLAY, true);
+        ResumeTicket.remember(this, next);
+        showPocketToast(getString(R.string.pocket_signin_switch_toast), true, 2500);
+        // A fresh start (not a resume), so the PC makes the virtual display now that someone is signed in
+        quitOnStop = true;
+        pocketSwitchStream(ResumeTicket.REASON_SIGNIN, 0, 0, -1);
+    }
+
     private void pocketOnStreamStarted() {
+        pocketWatchSignIn();
         pocketStatsHandler.removeCallbacks(pocketStatsSampler);
         pocketStatsHandler.postDelayed(pocketStatsSampler, 1000);
         pocketApplyBrightness(PocketPrefs.streamBrightness(this));
@@ -4997,16 +5062,19 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             new Thread() {
                 public void run() {
                     conn.stop();
-                    ResumeTicket.markStopFinished();
                     if (httpConn != null && quitOnStop) {
                         try {
                             sleep(1000);
                             httpConn.quitApp();
-                            Game.this.runOnUiThread(() -> Toast.makeText(Game.this, Game.this.getResources().getString(R.string.applist_quit_success) + " " + appName, Toast.LENGTH_LONG).show());
+                            if (!pocketSwitching) {
+                                Game.this.runOnUiThread(() -> Toast.makeText(Game.this, Game.this.getResources().getString(R.string.applist_quit_success) + " " + appName, Toast.LENGTH_LONG).show());
+                            }
                         } catch (Exception e) {
                             Game.this.runOnUiThread(() -> Toast.makeText(Game.this, e.getMessage(), Toast.LENGTH_LONG).show());
                         }
                     }
+                    // Only now: a stream that restarts after this waits until the quit went through
+                    ResumeTicket.markStopFinished();
                 }
             }.start();
         }

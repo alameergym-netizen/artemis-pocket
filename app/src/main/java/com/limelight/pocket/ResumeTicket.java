@@ -31,6 +31,8 @@ public final class ResumeTicket {
     public static final int REASON_ADAPTIVE = 2;
     /** The stream dropped by itself: reconnect to the same game. */
     public static final int REASON_RECOVER = 3;
+    /** Signed in to Windows: move from the main screen to a fresh virtual display. */
+    public static final int REASON_SIGNIN = 4;
     /** How many reconnects in a row (so a dead link doesn't loop forever). */
     public static final String EXTRA_RECOVER = "pocket_recover_attempt";
 

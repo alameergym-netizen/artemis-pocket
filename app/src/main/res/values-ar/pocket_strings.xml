@@ -502,4 +502,9 @@
     <string name="pocket_signin_sub">سجّل دخول على الكمبيوتر واللعبة بتشتغل لحالها. البث قبل تسجيل الدخول ممكن يخرّب الشاشة الافتراضية لهالجهاز.</string>
     <string name="pocket_hint_start_anyway">شغّل هلأ</string>
     <string name="pocket_signin_timeout">الكمبيوتر لسا ما انعمل عليه تسجيل دخول على ويندوز.</string>
+    <string name="pocket_signin_mirror_toast">الكمبيوتر على شاشة تسجيل الدخول: عم نعرض شاشته الأساسية. بعد ما تسجّل دخول، البث بينتقل للشاشة الافتراضية لحاله.</string>
+    <string name="pocket_signin_switch_toast">تم تسجيل الدخول · عم ننتقل للشاشة الافتراضية</string>
+    <string name="pocket_signin_switch_caption">تم تسجيل الدخول · عم ننتقل للشاشة الافتراضية</string>
+    <string name="pocket_signin_switch_sub">عم نبلش من جديد على شاشة معمولة لهالجهاز</string>
+    <string name="pocket_sm_switch_vdisplay">انتقل للشاشة الافتراضية</string>
 </resources>

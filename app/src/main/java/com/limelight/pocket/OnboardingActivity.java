@@ -338,7 +338,7 @@ public class OnboardingActivity extends ConsoleActivity {
         pill.setCornerRadius(dp(100));
         pill.setColor(accent);
         next.setBackground(pill);
-        updateDots(false);
+        tintDots();
         if (rows != null) {
             if (glider != null) {
                 rows.getViewTreeObserver().removeOnGlobalFocusChangeListener(glider);
@@ -352,12 +352,19 @@ public class OnboardingActivity extends ConsoleActivity {
         }
     }
 
-    private void updateDots(boolean animate) {
+    private void tintDots() {
         int accent = PocketTheme.accent(this);
         for (int i = 0; i < dots.getChildCount(); i++) {
-            final View dot = dots.getChildAt(i);
-            GradientDrawable bg = (GradientDrawable) dot.getBackground();
+            GradientDrawable bg = (GradientDrawable) dots.getChildAt(i).getBackground();
             bg.setColor(i == page ? accent : (i < page ? 0x99FFFFFF : 0x40FFFFFF));
+        }
+    }
+
+    /** The progress pills: the current page's pill stretches out. */
+    private void updateDots(boolean animate) {
+        tintDots();
+        for (int i = 0; i < dots.getChildCount(); i++) {
+            final View dot = dots.getChildAt(i);
             final LinearLayout.LayoutParams lp = (LinearLayout.LayoutParams) dot.getLayoutParams();
             int target = i == page ? dp(22) : dp(6);
             if (lp.width == target) {

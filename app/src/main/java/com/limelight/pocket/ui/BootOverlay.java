@@ -20,6 +20,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import com.limelight.R;
 import com.limelight.pocket.PocketPrefs;
@@ -29,8 +30,9 @@ import com.limelight.pocket.PocketSounds;
  * The boot sequence (about six seconds, any button skips it), timed to the boot sound:
  * a spark of light appears, splits into two beams that trace the handheld's outline, the body
  * comes into focus as its screen lights up with a shock ring, the wordmark rises letter by
- * letter, a reflection glides across the screen, and then the camera flies into the handheld's
- * screen and lands on the home screen.
+ * letter, a reflection glides across the screen. To finish, the logo and wordmark fly up and dock
+ * into the home screen's brand mark, and a wave of light washes out from there to reveal the home
+ * screen while it builds itself (the entrance choreography starts with the wave).
  */
 public final class BootOverlay extends FrameLayout {
 
@@ -47,7 +49,12 @@ public final class BootOverlay extends FrameLayout {
     private static final float LINE_START = 3.55f;
     private static final float GLINT = 3.95f;
     private static final float EXIT_AT = 5.25f;
-    private static final float ZOOM_SECONDS = 1.0f;
+    // The hand-off, in seconds after the exit begins
+    private static final float FLY_END = 0.62f;
+    private static final float LAND = 0.58f;
+    private static final float WAVE_START = 0.40f;
+    private static final float WAVE_END = 1.15f;
+    private static final float ENTRANCE_AT = 0.46f;
     private static final long MAX_SOUND_WAIT_MS = 600;
 
     private static final String WORD_1 = "ARTEMIS";
@@ -63,6 +70,7 @@ public final class BootOverlay extends FrameLayout {
     private final String tagline;
     private final Spring logoScale = new Spring(150f, 0.55f, 0.88f);
     private Listener listener;
+    private Runnable onReveal;
     private View reveal;
 
     private final long createdAt;
@@ -71,8 +79,24 @@ public final class BootOverlay extends FrameLayout {
     private float t;
     /** When the exit began (timeline seconds), or -1. */
     private float exitAt = -1;
-    private boolean zoomExit;
-    private float zoomSeconds = ZOOM_SECONDS;
+    private boolean handoff;
+    private float exitSpeed = 1f;
+    private boolean revealFired;
+    private boolean landed;
+    // Where the logo and wordmark dock (overlay coordinates)
+    private View brandLogo;
+    private TextView brandText;
+    private float fromX;
+    private float fromY;
+    private float toX;
+    private float toY;
+    private float toScale;
+    private float textToX;
+    private float textToBase;
+    private float textToSize;
+    private float textToSpacing;
+    private float waveMax;
+    private final int[] loc = new int[2];
     private boolean finished;
     private boolean running;
 
@@ -122,9 +146,14 @@ public final class BootOverlay extends FrameLayout {
         this.listener = listener;
     }
 
-    /** The screen underneath; it is revealed through the handheld's screen. */
+    /** The screen underneath; the wave of light reveals it. */
     public void setReveal(View view) {
         reveal = view;
+    }
+
+    /** Runs when the home screen starts to appear (so it can build itself as it is revealed). */
+    public void setOnReveal(Runnable r) {
+        onReveal = r;
     }
 
     @Override
@@ -141,6 +170,7 @@ public final class BootOverlay extends FrameLayout {
         if (!finished) {
             PocketSounds.releaseBoot();
             restoreReveal();
+            showBrand();
         }
         super.onDetachedFromWindow();
     }
@@ -156,12 +186,12 @@ public final class BootOverlay extends FrameLayout {
         }
         PocketSounds.fadeOutBoot(getContext(), 300);
         if (startNanos < 0 || t < LIGHT_UP + 0.2f) {
-            // Nothing lit yet to fly into: just fade away
+            // Nothing lit yet to hand off: just fade away
             fadeExit();
         }
         else {
-            zoomSeconds = 0.75f;
-            beginZoom();
+            // Same pace as the natural ending, so the dock stays in time with its sound
+            beginHandoff();
         }
     }
 
@@ -196,21 +226,35 @@ public final class BootOverlay extends FrameLayout {
         }
 
         if (exitAt < 0 && t >= EXIT_AT) {
-            beginZoom();
+            beginHandoff();
         }
-        if (zoomExit) {
-            float z = seg(t, exitAt + 0.15f, exitAt + 0.15f + zoomSeconds);
-            float k = zoomCurve(z);
-            float max = maxZoom();
-            float s = 1 + (max - 1) * k;
-            setScaleX(s);
-            setScaleY(s);
-            if (reveal != null) {
-                float r = 0.9f + 0.1f * ease(seg(t, exitAt + 0.1f, exitAt + 0.25f + zoomSeconds));
-                reveal.setScaleX(r);
-                reveal.setScaleY(r);
+        if (handoff) {
+            float u = (t - exitAt) / exitSpeed;
+            float p = flight(u);
+            // The logo flies along a gentle curve and shrinks into the brand mark
+            float x = bezier(fromX, fromX + (toX - fromX) * 0.1f, toX, p);
+            float y = bezier(fromY, fromY + (toY - fromY) * 0.7f, toY, p);
+            float s = (logoScale.value + (1f - logoScale.value) * p) * (1f + (toScale - 1f) * p);
+            logo.setTranslationX(x - getWidth() / 2f);
+            logo.setTranslationY(y - getHeight() / 2f);
+            logo.setScaleX(s);
+            logo.setScaleY(s);
+            logo.setColorFilter(mix(accent, 0xFFFFFFFF, p));
+            float copies = brandLogo != null ? 1f - seg(u, LAND + 0.02f, LAND + 0.1f)
+                    : 1f - ease(seg(u, 0.3f, FLY_END));
+            logo.setAlpha(copies);
+            if (!landed && u >= LAND) {
+                // The real brand mark takes over underneath the flying copy
+                landed = true;
+                showBrand();
             }
-            if (z >= 1f) {
+            if (!revealFired && u >= ENTRANCE_AT) {
+                revealFired = true;
+                if (onReveal != null) {
+                    onReveal.run();
+                }
+            }
+            if (u >= WAVE_END) {
                 finish();
                 return;
             }
@@ -218,43 +262,104 @@ public final class BootOverlay extends FrameLayout {
         stage.invalidate();
     }
 
-    /** How far the view must grow for the handheld's screen to cover the display. */
-    private float maxZoom() {
-        float sw = stage.screen.width();
-        float sh = stage.screen.height();
-        if (sw <= 0 || sh <= 0) {
-            return 12f;
+    private static float flight(float u) {
+        return easeInOut(seg(u, 0f, FLY_END));
+    }
+
+    private static float bezier(float a, float c, float b, float p) {
+        float q = 1 - p;
+        return q * q * a + 2 * q * p * c + p * p * b;
+    }
+
+    private static int mix(int a, int b, float p) {
+        int r = Math.round(Color.red(a) + (Color.red(b) - Color.red(a)) * p);
+        int g = Math.round(Color.green(a) + (Color.green(b) - Color.green(a)) * p);
+        int bl = Math.round(Color.blue(a) + (Color.blue(b) - Color.blue(a)) * p);
+        return Color.rgb(r, g, bl);
+    }
+
+    /** Finds where the logo and wordmark dock on the screen underneath (at rest, before it moves). */
+    private void measureDock() {
+        getLocationInWindow(loc);
+        int ox = loc[0];
+        int oy = loc[1];
+        fromX = getWidth() / 2f;
+        fromY = getHeight() / 2f - logoLift;
+        View mark = reveal != null ? reveal.findViewById(R.id.pocketBrandLogo) : null;
+        View word = reveal != null ? reveal.findViewById(R.id.pocketBrand) : null;
+        if (mark != null && mark.isShown() && mark.getWidth() > 0) {
+            mark.getLocationInWindow(loc);
+            float bw = mark.getWidth() - mark.getPaddingLeft() - mark.getPaddingRight();
+            float bh = mark.getHeight() - mark.getPaddingTop() - mark.getPaddingBottom();
+            float drawn = Math.min(bw, bh * 64f / 30f);
+            toX = loc[0] - ox + mark.getPaddingLeft() + bw / 2f;
+            toY = loc[1] - oy + mark.getPaddingTop() + bh / 2f;
+            toScale = drawn / logoW;
+            brandLogo = mark;
         }
-        float px = stage.screen.centerX();
-        float py = stage.screen.centerY();
-        float needX = 2 * Math.max(px, getWidth() - px) / sw;
-        float needY = 2 * Math.max(py, getHeight() - py) / sh;
-        return Math.max(needX, needY) * 1.08f;
+        else {
+            // Nothing to dock into on this screen: rise, shrink and fade out
+            toX = getWidth() / 2f;
+            toY = 30 * d;
+            toScale = 0.2f;
+            brandLogo = null;
+        }
+        if (brandLogo != null && word instanceof TextView && word.isShown() && word.getWidth() > 0) {
+            TextView tv = (TextView) word;
+            tv.getLocationInWindow(loc);
+            textToX = loc[0] - ox + tv.getCompoundPaddingLeft();
+            textToBase = loc[1] - oy + tv.getBaseline();
+            textToSize = tv.getTextSize();
+            textToSpacing = tv.getLetterSpacing();
+            brandText = tv;
+        }
+        else {
+            brandText = null;
+            textToSize = stage.text.getTextSize() * 0.62f;
+            textToSpacing = 0.22f;
+            textToX = -1; // centred under the logo
+            textToBase = toY + 22 * d;
+        }
+        float far = 0;
+        float[][] corners = {{0, 0}, {getWidth(), 0}, {0, getHeight()}, {getWidth(), getHeight()}};
+        for (float[] c : corners) {
+            far = Math.max(far, (float) Math.hypot(c[0] - toX, c[1] - toY));
+        }
+        waveMax = far + 60 * d;
     }
 
-    private static float zoomCurve(float x) {
-        // Slow push in, then a fast dive through the glass
-        return x * x * x * (x * (6 * x - 15) + 10) * 0.35f + 0.65f * x * x * x;
-    }
-
-    private void beginZoom() {
+    private void beginHandoff() {
         exitAt = t;
-        zoomExit = true;
-        setPivotX(stage.screen.centerX());
-        setPivotY(stage.screen.centerY());
+        handoff = true;
+        measureDock();
+        // Hidden until the flying copies land on them
+        if (brandLogo != null) {
+            brandLogo.setAlpha(0f);
+        }
+        if (brandText != null) {
+            brandText.setAlpha(0f);
+        }
         PocketSounds.play(getContext(), PocketSounds.BOOT_EXIT);
         if (reveal != null) {
             reveal.animate().cancel();
-            reveal.setPivotX(reveal.getWidth() / 2f);
-            reveal.setPivotY(reveal.getHeight() / 2f);
             reveal.setAlpha(1f);
-            reveal.setScaleX(0.9f);
-            reveal.setScaleY(0.9f);
+            reveal.setScaleX(1f);
+            reveal.setScaleY(1f);
+        }
+    }
+
+    private void showBrand() {
+        if (brandLogo != null) {
+            brandLogo.setAlpha(1f);
+        }
+        if (brandText != null) {
+            brandText.setAlpha(1f);
         }
     }
 
     private void fadeExit() {
         exitAt = t;
+        revealFired = true;
         animate().cancel();
         animate().alpha(0f).scaleX(1.06f).scaleY(1.06f).setDuration(380)
                 .setInterpolator(PocketUi.EASE)
@@ -286,7 +391,8 @@ public final class BootOverlay extends FrameLayout {
         finished = true;
         running = false;
         Choreographer.getInstance().removeFrameCallback(frame);
-        if (zoomExit) {
+        showBrand();
+        if (handoff) {
             restoreReveal();
         }
         else if (reveal != null && reveal.getAlpha() < 1f) {
@@ -326,6 +432,9 @@ public final class BootOverlay extends FrameLayout {
         private final Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint small = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint line = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint word = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint wave = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path hole = new Path();
         private final Path right = new Path();
         private final Path left = new Path();
         private final Path piece = new Path();
@@ -357,6 +466,9 @@ public final class BootOverlay extends FrameLayout {
             small.setTextAlign(Paint.Align.CENTER);
             line.setStrokeWidth(1.6f * d);
             line.setStrokeCap(Paint.Cap.ROUND);
+            word.setColor(0xFFFFFFFF);
+            word.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            wave.setStyle(Paint.Style.FILL);
         }
 
         @Override
@@ -405,19 +517,32 @@ public final class BootOverlay extends FrameLayout {
                 return;
             }
             float time = t;
-            boolean zooming = zoomExit;
-            // During the dive the handheld's screen is a window onto the home screen
+            float u = handoff ? (time - exitAt) / exitSpeed : -1f;
             int save = canvas.save();
-            if (zooming) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    canvas.clipOutPath(screenPath);
-                }
-                else {
-                    //noinspection deprecation
-                    canvas.clipPath(screenPath, android.graphics.Region.Op.DIFFERENCE);
+            if (handoff && u > WAVE_START) {
+                // A wave of light washes out from the brand mark and reveals the home screen
+                float wv = seg(u, WAVE_START, WAVE_END);
+                float r = waveMax * (1 - (float) Math.pow(1 - wv, 2.4));
+                hole.reset();
+                hole.setFillType(Path.FillType.EVEN_ODD);
+                hole.addRect(0, 0, getWidth(), getHeight(), Path.Direction.CW);
+                hole.addCircle(toX, toY, Math.max(r, 0.5f), Path.Direction.CW);
+                wave.setShader(null);
+                wave.setColor(0xFF000000);
+                canvas.drawPath(hole, wave);
+                if (r > 2) {
+                    float f = Math.min(110 * d, r * 0.6f);
+                    wave.setShader(new RadialGradient(toX, toY, r,
+                            new int[]{0x00000000, 0x00000000,
+                                    PocketTheme.withAlpha(accent, Math.round(64 * (1 - wv))), 0xFF000000},
+                            new float[]{0f, (r - f) / r, (r - 0.35f * f) / r, 1f}, Shader.TileMode.CLAMP));
+                    canvas.drawCircle(toX, toY, r, wave);
+                    wave.setShader(null);
                 }
             }
-            canvas.drawColor(0xFF000000);
+            else {
+                canvas.drawColor(0xFF000000);
+            }
             if (startNanos < 0) {
                 canvas.restoreToCount(save);
                 return;
@@ -467,7 +592,8 @@ public final class BootOverlay extends FrameLayout {
 
             // 4. The lit screen, seen through the body's screen cut-out
             float on = ease(seg(time, LIGHT_UP, LIGHT_UP + 0.18f));
-            float open = zooming ? ease(seg(time, exitAt, exitAt + 0.22f)) : 0f;
+            // The lit screen goes dark as the logo lifts off
+            float open = handoff ? ease(seg(u, 0f, 0.14f)) : 0f;
             if (on > 0 && open < 1) {
                 float level = on * (1 - 0.5f * ease(seg(time, LIGHT_UP + 0.18f, LIGHT_UP + 0.9f))) * (1 - open);
                 canvas.save();
@@ -509,8 +635,20 @@ public final class BootOverlay extends FrameLayout {
             }
 
             // 7. Wordmark, letter by letter, then the light line and tagline
+            if (handoff) {
+                drawFlyingWordmark(canvas, time, u);
+                // A soft ping where the logo docks
+                float ping = seg(u, LAND, LAND + 0.45f);
+                if (brandLogo != null && ping > 0 && ping < 1) {
+                    stroke.setStrokeWidth(1.5f * d);
+                    stroke.setAlpha(Math.round(150 * (1 - ping) * (1 - ping)));
+                    canvas.drawCircle(toX, toY, (10 + 34 * ease(ping)) * d, stroke);
+                }
+            }
             if (out < 1) {
-                drawWordmark(canvas, time, 1 - out);
+                if (!handoff) {
+                    drawWordmark(canvas, time, 1 - out);
+                }
                 float grow = ease(seg(time, LINE_START, LINE_START + 0.55f));
                 if (grow > 0) {
                     float half = 40 * d * grow;
@@ -559,6 +697,43 @@ public final class BootOverlay extends FrameLayout {
                 head.setAlpha(Math.round(255 * headAlpha));
                 canvas.drawCircle(pos[0], pos[1], radius, head);
             }
+        }
+
+        /** The wordmark shrinking into the home screen's brand text (same font, size, spacing). */
+        private void drawFlyingWordmark(Canvas canvas, float time, float u) {
+            float shown = ease(seg(time, WORD_START, WORD_START + 1.25f));
+            float alpha = brandText != null ? 1f - seg(u, LAND + 0.02f, LAND + 0.1f)
+                    : 1f - ease(seg(u, 0.25f, FLY_END));
+            alpha *= shown;
+            if (alpha <= 0.01f) {
+                return;
+            }
+            String first = WORD_1 + " ";
+            String full = WORD_1 + " " + WORD_2;
+            float size0 = text.getTextSize();
+            float em0 = 0.62f - 0.28f * ease(seg(exitAt, WORD_START, WORD_START + 1.1f));
+            word.setTextSize(size0);
+            word.setLetterSpacing(em0);
+            float startX = cx - word.measureText(full) / 2f;
+
+            float p = flight(u);
+            word.setTextSize(size0 + (textToSize - size0) * p);
+            word.setLetterSpacing(em0 + (textToSpacing - em0) * p);
+            float endX = textToX;
+            if (endX < 0) {
+                word.setTextSize(textToSize);
+                word.setLetterSpacing(textToSpacing);
+                endX = toX - word.measureText(full) / 2f;
+                word.setTextSize(size0 + (textToSize - size0) * p);
+                word.setLetterSpacing(em0 + (textToSpacing - em0) * p);
+            }
+            float x = bezier(startX, startX + (endX - startX) * 0.1f, endX, p);
+            float y = bezier(wordY, wordY + (textToBase - wordY) * 0.7f, textToBase, p);
+            word.setAlpha(Math.round(255 * alpha * (0.95f + 0.05f * p)));
+            canvas.drawText(first, x, y, word);
+            float second = x + word.measureText(first);
+            word.setAlpha(Math.round(255 * alpha * (0.62f + 0.38f * p)));
+            canvas.drawText(WORD_2, second, y, word);
         }
 
         private void drawWordmark(Canvas canvas, float time, float visible) {

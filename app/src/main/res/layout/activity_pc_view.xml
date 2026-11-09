@@ -32,6 +32,7 @@
             android:paddingEnd="22dp">
 
             <ImageView
+                android:id="@+id/pocketBrandLogo"
                 android:layout_width="26dp"
                 android:layout_height="12dp"
                 android:importantForAccessibility="no"

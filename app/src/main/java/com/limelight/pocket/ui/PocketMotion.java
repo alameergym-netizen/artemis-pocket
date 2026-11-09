@@ -45,7 +45,8 @@ public final class PocketMotion {
         if (!on(v)) {
             return;
         }
-        v.animate().cancel();
+        // No cancel(): a new animation only takes over the properties it animates, so a focused
+        // card keeps springing to its size while it arrives
         v.setAlpha(0f);
         android.view.ViewPropertyAnimator anim = v.animate().alpha(1f);
         // Only the axes that move are touched (a focused card keeps its lift)

@@ -446,10 +446,19 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
         bootOverlay = new com.limelight.pocket.ui.BootOverlay(this);
         bootOverlay.setReveal(content.getChildCount() > 0 ? content.getChildAt(0) : null);
+        final boolean[] built = {false};
+        // The home screen builds itself while the boot's wave of light reveals it
+        bootOverlay.setOnReveal(() -> {
+            built[0] = true;
+            entrancePlayed = true;
+            playEntrance(true);
+        });
         bootOverlay.setListener(() -> {
             bootOverlay = null;
             entrancePlayed = true;
-            playEntrance();
+            if (!built[0]) {
+                playEntrance();
+            }
             // Whatever waited for the boot to finish (opening the last PC, USB connect) goes now
             List<Runnable> waiting = new ArrayList<>(afterBoot);
             afterBoot.clear();
@@ -982,6 +991,14 @@ public abstract class ConsoleActivity extends AppCompatActivity {
      * sweep in from the right one after another and the button bar comes up last.
      */
     protected void playEntrance() {
+        playEntrance(false);
+    }
+
+    /**
+     * fromBoot: the boot's logo and wordmark have just docked into the status bar's brand mark, so
+     * those stay where they are and only the rest of the status bar arrives.
+     */
+    protected void playEntrance(boolean fromBoot) {
         ViewGroup main = findViewById(R.id.pocketMain);
         if (main == null || !PocketPrefs.animationsEnabled(this)) {
             return;
@@ -994,7 +1011,19 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             }
             androidx.recyclerview.widget.RecyclerView list = findRecycler(child);
             if (i == 0) {
-                com.limelight.pocket.ui.PocketMotion.arrive(child, delay, 0, -14, 1f);
+                if (fromBoot && child instanceof ViewGroup && child.findViewById(R.id.pocketBrandLogo) != null) {
+                    ViewGroup row = (ViewGroup) child;
+                    for (int j = 0; j < row.getChildCount(); j++) {
+                        View part = row.getChildAt(j);
+                        int id = part.getId();
+                        if (id != R.id.pocketBrandLogo && id != R.id.pocketBrand && part.getVisibility() == View.VISIBLE) {
+                            com.limelight.pocket.ui.PocketMotion.arrive(part, delay + 60, 0, -14, 1f);
+                        }
+                    }
+                }
+                else {
+                    com.limelight.pocket.ui.PocketMotion.arrive(child, delay, 0, -14, 1f);
+                }
             }
             else if (child.getId() == R.id.pocketHero && child instanceof ViewGroup) {
                 com.limelight.pocket.ui.PocketMotion.cascade((ViewGroup) child, delay, 55, 0, 14, 6);

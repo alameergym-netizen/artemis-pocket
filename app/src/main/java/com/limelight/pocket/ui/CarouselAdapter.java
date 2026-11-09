@@ -1,10 +1,6 @@
 package com.limelight.pocket.ui;
 
-import android.animation.ValueAnimator;
 import android.database.DataSetObserver;
-import android.graphics.drawable.Drawable;
-import android.graphics.drawable.GradientDrawable;
-import android.graphics.drawable.InsetDrawable;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,10 +20,11 @@ import com.limelight.pocket.PocketPrefs;
  * into a RecyclerView so we get smooth horizontal scrolling and per-card focus without rewriting
  * the adapters (keeps upstream merges painless).
  *
- * Focus look: a crisp white outline drawn a few dp outside the card (like a console home screen)
- * and/or a small zoom, depending on the "Focus style" setting. No glows, sweeps or bounces.
+ * Focus look (v2): one focus lens for the whole row (see {@link FocusLens}) instead of a ring per
+ * card; the focused card springs up in size while its neighbours step aside to make room, like a
+ * console home screen. The "Focus style" setting picks lens + zoom, lens only or zoom only.
  */
-public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder> {
+public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder> implements FocusLens.Host {
 
     public interface Listener {
         void onItemClicked(int position, View itemView);
@@ -36,14 +33,16 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
     }
 
     private static final int CARD_PADDING_DP = 14;
-    private static final int RING_GAP_DP = 5;
-    private static final float RING_WIDTH_DP = 2f;
+    /** Extra room the neighbours of the focused card step aside by. */
+    private static final float MAKE_ROOM_DP = 4f;
 
     private final BaseAdapter source;
     private final Listener listener;
     private final float cardRadiusDp;
     private int generation = 0;
     private int focusedPosition = RecyclerView.NO_POSITION;
+    private RecyclerView list;
+    private FocusLens lens;
 
     public CarouselAdapter(BaseAdapter source, Listener listener, float cardRadiusDp) {
         this.source = source;
@@ -68,28 +67,104 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         return focusedPosition;
     }
 
+    @Override
+    public void onAttachedToRecyclerView(@NonNull RecyclerView recyclerView) {
+        super.onAttachedToRecyclerView(recyclerView);
+        list = recyclerView;
+        lens = new FocusLens(recyclerView, this, cardRadiusDp);
+        recyclerView.addItemDecoration(lens);
+    }
+
+    @Override
+    public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+        if (lens != null) {
+            recyclerView.removeItemDecoration(lens);
+        }
+        lens = null;
+        list = null;
+        super.onDetachedFromRecyclerView(recyclerView);
+    }
+
+    private boolean zoomStyle() {
+        return list != null && !PocketPrefs.FOCUS_RING.equals(PocketPrefs.focusStyle(list.getContext()));
+    }
+
+    @Override
+    public float focusScale() {
+        if (list == null) {
+            return 1f;
+        }
+        String style = PocketPrefs.focusStyle(list.getContext());
+        if (PocketPrefs.FOCUS_RING.equals(style)) {
+            return 1f;
+        }
+        return PocketPrefs.FOCUS_ZOOM.equals(style) ? 1.13f : 1.10f;
+    }
+
+    @Override
+    public boolean showRing() {
+        return list != null && !PocketPrefs.FOCUS_ZOOM.equals(PocketPrefs.focusStyle(list.getContext()));
+    }
+
+    /** How far a card steps aside for the focused one (signed, in px). */
+    private float makeRoomShift(int position, View content) {
+        if (list == null || focusedPosition == RecyclerView.NO_POSITION || position == focusedPosition
+                || position == RecyclerView.NO_POSITION || !list.hasFocus() || !zoomStyle()) {
+            return 0f;
+        }
+        float d = list.getResources().getDisplayMetrics().density;
+        float amount = content.getWidth() * (focusScale() - 1f) / 2f + MAKE_ROOM_DP * d;
+        if (content.getWidth() == 0) {
+            amount = (108 * (focusScale() - 1f) / 2f + MAKE_ROOM_DP) * d;
+        }
+        float sign = position < focusedPosition ? -1f : 1f;
+        if (list.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) {
+            sign = -sign;
+        }
+        return sign * amount;
+    }
+
+    /** Moves every visible card to its place around the focused one. */
+    private void updateMakeRoom(boolean animate) {
+        if (list == null) {
+            return;
+        }
+        final RecyclerView rv = list;
+        boolean animated = animate && PocketPrefs.animationsEnabled(rv.getContext());
+        for (int i = 0; i < rv.getChildCount(); i++) {
+            View child = rv.getChildAt(i);
+            if (!(child instanceof FrameLayout) || ((FrameLayout) child).getChildCount() == 0) {
+                continue;
+            }
+            View content = ((FrameLayout) child).getChildAt(0);
+            float target = makeRoomShift(rv.getChildAdapterPosition(child), content);
+            if (Math.abs(content.getTranslationX() - target) < 0.5f) {
+                continue;
+            }
+            content.animate().cancel();
+            if (animated) {
+                content.animate().setStartDelay(0).translationX(target).setDuration(460)
+                        .setInterpolator(Spring.SOFT)
+                        .setUpdateListener(a -> rv.invalidate())
+                        .start();
+            }
+            else {
+                content.setTranslationX(target);
+            }
+        }
+        if (lens != null) {
+            lens.kick();
+        }
+    }
+
     static class Holder extends RecyclerView.ViewHolder {
         final FrameLayout frame;
         int boundGeneration = -1;
-        ValueAnimator ringAnimator;
 
         Holder(FrameLayout frame) {
             super(frame);
             this.frame = frame;
         }
-    }
-
-    private Drawable createRing(FrameLayout frame) {
-        float d = frame.getResources().getDisplayMetrics().density;
-        GradientDrawable ring = new GradientDrawable();
-        ring.setShape(GradientDrawable.RECTANGLE);
-        ring.setColor(0x00000000);
-        ring.setStroke(Math.round(RING_WIDTH_DP * d), PocketTheme.accent(frame.getContext()));
-        ring.setCornerRadius((cardRadiusDp + RING_GAP_DP - 1) * d);
-        int inset = Math.round((CARD_PADDING_DP - RING_GAP_DP) * d);
-        Drawable drawable = new InsetDrawable(ring, inset);
-        drawable.setAlpha(0);
-        return drawable;
     }
 
     @NonNull
@@ -109,7 +184,6 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         }
         int pad = Math.round(parent.getResources().getDisplayMetrics().density * CARD_PADDING_DP);
         frame.setPadding(pad, pad, pad, pad);
-        frame.setForeground(createRing(frame));
         return new Holder(frame);
     }
 
@@ -133,6 +207,9 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
             int pos = holder.getBindingAdapterPosition();
             if (pos != RecyclerView.NO_POSITION) {
                 pressFeedback(frame);
+                if (lens != null) {
+                    lens.press();
+                }
                 com.limelight.pocket.PocketSounds.play(frame.getContext(), com.limelight.pocket.PocketSounds.SELECT);
                 listener.onItemClicked(pos, frame.getChildAt(0));
             }
@@ -161,8 +238,18 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
             applyFocus(holder, hasFocus, true);
             if (hasFocus && pos != RecyclerView.NO_POSITION) {
                 focusedPosition = pos;
+                updateMakeRoom(true);
                 PocketUi.tick(frame.getContext());
                 listener.onItemFocused(pos, frame.getChildAt(0));
+            }
+            else if (!hasFocus && list != null) {
+                // If focus left the row altogether, the cards close ranks again
+                final RecyclerView rv = list;
+                rv.post(() -> {
+                    if (list == rv && !rv.hasFocus()) {
+                        updateMakeRoom(true);
+                    }
+                });
             }
         });
 
@@ -173,11 +260,17 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
 
         // Restore the focus look instantly after a rebind (the PC list refreshes every few seconds)
         applyFocus(holder, frame.hasFocus(), false);
+        content.animate().cancel();
+        content.setTranslationX(makeRoomShift(position, content));
     }
 
     @Override
     public void onViewRecycled(@NonNull Holder holder) {
         applyFocus(holder, false, false);
+        if (holder.frame.getChildCount() > 0) {
+            holder.frame.getChildAt(0).animate().cancel();
+            holder.frame.getChildAt(0).setTranslationX(0);
+        }
         super.onViewRecycled(holder);
     }
 
@@ -202,11 +295,7 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
 
     private void applyFocus(final Holder holder, boolean focused, boolean animate) {
         final FrameLayout frame = holder.frame;
-        String style = PocketPrefs.focusStyle(frame.getContext());
-        boolean ring = !PocketPrefs.FOCUS_ZOOM.equals(style);
-        boolean zoom = !PocketPrefs.FOCUS_RING.equals(style);
-        float scale = focused && zoom ? (ring ? 1.05f : 1.08f) : 1f;
-        int ringAlpha = focused && ring ? 255 : 0;
+        float scale = focused ? focusScale() : 1f;
         boolean animated = animate && PocketPrefs.animationsEnabled(frame.getContext());
 
         View content = frame.getChildCount() > 0 ? frame.getChildAt(0) : null;
@@ -214,52 +303,27 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
             content.setActivated(focused);
         }
 
-        // The focused card lifts towards you (a soft spring in, a quick settle out) and its
-        // shadow becomes a soft glow in the accent colour
+        // The focused card draws above its neighbours while it grows
         float d = frame.getResources().getDisplayMetrics().density;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            int glow = PocketTheme.accent(frame.getContext());
-            frame.setOutlineSpotShadowColor(glow);
-            frame.setOutlineAmbientShadowColor(glow);
-        }
-        float lift = focused ? -4 * d : 0f;
-        float z = focused ? 10 * d : 0f;
+        float z = focused ? 6 * d : 0f;
         frame.animate().cancel();
         if (animated) {
-            frame.animate().setStartDelay(0).scaleX(scale).scaleY(scale).translationY(lift).translationZ(z)
-                    .setDuration(focused ? 420 : 200)
+            // In: a quick spring with a hint of overshoot; out: a calm settle
+            frame.animate().setStartDelay(0).scaleX(scale).scaleY(scale).translationY(0).translationZ(z)
+                    .setDuration(focused ? 480 : 260)
                     .setInterpolator(focused ? Spring.SOFT : PocketUi.EASE)
+                    .setUpdateListener(a -> {
+                        if (frame.getParent() instanceof View) {
+                            ((View) frame.getParent()).invalidate();
+                        }
+                    })
                     .start();
         }
         else {
             frame.setScaleX(scale);
             frame.setScaleY(scale);
-            frame.setTranslationY(lift);
+            frame.setTranslationY(0);
             frame.setTranslationZ(z);
-        }
-
-        final Drawable fg = frame.getForeground();
-        if (fg == null) {
-            return;
-        }
-        if (holder.ringAnimator != null) {
-            holder.ringAnimator.cancel();
-            holder.ringAnimator = null;
-        }
-        if (animated) {
-            int from = fg.getAlpha();
-            ValueAnimator a = ValueAnimator.ofInt(from, ringAlpha);
-            a.setDuration(focused ? 120 : 90);
-            a.addUpdateListener(an -> {
-                fg.setAlpha((Integer) an.getAnimatedValue());
-                frame.invalidate();
-            });
-            holder.ringAnimator = a;
-            a.start();
-        }
-        else {
-            fg.setAlpha(ringAlpha);
-            frame.invalidate();
         }
     }
 }

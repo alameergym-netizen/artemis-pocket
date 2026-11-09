@@ -126,6 +126,8 @@ public final class PcCompanion {
         if (session == null) {
             return null;
         }
+        // The helper only runs while someone is signed in to Windows: remember that it answers
+        PocketPrefs.markCompanionSeen(context, pcUuid);
         try {
             if (!session.authed && !command.startsWith("PAIR") && !command.equals("PING")) {
                 return "ERR auth";

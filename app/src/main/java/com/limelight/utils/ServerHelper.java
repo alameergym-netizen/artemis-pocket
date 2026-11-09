@@ -163,13 +163,22 @@ public class ServerHelper {
         }
 
         final Intent intent = createStartIntent(parent, app, computer, managerBinder, withVDisplay);
-        // Artemis Pocket: the game's card grows into the "Starting..." screen
-        if (parent instanceof com.limelight.pocket.ConsoleActivity
-                && com.limelight.pocket.PocketPrefs.animationsEnabled(parent)) {
-            ((com.limelight.pocket.ConsoleActivity) parent).playLaunchZoom(() -> {
-                parent.startActivity(intent);
-                parent.overridePendingTransition(R.anim.pocket_launch_in, R.anim.pocket_hold);
-            });
+        if (parent instanceof com.limelight.pocket.ConsoleActivity) {
+            final com.limelight.pocket.ConsoleActivity console = (com.limelight.pocket.ConsoleActivity) parent;
+            // Artemis Pocket: never start while Windows is still at its sign-in screen (that can
+            // leave this device's virtual display switched off), then the game's card grows into
+            // the "Starting..." screen
+            console.runWhenSignedIn(intent, () -> {
+                if (com.limelight.pocket.PocketPrefs.animationsEnabled(parent)) {
+                    console.playLaunchZoom(() -> {
+                        parent.startActivity(intent);
+                        parent.overridePendingTransition(R.anim.pocket_launch_in, R.anim.pocket_hold);
+                    });
+                }
+                else {
+                    parent.startActivity(intent);
+                }
+            }, null);
             return;
         }
         parent.startActivity(intent);

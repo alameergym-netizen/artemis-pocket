@@ -349,12 +349,92 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             return; // cancelled meanwhile
         }
         pendingResume = null;
-        PocketSounds.play(this, PocketSounds.SELECT);
-        startActivity(intent);
-        if (PocketPrefs.animationsEnabled(this)) {
-            overridePendingTransition(R.anim.pocket_launch_in, R.anim.pocket_launch_out);
+        runWhenSignedIn(intent, () -> {
+            PocketSounds.play(this, PocketSounds.SELECT);
+            startActivity(intent);
+            if (PocketPrefs.animationsEnabled(this)) {
+                overridePendingTransition(R.anim.pocket_launch_in, R.anim.pocket_launch_out);
+            }
+            statusHandler.postDelayed(this::removeResumeOverlay, 600);
+        }, this::removeResumeOverlay);
+    }
+
+    // ---- Waiting for Windows sign-in ---------------------------------------------------------
+
+    private boolean signInWatching;
+
+    /**
+     * Starts a stream only once someone is signed in to Windows on that PC. Streaming while the PC
+     * is still at its sign-in screen makes Vibepollo/Apollo restart its display helper at sign-in,
+     * which drops this device's virtual display, and Windows then remembers that screen as off
+     * (every later stream mirrors the main screen until the device is paired again).
+     * The Artemis Pocket PC helper only runs after sign-in, so when it has answered before but
+     * doesn't now, the PC is waiting at the sign-in screen: show a card and start by itself as
+     * soon as the helper answers. A starts anyway, B cancels. Without the helper: start right away.
+     */
+    public void runWhenSignedIn(final Intent gameIntent, final Runnable start, final Runnable onCancel) {
+        final String uuid = gameIntent.getStringExtra(com.limelight.Game.EXTRA_PC_UUID);
+        final String host = gameIntent.getStringExtra(com.limelight.Game.EXTRA_HOST);
+        if (signInWatching) {
+            return; // already waiting for this sign-in
         }
-        statusHandler.postDelayed(this::removeResumeOverlay, 600);
+        if (uuid == null || host == null || !PocketPrefs.companionRecentlySeen(this, uuid)) {
+            start.run();
+            return;
+        }
+        final String name = gameIntent.getStringExtra(com.limelight.Game.EXTRA_PC_NAME);
+        final long began = android.os.SystemClock.uptimeMillis();
+        final boolean[] cardShown = {false};
+        final boolean[] done = {false};
+        final Runnable finish = () -> {
+            done[0] = true;
+            signInWatching = false;
+        };
+        final Runnable[] poll = new Runnable[1];
+        poll[0] = () -> new Thread(() -> {
+            final boolean signedIn = PcCompanion.run(getApplicationContext(), host, uuid, "PING") != null;
+            runOnUiThread(() -> {
+                if (done[0] || isFinishing()) {
+                    return;
+                }
+                if (signedIn) {
+                    finish.run();
+                    if (cardShown[0]) {
+                        hideBlockingCard();
+                    }
+                    start.run();
+                    return;
+                }
+                if (!cardShown[0]) {
+                    cardShown[0] = true;
+                    showWaitCard(getString(R.string.pocket_signin_caption), name != null ? name : "PC",
+                            getString(R.string.pocket_signin_sub), 180000,
+                            () -> {
+                                finish.run();
+                                if (onCancel != null) {
+                                    onCancel.run();
+                                }
+                            },
+                            () -> {
+                                finish.run();
+                                hideBlockingCard();
+                                start.run();
+                            });
+                }
+                if (android.os.SystemClock.uptimeMillis() - began > 180000) {
+                    finish.run();
+                    hideBlockingCard();
+                    android.widget.Toast.makeText(this, R.string.pocket_signin_timeout, android.widget.Toast.LENGTH_LONG).show();
+                    if (onCancel != null) {
+                        onCancel.run();
+                    }
+                    return;
+                }
+                statusHandler.postDelayed(poll[0], 2500);
+            });
+        }, "PocketSignInWatch").start();
+        signInWatching = true;
+        poll[0].run();
     }
 
     private void cancelResume() {
@@ -602,6 +682,24 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             blockingCard = null;
         }
         blockingCancel = null;
+        blockingConfirm = null;
+    }
+
+    private Runnable blockingConfirm;
+
+    /** A blocking card where A does something (e.g. "Start anyway") and B cancels. */
+    public void showWaitCard(String caption, String title, String subtitle, long durationMs,
+                             Runnable onCancel, Runnable onConfirm) {
+        hideBlockingCard();
+        blockingCard = new com.limelight.pocket.ui.ResumeOverlay(this);
+        blockingCard.bind(caption, title, subtitle, hintA(this, R.string.pocket_hint_start_anyway),
+                hintB(this, R.string.pocket_hint_cancel));
+        ViewGroup content = findViewById(android.R.id.content);
+        content.addView(blockingCard, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        blockingCard.start(durationMs);
+        blockingCancel = onCancel;
+        blockingConfirm = onConfirm;
     }
 
     public boolean isBlockingCardShowing() {
@@ -632,6 +730,14 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
         if (blockingCard != null) {
             int k = event.getKeyCode();
+            if (blockingConfirm != null && event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0
+                    && (k == KeyEvent.KEYCODE_BUTTON_A || k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER)) {
+                Runnable confirm = blockingConfirm;
+                swallowKeyUp = k;
+                PocketSounds.play(this, PocketSounds.SELECT);
+                confirm.run();
+                return true;
+            }
             if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0
                     && (k == KeyEvent.KEYCODE_BUTTON_B || k == KeyEvent.KEYCODE_BACK || k == KeyEvent.KEYCODE_ESCAPE)) {
                 Runnable cancel = blockingCancel;

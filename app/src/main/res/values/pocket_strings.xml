@@ -505,4 +505,8 @@
     <string name="pocket_graph_decode">DECODE</string>
     <string name="pocket_sm_vdisplay">Virtual display</string>
     <string name="pocket_sm_main_screen">Main screen</string>
+    <string name="pocket_signin_caption">Waiting for Windows sign-in</string>
+    <string name="pocket_signin_sub">Sign in on the PC and the game starts by itself. Starting before sign-in can leave this device without its virtual display.</string>
+    <string name="pocket_hint_start_anyway">Start anyway</string>
+    <string name="pocket_signin_timeout">The PC still isn't signed in to Windows.</string>
 </resources>

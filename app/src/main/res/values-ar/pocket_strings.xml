@@ -498,4 +498,8 @@
     <string name="pocket_graph_decode">DECODE</string>
     <string name="pocket_sm_vdisplay">شاشة افتراضية</string>
     <string name="pocket_sm_main_screen">شاشة الكمبيوتر الأساسية</string>
+    <string name="pocket_signin_caption">بستنى تسجيل الدخول على ويندوز</string>
+    <string name="pocket_signin_sub">سجّل دخول على الكمبيوتر واللعبة بتشتغل لحالها. البث قبل تسجيل الدخول ممكن يخرّب الشاشة الافتراضية لهالجهاز.</string>
+    <string name="pocket_hint_start_anyway">شغّل هلأ</string>
+    <string name="pocket_signin_timeout">الكمبيوتر لسا ما انعمل عليه تسجيل دخول على ويندوز.</string>
 </resources>

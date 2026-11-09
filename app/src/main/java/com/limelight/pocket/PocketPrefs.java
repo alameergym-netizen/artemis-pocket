@@ -438,6 +438,23 @@ public final class PocketPrefs {
                 .apply();
     }
 
+    private static final String KEY_COMPANION_SEEN_PREFIX = "pocket_companion_seen_";
+
+    public static void markCompanionSeen(Context context, String pcUuid) {
+        if (pcUuid != null) {
+            prefs(context).edit().putLong(KEY_COMPANION_SEEN_PREFIX + pcUuid, System.currentTimeMillis()).apply();
+        }
+    }
+
+    /** The PC helper answered from this PC in the last two weeks (so its silence means something). */
+    public static boolean companionRecentlySeen(Context context, String pcUuid) {
+        if (pcUuid == null) {
+            return false;
+        }
+        long seen = prefs(context).getLong(KEY_COMPANION_SEEN_PREFIX + pcUuid, 0);
+        return seen > 0 && System.currentTimeMillis() - seen < 14L * 24 * 3600 * 1000;
+    }
+
     // PC companion pairing token per PC
     public static String getCompanionToken(Context context, String pcUuid) {
         return pcUuid == null ? null : prefs(context).getString(KEY_COMPANION_TOKEN_PREFIX + pcUuid, null);

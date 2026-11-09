@@ -508,7 +508,7 @@
     <string name="pocket_signin_caption">Waiting for Windows sign-in</string>
     <string name="pocket_signin_sub">Sign in on the PC and the game starts by itself. Starting before sign-in can leave this device without its virtual display.</string>
     <string name="pocket_hint_start_anyway">Start anyway</string>
-    <string name="pocket_signin_timeout">The PC still isn't signed in to Windows.</string>
+    <string name="pocket_signin_timeout">The PC still isn\'t signed in to Windows.</string>
     <string name="pocket_signin_mirror_toast">The PC is at the Windows sign-in screen: showing its main screen. After you sign in, the stream moves to the virtual display by itself.</string>
     <string name="pocket_signin_switch_toast">Signed in · moving to the virtual display</string>
     <string name="pocket_signin_switch_caption">Signed in · moving to the virtual display</string>

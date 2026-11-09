@@ -99,7 +99,8 @@ public final class PocketMotion {
             return;
         }
         final float shift = dp(view, 18) * direction;
-        view.animate().cancel();
+        // No cancel(): that would freeze an entrance that is still moving the view (it would stay
+        // half-faded or off its line). A new animation only takes over alpha and X.
         view.animate().alpha(0f).translationX(-shift * 0.6f).setStartDelay(0).setDuration(90)
                 .setInterpolator(PocketUi.EASE)
                 .withEndAction(() -> {
@@ -126,7 +127,7 @@ public final class PocketMotion {
         if (!on(v)) {
             return;
         }
-        v.animate().cancel();
+        // Takes over the scale only (an entrance still running on the view carries on)
         v.setScaleX(0.9f);
         v.setScaleY(0.9f);
         v.animate().scaleX(1f).scaleY(1f).setStartDelay(0).setDuration(420).setInterpolator(Spring.POP)

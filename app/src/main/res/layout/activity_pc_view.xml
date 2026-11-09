@@ -10,10 +10,44 @@
     tools:context=".PcView">
 
 
-    <com.limelight.pocket.ui.AuroraView
-        android:id="@+id/pocketAurora"
+    <!-- Behind the glass: lights, the selected PC's game art, scrims -->
+    <FrameLayout
+        android:id="@+id/pocketBackdrop"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent">
+
+        <com.limelight.pocket.ui.AuroraView
+            android:id="@+id/pocketAurora"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <ImageView
+            android:id="@+id/pocketHeroArtA"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop" />
+
+        <ImageView
+            android:id="@+id/pocketHeroArtB"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/pocket_hero_scrim" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="200dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/pocket_bottom_scrim" />
+    </FrameLayout>
 
     <LinearLayout
         android:id="@+id/pocketMain"
@@ -132,14 +166,49 @@
                 android:textColor="@color/pocket_text"
                 android:textSize="28sp" />
 
-            <TextView
-                android:id="@+id/pocketHeroSubtitle"
+            <!-- What A does, the PC's state, and what it played last (console style) -->
+            <LinearLayout
+                android:id="@+id/pocketHeroMeta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="5dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/pocketHeroPlay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="10dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:paddingStart="11dp"
+                    android:paddingTop="3dp"
+                    android:paddingEnd="13dp"
+                    android:paddingBottom="3dp"
+                    android:textColor="#FF000000"
+                    android:textSize="11sp"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/pocketHeroSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/pocket_text_dim"
+                    android:textSize="11.5sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/pocketHeroPlaytime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/pocket_text_dim"
-                android:textSize="11.5sp" />
+                android:textColor="@color/pocket_text_faint"
+                android:textSize="10.5sp"
+                android:visibility="gone" />
         </LinearLayout>
 
         <!-- PC carousel -->
@@ -153,17 +222,17 @@
 
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/pocketPcCarousel"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
+                android:layout_gravity="center_vertical"
                 android:clipChildren="false"
                 android:clipToPadding="false"
                 android:descendantFocusability="afterDescendants"
                 android:overScrollMode="never"
-                android:paddingStart="22dp"
-                android:paddingTop="12dp"
-                android:paddingEnd="22dp"
-                android:paddingBottom="12dp" />
+                android:paddingStart="14dp"
+                android:paddingTop="14dp"
+                android:paddingEnd="90dp"
+                android:paddingBottom="14dp" />
 
             <LinearLayout
                 android:id="@+id/no_pc_found_layout"
@@ -248,22 +317,23 @@
                 android:src="@drawable/ic_help"
                 android:tint="@color/pocket_icon_tint" />
 
-            <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            <TextView
                 android:id="@+id/profilesButton"
                 android:layout_width="wrap_content"
                 android:layout_height="34dp"
                 android:layout_marginStart="8dp"
+                android:background="@drawable/pocket_pill_button_bg"
+                android:clickable="true"
                 android:contentDescription="@string/profile_manager_choose_profile"
-                android:minHeight="34dp"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:textColor="@color/pocket_text"
-                android:textSize="11sp"
-                app:backgroundTint="#26FFFFFF"
-                app:elevation="0dp"
-                app:icon="@drawable/ic_profiles"
-                app:iconSize="16dp"
-                app:iconTint="@color/pocket_text" />
+                android:focusable="true"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:maxLines="1"
+                android:minWidth="34dp"
+                android:paddingStart="9dp"
+                android:paddingEnd="9dp"
+                android:textColor="@color/pocket_row_text"
+                android:textSize="11sp" />
 
             <Space
                 android:layout_width="0dp"

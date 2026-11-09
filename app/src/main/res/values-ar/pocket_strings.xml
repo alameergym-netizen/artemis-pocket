@@ -557,4 +557,6 @@
     <string name="pocket_tips_reset_done">النصايح رح تطلع من جديد</string>
     <string name="pocket_hero_play">العب</string>
     <string name="pocket_hero_resume">كمّل</string>
+    <string name="pocket_hero_last_played">آخر لعبة: %1$s</string>
+    <string name="pocket_hero_wake">شغّله</string>
 </resources>

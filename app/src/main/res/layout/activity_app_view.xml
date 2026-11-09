@@ -263,21 +263,22 @@
             android:paddingEnd="18dp"
             android:paddingBottom="12dp">
 
-            <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+            <TextView
                 android:id="@+id/profilesButton"
                 android:layout_width="wrap_content"
                 android:layout_height="34dp"
+                android:background="@drawable/pocket_pill_button_bg"
+                android:clickable="true"
                 android:contentDescription="@string/profile_manager_choose_profile"
-                android:minHeight="34dp"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:textColor="@color/pocket_text"
-                android:textSize="11sp"
-                app:backgroundTint="#26FFFFFF"
-                app:elevation="0dp"
-                app:icon="@drawable/ic_profiles"
-                app:iconSize="16dp"
-                app:iconTint="@color/pocket_text" />
+                android:focusable="true"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:maxLines="1"
+                android:minWidth="34dp"
+                android:paddingStart="9dp"
+                android:paddingEnd="9dp"
+                android:textColor="@color/pocket_row_text"
+                android:textSize="11sp" />
 
             <Space
                 android:layout_width="0dp"

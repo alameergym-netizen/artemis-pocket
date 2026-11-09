@@ -214,7 +214,7 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         ImageButton settingsButton = findViewById(R.id.settingsButton);
         ImageButton addComputerButton = findViewById(R.id.manuallyAddPc);
         ImageButton helpButton = findViewById(R.id.helpButton);
-        ExtendedFloatingActionButton profilesButton = findViewById(R.id.profilesButton);
+        TextView profilesButton = findViewById(R.id.profilesButton);
 
         settingsButton.setOnClickListener(new OnClickListener() {
             @Override
@@ -399,19 +399,8 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
     }
 
     private void refreshProfileButton() {
-        ExtendedFloatingActionButton profilesButton = findViewById(R.id.profilesButton);
-        // User report Samsung and Xiaomi devices have this problem
-        // Why just these two brands have the most problems?
-        if (profilesButton == null) {
-            return;
-        }
-        String activeProfileName = ProfilesManager.getInstance().getActiveName();
-        if (activeProfileName.isEmpty()) {
-            profilesButton.shrink();
-        } else {
-            profilesButton.setText(activeProfileName);
-            profilesButton.extend();
-        }
+        // A round button like its neighbours; a pill with the name when a profile is active
+        styleProfileButton(findViewById(R.id.profilesButton), ProfilesManager.getInstance().getActiveName());
     }
 
     @Override
@@ -1175,8 +1164,10 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         if (focused != null && focused != pcCarousel && isDescendant(pcCarousel, focused)) {
             return;
         }
-        if (focused != null && focused != getWindow().getDecorView() && !(focused instanceof RecyclerView)) {
-            // Something else (e.g. a toolbar button) has focus, leave it alone
+        if (focused != null && focused != getWindow().getDecorView() && !(focused instanceof RecyclerView)
+                && userNavigated) {
+            // The person moved to something else (e.g. a toolbar button): leave it there. Before
+            // that, a button that only got focus because it came first in the layout gives way.
             return;
         }
         RecyclerView.ViewHolder holder = pcCarousel.findViewHolderForAdapterPosition(0);
@@ -1202,10 +1193,19 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         if (title == null || subtitle == null || pcGridAdapter == null) {
             return;
         }
+        TextView play = findViewById(R.id.pocketHeroPlay);
+        TextView lastLine = findViewById(R.id.pocketHeroPlaytime);
         int count = pcGridAdapter.getCount();
         if (count == 0) {
             title.setText(R.string.pocket_brand_title);
             subtitle.setText(R.string.pocket_hero_no_pc);
+            if (play != null) {
+                play.setVisibility(View.GONE);
+            }
+            if (lastLine != null) {
+                lastLine.setVisibility(View.GONE);
+            }
+            pocketHeroArt().show(null);
             return;
         }
         if (position < 0 || position >= count) {
@@ -1216,6 +1216,7 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         if (title.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) {
             dir = -dir;
         }
+        boolean moved = position != pocketHeroPos;
         pocketHeroPos = position;
         com.limelight.pocket.ui.PocketMotion.swapText(title, computer.details.name, dir);
         String sub = describeComputer(computer.details, true);
@@ -1225,9 +1226,79 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         }
         if (!sub.contentEquals(subtitle.getText())) {
             subtitle.setText(sub);
-            com.limelight.pocket.ui.PocketMotion.bump(subtitle);
+            // Only a new PC gets the little pop (not every ping update)
+            if (moved) {
+                com.limelight.pocket.ui.PocketMotion.bump(subtitle);
+            }
         }
+
+        // What A does here, as the hero's button
+        if (play != null) {
+            int label = pocketPrimaryLabel(computer.details);
+            if (label == 0) {
+                play.setVisibility(View.GONE);
+            }
+            else {
+                if (play.getBackground() == null) {
+                    android.graphics.drawable.GradientDrawable pill = new android.graphics.drawable.GradientDrawable();
+                    pill.setCornerRadius(100 * getResources().getDisplayMetrics().density);
+                    pill.setColor(com.limelight.pocket.ui.PocketTheme.accent(this));
+                    play.setBackground(pill);
+                }
+                String text = (label == R.string.pocket_hint_pair ? "\u25CF  " : "\u25B6  ") + getString(label);
+                play.setVisibility(View.VISIBLE);
+                if (!text.contentEquals(play.getText())) {
+                    play.setText(text);
+                    if (moved) {
+                        com.limelight.pocket.ui.PocketMotion.bump(play);
+                    }
+                }
+            }
+        }
+
+        // What it played last, and its art behind everything
+        int lastId = PocketPrefs.getLastAppId(this, computer.details.uuid);
+        String lastName = PocketPrefs.getLastAppName(this, computer.details.uuid);
+        if (lastLine != null) {
+            String line = "";
+            if (lastName != null && !lastName.isEmpty()) {
+                line = getString(R.string.pocket_hero_last_played, lastName);
+                long when = PocketPrefs.getLastPlayed(this, computer.details.uuid, lastId);
+                if (when > 0) {
+                    line += "  \u00b7  " + android.text.format.DateUtils.getRelativeTimeSpanString(when,
+                            System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS);
+                }
+            }
+            lastLine.setText(line);
+            lastLine.setVisibility(line.isEmpty() ? View.GONE : View.VISIBLE);
+        }
+        int artId = computer.details.runningGameId != 0 ? computer.details.runningGameId : lastId;
+        pocketHeroArt().show(com.limelight.pocket.ui.HeroArt.load(this, computer.details.uuid, artId));
         probeLatency(computer.details);
+    }
+
+    private com.limelight.pocket.ui.HeroArt pocketHeroArt;
+
+    private com.limelight.pocket.ui.HeroArt pocketHeroArt() {
+        if (pocketHeroArt == null) {
+            pocketHeroArt = new com.limelight.pocket.ui.HeroArt(getWindow().getDecorView());
+        }
+        return pocketHeroArt;
+    }
+
+    /** The label for what A does on this PC (0: nothing worth a button). */
+    private int pocketPrimaryLabel(ComputerDetails details) {
+        if (details.state == ComputerDetails.State.ONLINE) {
+            if (details.pairState != PairState.PAIRED) {
+                return R.string.pocket_hint_pair;
+            }
+            return details.runningGameId != 0 ? R.string.pocket_hero_resume : R.string.pocket_hint_open;
+        }
+        if (details.state == ComputerDetails.State.OFFLINE && details.pairState == PairState.PAIRED
+                && details.macAddress != null) {
+            return R.string.pocket_hero_wake;
+        }
+        return 0;
     }
 
     private int pocketHeroPos = -1;

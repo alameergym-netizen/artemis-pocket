@@ -43,12 +43,20 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
+            <!-- Running: a small badge in the corner (the art stays visible) -->
             <ImageView
                 android:id="@+id/grid_overlay"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_centerInParent="true"
-                android:importantForAccessibility="no" />
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_alignParentTop="true"
+                android:layout_alignParentEnd="true"
+                android:layout_marginTop="7dp"
+                android:layout_marginEnd="7dp"
+                android:background="@drawable/pocket_badge_bg"
+                android:importantForAccessibility="no"
+                android:padding="6dp"
+                android:scaleType="fitCenter"
+                android:tint="@color/pocket_text" />
         </RelativeLayout>
 
     </androidx.cardview.widget.CardView>

@@ -5,6 +5,22 @@
     android:layout_height="164dp"
     android:background="@drawable/pocket_card_bg">
 
+    <!-- The game it is playing / played last, when there is art for it -->
+    <ImageView
+        android:id="@+id/pc_art"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
+    <View
+        android:id="@+id/pc_art_scrim"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/pocket_pc_art_scrim"
+        android:visibility="gone" />
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -26,6 +42,18 @@
                 android:importantForAccessibility="no"
                 android:scaleType="fitCenter"
                 android:tint="@color/pocket_text" />
+
+            <ImageView
+                android:id="@+id/pc_badge"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_gravity="top|start"
+                android:background="@drawable/pocket_badge_bg"
+                android:importantForAccessibility="no"
+                android:padding="6dp"
+                android:scaleType="fitCenter"
+                android:tint="@color/pocket_text"
+                android:visibility="gone" />
 
             <ImageView
                 android:id="@+id/grid_overlay"

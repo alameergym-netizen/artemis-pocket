@@ -174,9 +174,11 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
 
         if (obj.isRunning) {
             // Show the play button overlay
-            overlayView.setImageResource(R.drawable.ic_play);
+            overlayView.setImageResource(parentView.findViewById(R.id.grid_overlay) != null
+                    && overlayView.getBackground() != null ? R.drawable.ic_pocket_playing : R.drawable.ic_play);
             overlayView.setVisibility(View.VISIBLE);
-            gridMask.setBackgroundColor(0x66000000);
+            // Artemis Pocket: the running game keeps its art bright (the badge says it's running)
+            gridMask.setBackgroundColor(0x00000000);
         }
         else {
             overlayView.setVisibility(View.GONE);

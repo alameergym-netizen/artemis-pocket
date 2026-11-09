@@ -421,19 +421,8 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         inForeground = true;
         startComputerUpdates();
 
-        ExtendedFloatingActionButton profilesButton = findViewById(R.id.profilesButton);
-        // User report Samsung and Xiaomi devices have this problem
-        // Why just these two brands have the most problems?
-        if (profilesButton == null) {
-            return;
-        }
-        String activeProfileName = ProfilesManager.getInstance().getActiveName();
-        if (activeProfileName.isEmpty()) {
-            profilesButton.shrink();
-        } else {
-            profilesButton.setText(activeProfileName);
-            profilesButton.extend();
-        }
+        // A round button like the others; a pill with the name when a profile is active
+        styleProfileButton(findViewById(R.id.profilesButton), ProfilesManager.getInstance().getActiveName());
     }
 
     @Override
@@ -1065,9 +1054,10 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
             com.limelight.pocket.ui.PocketMotion.bump(subtitle);
         }
         if (obj.isRunning) {
+            // Glass chip with the accent: the filled Resume pill is the one bright thing here
             subtitle.setText(R.string.pocket_now_playing);
-            subtitle.setTextColor(ContextCompat.getColor(this, R.color.pocket_bg));
-            subtitle.setBackgroundResource(R.drawable.pocket_chip_usb_bg);
+            subtitle.setTextColor(com.limelight.pocket.ui.PocketTheme.accent(this));
+            subtitle.setBackgroundResource(R.drawable.pocket_chip_bg);
         }
         else {
             subtitle.setText(obj.app.getAppId() == lastAppId ? R.string.pocket_last_played : R.string.pocket_ready_to_play);
@@ -1113,6 +1103,18 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         }
         if (!PocketPrefs.BACKDROP_ART.equals(PocketPrefs.backdrop(this))) {
             heroBitmap = bitmap;
+            return;
+        }
+        if (com.limelight.pocket.ui.HeroArt.isPlaceholder(bitmap)) {
+            // A plain default icon (like Desktop's) blown up behind the screen is just a grey
+            // smudge: let the lights show instead
+            heroBitmap = bitmap;
+            ImageView pa = findViewById(R.id.pocketHeroArtA);
+            ImageView pb = findViewById(R.id.pocketHeroArtB);
+            if (pa != null && pb != null) {
+                pa.animate().alpha(0f).setDuration(300).start();
+                pb.animate().alpha(0f).setDuration(300).start();
+            }
             return;
         }
         heroBitmap = bitmap;

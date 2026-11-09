@@ -564,4 +564,6 @@
     <string name="pocket_tips_reset_done">Tips will show again</string>
     <string name="pocket_hero_play">Play</string>
     <string name="pocket_hero_resume">Resume</string>
+    <string name="pocket_hero_last_played">Last played: %1$s</string>
+    <string name="pocket_hero_wake">Wake up</string>
 </resources>

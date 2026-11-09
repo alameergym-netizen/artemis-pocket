@@ -285,7 +285,6 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
             return;
         }
         final float base = frame.getScaleX();
-        frame.animate().cancel();
         frame.animate().setStartDelay(0).scaleX(base * 0.95f).scaleY(base * 0.95f).setDuration(70)
                 .setInterpolator(PocketUi.EASE)
                 .withEndAction(() -> frame.animate().scaleX(base).scaleY(base).setDuration(360)
@@ -306,7 +305,8 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         // The focused card draws above its neighbours while it grows
         float d = frame.getResources().getDisplayMetrics().density;
         float z = focused ? 6 * d : 0f;
-        frame.animate().cancel();
+        // No cancel(): the row's entrance may still be sliding this card in (alpha / X); the
+        // focus animation only takes over scale, Y and Z
         if (animated) {
             // In: a quick spring with a hint of overshoot; out: a calm settle
             frame.animate().setStartDelay(0).scaleX(scale).scaleY(scale).translationY(0).translationZ(z)
@@ -320,6 +320,9 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
                     .start();
         }
         else {
+            // Take over any running scale animation, then settle right away
+            frame.animate().scaleX(scale).scaleY(scale).translationY(0).translationZ(z)
+                    .setStartDelay(0).setDuration(0).start();
             frame.setScaleX(scale);
             frame.setScaleY(scale);
             frame.setTranslationY(0);

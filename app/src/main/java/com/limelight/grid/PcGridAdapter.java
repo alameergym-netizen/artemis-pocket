@@ -119,5 +119,42 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
             dotView.setColorFilter(ContextCompat.getColor(context, color));
         }
         txtView.setAlpha(1.0f);
+
+        // Artemis Pocket: the game it is playing (or played last) fills the card, console style
+        ImageView art = parentView.findViewById(R.id.pc_art);
+        View scrim = parentView.findViewById(R.id.pc_art_scrim);
+        ImageView badge = parentView.findViewById(R.id.pc_badge);
+        if (art != null && scrim != null) {
+            int appId = obj.details.runningGameId != 0 ? obj.details.runningGameId
+                    : com.limelight.pocket.PocketPrefs.getLastAppId(context, obj.details.uuid);
+            android.graphics.Bitmap bitmap = com.limelight.pocket.ui.HeroArt.load(context, obj.details.uuid, appId);
+            if (bitmap != null && com.limelight.pocket.ui.HeroArt.isPlaceholder(bitmap)) {
+                bitmap = null;
+            }
+            if (bitmap != null) {
+                art.setImageBitmap(bitmap);
+                art.setVisibility(View.VISIBLE);
+                art.setAlpha(obj.details.state == ComputerDetails.State.ONLINE ? 1f : 0.45f);
+                scrim.setVisibility(View.VISIBLE);
+                imgView.setVisibility(View.INVISIBLE);
+                parentView.setClipToOutline(true);
+                if (badge != null) {
+                    // The PC (or cable) icon moves to a small badge in the corner
+                    boolean usb = obj.details.state == ComputerDetails.State.ONLINE &&
+                            com.limelight.pocket.UsbLink.getUsbAddressFor(context, obj.details.uuid) != null;
+                    badge.setImageResource(usb ? R.drawable.ic_usb : R.drawable.ic_computer);
+                    badge.setVisibility(View.VISIBLE);
+                }
+            }
+            else {
+                art.setImageDrawable(null);
+                art.setVisibility(View.GONE);
+                scrim.setVisibility(View.GONE);
+                imgView.setVisibility(View.VISIBLE);
+                if (badge != null) {
+                    badge.setVisibility(View.GONE);
+                }
+            }
+        }
     }
 }

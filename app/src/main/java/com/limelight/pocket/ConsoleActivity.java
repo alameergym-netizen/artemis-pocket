@@ -72,6 +72,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     private boolean charging;
     private boolean statusRunning;
     private int createdWithScale;
+    /** The person has moved the focus themselves (screens stop placing it for them). */
+    protected boolean userNavigated;
     /** The look this screen was built with (accent, backdrop, glass): rebuilt when it changes. */
     private String createdWithLook;
 
@@ -794,6 +796,18 @@ public abstract class ConsoleActivity extends AppCompatActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            switch (event.getKeyCode()) {
+                case KeyEvent.KEYCODE_DPAD_UP:
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                case KeyEvent.KEYCODE_DPAD_LEFT:
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    userNavigated = true;
+                    break;
+                default:
+                    break;
+            }
+        }
         if (launchLayer != null) {
             return true; // a game is launching: buttons wait
         }
@@ -1076,6 +1090,32 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * The profile button: a round icon button like its neighbours, which grows into a pill with
+     * the profile's name when one is active.
+     */
+    public static void styleProfileButton(TextView button, String profileName) {
+        if (button == null) {
+            return;
+        }
+        Context c = button.getContext();
+        float density = c.getResources().getDisplayMetrics().density;
+        Drawable icon = ContextCompat.getDrawable(c, R.drawable.ic_profiles);
+        if (icon != null) {
+            icon = androidx.core.graphics.drawable.DrawableCompat.wrap(icon.mutate());
+            androidx.core.graphics.drawable.DrawableCompat.setTintList(icon,
+                    ContextCompat.getColorStateList(c, R.color.pocket_row_text));
+            int size = Math.round(16 * density);
+            icon.setBounds(0, 0, size, size);
+            button.setCompoundDrawablesRelative(icon, null, null, null);
+        }
+        boolean named = profileName != null && !profileName.isEmpty();
+        button.setText(named ? profileName : "");
+        button.setCompoundDrawablePadding(named ? Math.round(6 * density) : 0);
+        int side = Math.round((named ? 11 : 9) * density);
+        button.setPaddingRelative(side, 0, named ? Math.round(13 * density) : side, 0);
+    }
+
     protected int dp(int value) {
         return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
     }
@@ -1131,6 +1171,9 @@ public abstract class ConsoleActivity extends AppCompatActivity {
                 }
             }
             else if (child.getId() == R.id.pocketHero && child instanceof ViewGroup) {
+                // Lines rise from below their place: let them show outside the hero while they do
+                ((ViewGroup) child).setClipChildren(false);
+                ((ViewGroup) child).setClipToPadding(false);
                 com.limelight.pocket.ui.PocketMotion.cascade((ViewGroup) child, delay, 55, 0, 14, 6);
                 delay += 60;
             }

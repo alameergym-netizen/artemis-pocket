@@ -837,6 +837,18 @@ public class QuickSettingsActivity extends ConsoleActivity {
                         .setNegativeButton(android.R.string.cancel, null)
                         .show());
 
+        addAction(getString(R.string.pocket_set_rerun_setup), getString(R.string.pocket_set_rerun_setup_sub), null, () -> {
+            startActivity(new Intent(this, OnboardingActivity.class).putExtra(OnboardingActivity.EXTRA_RERUN, true));
+            overridePendingTransition(R.anim.pocket_pop_enter, R.anim.pocket_pop_exit);
+            finish();
+        });
+
+        addAction(getString(R.string.pocket_set_reset_tips), getString(R.string.pocket_set_reset_tips_sub), null, () -> {
+            PocketPrefs.resetTips(this);
+            PocketSounds.play(this, PocketSounds.TOGGLE_ON);
+            Toast.makeText(this, R.string.pocket_tips_reset_done, Toast.LENGTH_SHORT).show();
+        });
+
         addHeader(R.string.pocket_header_advanced);
 
         addAction(getString(R.string.pocket_set_advanced), getString(R.string.pocket_set_advanced_sub), null,

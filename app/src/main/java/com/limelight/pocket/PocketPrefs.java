@@ -473,4 +473,39 @@ public final class PocketPrefs {
     public static String getLastAppName(Context context, String pcUuid) {
         return prefs(context).getString(KEY_LAST_APP_PREFIX + pcUuid + "_name", null);
     }
+
+    // ---- v4: first boot setup & first-time tips ---------------------------------------------
+
+    public static final String KEY_ONBOARDING_PENDING = "pocket_onboarding_pending";
+    public static final String TIP_PCS = "pcs";
+    public static final String TIP_GAMES = "games";
+    public static final String TIP_STREAM = "stream";
+    private static final String[] TIPS = {TIP_PCS, TIP_GAMES, TIP_STREAM};
+    private static final String KEY_TIP_PREFIX = "pocket_tip_seen_";
+
+    /** The first boot setup still has to run (fresh installs only, or asked for in Settings). */
+    public static boolean onboardingPending(Context context) {
+        return prefs(context).getBoolean(KEY_ONBOARDING_PENDING, false);
+    }
+
+    public static void setOnboardingPending(Context context, boolean pending) {
+        prefs(context).edit().putBoolean(KEY_ONBOARDING_PENDING, pending).apply();
+    }
+
+    public static boolean tipSeen(Context context, String tip) {
+        return prefs(context).getBoolean(KEY_TIP_PREFIX + tip, false);
+    }
+
+    public static void markTipSeen(Context context, String tip) {
+        prefs(context).edit().putBoolean(KEY_TIP_PREFIX + tip, true).apply();
+    }
+
+    /** Shows every first-time tip once more. */
+    public static void resetTips(Context context) {
+        SharedPreferences.Editor e = prefs(context).edit();
+        for (String tip : TIPS) {
+            e.remove(KEY_TIP_PREFIX + tip);
+        }
+        e.apply();
+    }
 }

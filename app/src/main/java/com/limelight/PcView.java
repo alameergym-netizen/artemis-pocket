@@ -1163,6 +1163,8 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
     @Override
     public void onItemFocused(int pos, View itemView) {
         updateHero(pos);
+        // First time here: what A and Y do on a PC
+        scheduleTip(PocketPrefs.TIP_PCS, itemView, 20, R.string.pocket_tip_pcs_title, R.string.pocket_tip_pcs_body);
     }
 
     private void focusFirstPcIfNeeded() {

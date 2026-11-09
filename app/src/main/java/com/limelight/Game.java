@@ -3091,6 +3091,15 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
             } catch (RuntimeException ignored) {
             }
         }
+        if (!PocketPrefs.tipSeen(this, PocketPrefs.TIP_STREAM) && !PocketPrefs.onboardingPending(this)) {
+            // First stream ever: how the Back button works while playing
+            PocketPrefs.markTipSeen(this, PocketPrefs.TIP_STREAM);
+            final String tip = getString(R.string.pocket_tip_stream_gestures,
+                    pocketGestureLabel(ButtonActions.GESTURE_TAP),
+                    pocketGestureLabel(ButtonActions.GESTURE_DOUBLE),
+                    pocketGestureLabel(ButtonActions.GESTURE_HOLD));
+            timerHandler.postDelayed(() -> showPocketToast(tip, true, 6500), pocketWarned24 ? 8000 : 1800);
+        }
         if (pocketFrameGen) {
             showPocketToast(getString(R.string.pocket_framegen_toast, Math.round(prefConfig.fps),
                     Math.round(pocketMaxRefreshRate())), true, 2500);
@@ -3108,6 +3117,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if (PocketPrefs.micPassthrough(this) && PocketMic.hasPermission(this)) {
             pocketMic.start(this, host, uuid, this::pocketOnMicState);
         }
+    }
+
+    private String pocketGestureLabel(int gesture) {
+        PocketAction action = ButtonActions.get(this, ButtonActions.BUTTON_BACK, gesture);
+        return action == PocketAction.NONE ? "—" : action.shortLabel(this);
     }
 
     private void pocketRecordPlaytime() {

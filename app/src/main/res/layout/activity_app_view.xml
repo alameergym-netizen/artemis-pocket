@@ -173,35 +173,59 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
-                android:fontFamily="sans-serif-medium"
-                android:letterSpacing="-0.01"
-                android:maxWidth="480dp"
+                android:fontFamily="sans-serif-light"
+                android:letterSpacing="-0.015"
+                android:maxWidth="520dp"
                 android:maxLines="1"
                 android:textColor="@color/pocket_text"
-                android:textSize="24sp" />
+                android:textSize="28sp" />
 
-            <TextView
-                android:id="@+id/pocketHeroSubtitle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:background="@drawable/pocket_chip_bg"
-                android:fontFamily="sans-serif-medium"
-                android:paddingStart="9dp"
-                android:paddingTop="2dp"
-                android:paddingEnd="9dp"
-                android:paddingBottom="2dp"
-                android:textColor="@color/pocket_text"
-                android:textSize="10sp" />
-
-            <TextView
-                android:id="@+id/pocketHeroPlaytime"
+            <!-- Play, status and playtime on one line (console style) -->
+            <LinearLayout
+                android:id="@+id/pocketHeroMeta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="5dp"
-                android:textColor="@color/pocket_text_dim"
-                android:textSize="10sp"
-                android:visibility="gone" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/pocketHeroPlay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="8dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:paddingStart="11dp"
+                    android:paddingTop="3dp"
+                    android:paddingEnd="13dp"
+                    android:paddingBottom="3dp"
+                    android:textColor="#FF000000"
+                    android:textSize="11sp" />
+
+                <TextView
+                    android:id="@+id/pocketHeroSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/pocket_chip_bg"
+                    android:fontFamily="sans-serif-medium"
+                    android:paddingStart="9dp"
+                    android:paddingTop="2dp"
+                    android:paddingEnd="9dp"
+                    android:paddingBottom="2dp"
+                    android:textColor="@color/pocket_text"
+                    android:textSize="10sp" />
+
+                <TextView
+                    android:id="@+id/pocketHeroPlaytime"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/pocket_text_dim"
+                    android:textSize="10sp"
+                    android:visibility="gone" />
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Game carousel -->

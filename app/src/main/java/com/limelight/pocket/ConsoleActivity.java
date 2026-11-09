@@ -72,6 +72,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     private boolean charging;
     private boolean statusRunning;
     private int createdWithScale;
+    /** The look this screen was built with (accent, backdrop, glass): rebuilt when it changes. */
+    private String createdWithLook;
 
     private final BroadcastReceiver batteryReceiver = new BroadcastReceiver() {
         @Override
@@ -109,6 +111,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         PocketSetup.applyFirstRunDefaults(this);
         super.onCreate(savedInstanceState);
         createdWithScale = PocketPrefs.uiScalePercent(this);
+        createdWithLook = lookSignature();
         PocketSounds.preload(this);
         applyFullscreenWindow(this);
     }
@@ -160,8 +163,9 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (createdWithScale != 0 && createdWithScale != PocketPrefs.uiScalePercent(this)) {
-            // Interface size changed in settings: rebuild this screen at the new size
+        if ((createdWithScale != 0 && createdWithScale != PocketPrefs.uiScalePercent(this))
+                || (createdWithLook != null && !createdWithLook.equals(lookSignature()))) {
+            // Interface size or look changed (settings, first boot setup): rebuild this screen
             recreate();
             return;
         }
@@ -171,6 +175,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         maybeAutoResume();
         if (pendingResume == null) {
             maybeShowIntro();
+            maybeStartOnboarding();
         }
         if (launchLayer != null) {
             returnFromLaunch();
@@ -198,6 +203,14 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         super.onPause();
         pausedSinceLaunch = true;
         abandonBoot();
+        if (coachMark != null) {
+            // Leaving the screen: the tip goes (it was marked as seen)
+            android.view.ViewParent parent = coachMark.getParent();
+            if (parent instanceof ViewGroup) {
+                ((ViewGroup) parent).removeView(coachMark);
+            }
+            coachMark = null;
+        }
         if (pendingResume != null) {
             // Left before the stream came back: keep the ticket for next time
             statusHandler.removeCallbacks(resumeLaunch);
@@ -472,6 +485,87 @@ public abstract class ConsoleActivity extends AppCompatActivity {
 
     private final List<Runnable> afterBoot = new ArrayList<>();
 
+    private String lookSignature() {
+        return PocketPrefs.accentColor(this) + "|" + PocketPrefs.backdrop(this) + "|" + PocketPrefs.liveGlass(this)
+                + "|" + PocketPrefs.focusStyle(this);
+    }
+
+    // ---- First boot setup & first-time tips ---------------------------------------------------
+
+    /** Screens that may open the first boot setup (the home screens). */
+    protected boolean allowsOnboarding() {
+        return allowsAutoResume();
+    }
+
+    private void maybeStartOnboarding() {
+        if (!allowsOnboarding() || !PocketPrefs.onboardingPending(this) || OnboardingActivity.isOpen()) {
+            return;
+        }
+        // After the boot sequence, with a moment to see the home screen arrive
+        runAfterBoot(() -> statusHandler.postDelayed(() -> {
+            if (isFinishing() || !statusRunning || isBooting() || !PocketPrefs.onboardingPending(this)
+                    || OnboardingActivity.isOpen()) {
+                return;
+            }
+            startActivity(new Intent(this, OnboardingActivity.class));
+            overridePendingTransition(R.anim.pocket_pop_enter, R.anim.pocket_pop_exit);
+        }, 650));
+    }
+
+    private com.limelight.pocket.ui.CoachMark coachMark;
+    private Runnable pendingTip;
+
+    /**
+     * Shows a first-time tip once the person has rested on target for a moment (moving on
+     * cancels it; the next resting place tries again).
+     */
+    protected void scheduleTip(final String tip, final View target, final float targetRadiusDp,
+                               final int titleRes, final int bodyRes) {
+        if (target == null || PocketPrefs.tipSeen(this, tip)) {
+            return;
+        }
+        if (pendingTip != null) {
+            statusHandler.removeCallbacks(pendingTip);
+        }
+        pendingTip = () -> {
+            pendingTip = null;
+            View holder = target.getParent() instanceof View ? (View) target.getParent() : target;
+            if (holder.hasFocus() || target.hasFocus()) {
+                showTipOnce(tip, target, targetRadiusDp, titleRes, bodyRes);
+            }
+        };
+        statusHandler.postDelayed(pendingTip, 1400);
+    }
+
+    /**
+     * Shows a first-time tip pointing at target, once ever (Settings can bring tips back). Not
+     * while something else is going on (boot, setup, a panel, a game launching).
+     */
+    public boolean showTipOnce(String tip, View target, float targetRadiusDp, int titleRes, int bodyRes) {
+        if (target == null || coachMark != null || PocketPrefs.tipSeen(this, tip) || PocketPrefs.onboardingPending(this)
+                || isBooting() || isConsolePanelShowing() || blockingCard != null || pendingResume != null
+                || launchLayer != null || !hasWindowFocus() || !target.isAttachedToWindow()) {
+            return false;
+        }
+        ViewGroup content = findViewById(android.R.id.content);
+        if (content == null) {
+            return false;
+        }
+        PocketPrefs.markTipSeen(this, tip);
+        final com.limelight.pocket.ui.CoachMark mark = new com.limelight.pocket.ui.CoachMark(this, target, targetRadiusDp,
+                getString(titleRes), getString(bodyRes));
+        mark.setOnClosed(() -> {
+            if (coachMark == mark) {
+                coachMark = null;
+            }
+        });
+        coachMark = mark;
+        content.addView(mark, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        PocketSounds.play(this, PocketSounds.OPEN);
+        return true;
+    }
+
     /** Runs r now, or once the boot sequence on this screen has finished. */
     protected void runAfterBoot(Runnable r) {
         if (bootOverlay != null && !bootOverlay.isFinished()) {
@@ -702,6 +796,17 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     public boolean dispatchKeyEvent(KeyEvent event) {
         if (launchLayer != null) {
             return true; // a game is launching: buttons wait
+        }
+        if (coachMark != null) {
+            int k = event.getKeyCode();
+            if (k != KeyEvent.KEYCODE_VOLUME_UP && k != KeyEvent.KEYCODE_VOLUME_DOWN) {
+                // Any button closes a tip (and does nothing else)
+                if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                    coachMark.dismiss();
+                    swallowKeyUp = k;
+                }
+                return true;
+            }
         }
         if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0 && !isConsolePanelShowing()) {
             // (an open panel pulses its own hints)

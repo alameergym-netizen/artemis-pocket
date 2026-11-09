@@ -38,7 +38,9 @@ public final class PocketSetup {
             return;
         }
         applyRp6Defaults(context);
-        prefs.edit().putBoolean(PocketPrefs.KEY_FIRST_RUN_DONE, true).putInt("pocket_defaults_version", 4).apply();
+        // A fresh install: the first boot setup runs once the boot sequence has played
+        prefs.edit().putBoolean(PocketPrefs.KEY_FIRST_RUN_DONE, true).putInt("pocket_defaults_version", 4)
+                .putBoolean(PocketPrefs.KEY_ONBOARDING_PENDING, true).apply();
     }
 
     public static void applyRp6Defaults(Context context) {

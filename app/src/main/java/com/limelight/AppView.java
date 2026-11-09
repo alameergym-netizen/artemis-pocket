@@ -1002,6 +1002,8 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
     @Override
     public void onItemFocused(int pos, View itemView) {
         updateHero(pos, itemView);
+        // First time in a library: what A, Y and START do
+        scheduleTip(PocketPrefs.TIP_GAMES, itemView, 14, R.string.pocket_tip_games_title, R.string.pocket_tip_games_body);
     }
 
     private void updateSectionTitle() {
@@ -1071,6 +1073,24 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
             subtitle.setText(obj.app.getAppId() == lastAppId ? R.string.pocket_last_played : R.string.pocket_ready_to_play);
             subtitle.setTextColor(ContextCompat.getColor(this, R.color.pocket_text));
             subtitle.setBackgroundResource(R.drawable.pocket_chip_bg);
+        }
+
+        // The Play button of the hero (A), in the accent colour
+        TextView play = findViewById(R.id.pocketHeroPlay);
+        if (play != null) {
+            if (play.getBackground() == null) {
+                android.graphics.drawable.GradientDrawable pill = new android.graphics.drawable.GradientDrawable();
+                pill.setCornerRadius(100 * getResources().getDisplayMetrics().density);
+                pill.setColor(com.limelight.pocket.ui.PocketTheme.accent(this));
+                play.setBackground(pill);
+            }
+            String label = "\u25B6  " + getString(obj.isRunning ? R.string.pocket_hero_resume : R.string.pocket_hero_play);
+            if (!label.contentEquals(play.getText())) {
+                play.setText(label);
+                if (moved || play.getAlpha() < 1f) {
+                    com.limelight.pocket.ui.PocketMotion.bump(play);
+                }
+            }
         }
 
         if (card != null) {

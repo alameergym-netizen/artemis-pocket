@@ -81,19 +81,43 @@ public class RecentGamesAdapter extends BaseAdapter {
     public View getView(int position, View convertView, ViewGroup parent) {
         View card = convertView != null ? convertView : inflater.inflate(R.layout.app_grid_item, parent, false);
         RecentGames.Game game = games.get(position);
-        ImageView image = card.findViewById(R.id.grid_image);
-        TextView text = card.findViewById(R.id.grid_text);
+        final ImageView image = card.findViewById(R.id.grid_image);
+        final TextView text = card.findViewById(R.id.grid_text);
         ImageView badge = card.findViewById(R.id.grid_overlay);
-        Bitmap art = HeroArt.load(context, uuid, game.app.getAppId());
-        image.setImageBitmap(art);
-        // No art (or a plain placeholder): the name tells which game it is
-        boolean named = art == null || HeroArt.isPlaceholder(art);
-        text.setText(game.app.getAppName());
-        text.setVisibility(named ? View.VISIBLE : View.GONE);
+        final int appId = game.app.getAppId();
+        final String name = game.app.getAppName();
+        final String tag = uuid + ":" + appId;
+        text.setText(name);
         if (badge != null) {
-            boolean running = game.app.getAppId() == runningAppId;
+            boolean running = appId == runningAppId;
             badge.setImageResource(R.drawable.ic_pocket_playing);
             badge.setVisibility(running ? View.VISIBLE : View.GONE);
+        }
+        if (tag.equals(image.getTag()) && image.getDrawable() != null) {
+            // Same game as before (a refresh): leave the art alone
+            return card;
+        }
+        image.setTag(tag);
+        Bitmap art = HeroArt.cachedCard(context, uuid, appId, name);
+        if (art != null) {
+            image.setImageBitmap(art);
+            text.setVisibility(View.GONE);
+        }
+        else {
+            // Decoded off the main thread, then faded in (no stutter while the row appears)
+            image.setImageDrawable(null);
+            text.setVisibility(View.VISIBLE);
+            HeroArt.loadCardAsync(context, uuid, appId, name, bitmap -> {
+                if (!tag.equals(image.getTag())) {
+                    return;
+                }
+                image.setImageBitmap(bitmap);
+                text.setVisibility(bitmap == null ? View.VISIBLE : View.GONE);
+                if (bitmap != null && com.limelight.pocket.PocketPrefs.animationsEnabled(context)) {
+                    image.setAlpha(0f);
+                    image.animate().alpha(1f).setDuration(220).start();
+                }
+            });
         }
         card.setContentDescription(game.app.getAppName());
         return card;

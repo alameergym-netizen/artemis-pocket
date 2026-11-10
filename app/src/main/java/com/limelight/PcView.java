@@ -1292,12 +1292,16 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             }
         }
 
-        // What it played last, and its art behind everything
+        // What it is playing / played last, and that game's colours (or key art) behind everything
         int lastId = PocketPrefs.getLastAppId(this, computer.details.uuid);
         String lastName = PocketPrefs.getLastAppName(this, computer.details.uuid);
+        String runningName = pocketGameName(computer.details.uuid, computer.details.runningGameId);
         if (lastLine != null) {
             String line = "";
-            if (lastName != null && !lastName.isEmpty()) {
+            if (runningName != null) {
+                line = getString(R.string.pocket_hero_playing, runningName);
+            }
+            else if (lastName != null && !lastName.isEmpty()) {
                 line = getString(R.string.pocket_hero_last_played, lastName);
                 long when = PocketPrefs.getLastPlayed(this, computer.details.uuid, lastId);
                 if (when > 0) {
@@ -1308,24 +1312,54 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             lastLine.setText(line);
             lastLine.setVisibility(line.isEmpty() ? View.GONE : View.VISIBLE);
         }
-        final int artId = computer.details.runningGameId != 0 ? computer.details.runningGameId : lastId;
-        final String artUuid = computer.details.uuid;
-        final int artFor = position;
-        android.graphics.Bitmap keyArt = com.limelight.pocket.PocketArt.cached(this, artUuid, artId, com.limelight.pocket.PocketArt.HERO);
+        int artId = computer.details.runningGameId != 0 ? computer.details.runningGameId : lastId;
+        pocketBackdropFor(computer.details.uuid, artId, runningName != null ? runningName : lastName);
+        probeLatency(computer.details);
+    }
+
+    /** The name of one of a PC's games (from its known list), or null. */
+    private String pocketGameName(String uuid, int appId) {
+        if (appId == 0) {
+            return null;
+        }
+        for (com.limelight.pocket.RecentGames.Game g : com.limelight.pocket.RecentGames.forPc(this, uuid, 200)) {
+            if (g.app.getAppId() == appId) {
+                return g.app.getAppName();
+            }
+        }
+        return appId == PocketPrefs.getLastAppId(this, uuid) ? PocketPrefs.getLastAppName(this, uuid) : null;
+    }
+
+    private int pocketBackdropToken;
+
+    /**
+     * The backdrop for a game: its wide key art when it has one; otherwise its colours light the
+     * screen. Requests are named, so a refresh asking for the same thing changes nothing.
+     */
+    private void pocketBackdropFor(final String uuid, final int appId, final String name) {
+        final int token = ++pocketBackdropToken;
+        final String key = uuid + ":" + appId;
+        android.graphics.Bitmap keyArt = com.limelight.pocket.PocketArt.cached(this, uuid, appId, com.limelight.pocket.PocketArt.HERO);
         if (keyArt != null) {
-            pocketHeroArt().show(keyArt);
+            pocketHeroArt().show(keyArt, "hero:" + key, true);
+            return;
+        }
+        android.graphics.Bitmap card = com.limelight.pocket.ui.HeroArt.cachedCard(this, uuid, appId, name);
+        if (card != null) {
+            pocketHeroArt().show(card, "card:" + key, false);
         }
         else {
-            // That game's cover, or (for a plain one like Desktop) the latest game with real art
-            pocketHeroArt().show(com.limelight.pocket.RecentGames.coverFor(this, artUuid, artId));
-            // That game's wide background (SteamGridDB), when it has one, is even better
-            com.limelight.pocket.PocketArt.load(this, artUuid, artId, com.limelight.pocket.PocketArt.HERO, bitmap -> {
-                if (bitmap != null && pocketHeroPos == artFor && !isFinishing()) {
-                    pocketHeroArt().show(bitmap);
+            com.limelight.pocket.ui.HeroArt.loadCardAsync(this, uuid, appId, name, bitmap -> {
+                if (token == pocketBackdropToken && !isFinishing()) {
+                    pocketHeroArt().show(bitmap, "card:" + key, false);
                 }
             });
         }
-        probeLatency(computer.details);
+        com.limelight.pocket.PocketArt.load(this, uuid, appId, com.limelight.pocket.PocketArt.HERO, bitmap -> {
+            if (bitmap != null && token == pocketBackdropToken && !isFinishing()) {
+                pocketHeroArt().show(bitmap, "hero:" + key, true);
+            }
+        });
     }
 
     private com.limelight.pocket.ui.HeroArt pocketHeroArt;
@@ -1490,20 +1524,8 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             lastLine.setText(line);
             lastLine.setVisibility(line.length() == 0 ? View.GONE : View.VISIBLE);
         }
-        // Its art behind everything (its wide background if it has one)
-        final int heroFor = position;
-        android.graphics.Bitmap keyArt = com.limelight.pocket.PocketArt.cached(this, uuid, appId, com.limelight.pocket.PocketArt.HERO);
-        if (keyArt != null) {
-            pocketHeroArt().show(keyArt);
-        }
-        else {
-            pocketHeroArt().show(com.limelight.pocket.ui.HeroArt.load(this, uuid, appId));
-            com.limelight.pocket.PocketArt.load(this, uuid, appId, com.limelight.pocket.PocketArt.HERO, bitmap -> {
-                if (bitmap != null && pocketHeroShowsGame && pocketRecentHeroPos == heroFor && !isFinishing()) {
-                    pocketHeroArt().show(bitmap);
-                }
-            });
-        }
+        // Its key art behind everything when it has one, else its colours
+        pocketBackdropFor(uuid, appId, game.app.getAppName());
     }
 
     /** A: play it (or resume it); the library takes over when another game is running. */

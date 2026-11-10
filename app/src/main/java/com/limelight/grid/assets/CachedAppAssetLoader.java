@@ -176,6 +176,13 @@ public class CachedAppAssetLoader {
                 }
             }
 
+            // Artemis Pocket: a plain grey placeholder (Desktop and the like) becomes a designed
+            // cover with the app's name
+            if (bmp != null && bmp.bitmap != null && com.limelight.pocket.ui.HeroArt.isPlaceholder(bmp.bitmap)) {
+                Bitmap designed = com.limelight.pocket.ui.PlaceholderArt.render(tuple.app.getAppName(), 300);
+                bmp = new ScaledBitmap(designed.getWidth(), designed.getHeight(), designed);
+            }
+
             // Cache the bitmap
             if (bmp != null) {
                 memoryLoader.populateCache(tuple, bmp);

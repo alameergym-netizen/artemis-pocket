@@ -29,7 +29,7 @@ import java.util.WeakHashMap;
  */
 public final class HeroArt {
 
-    private static final LruCache<String, Bitmap> CACHE = new LruCache<String, Bitmap>(14 * 1024 * 1024) {
+    private static final LruCache<String, Bitmap> CACHE = new LruCache<String, Bitmap>(24 * 1024 * 1024) {
         @Override
         protected int sizeOf(String key, Bitmap value) {
             return value.getByteCount();
@@ -110,14 +110,59 @@ public final class HeroArt {
         if (aurora == null) {
             return;
         }
+        String style = PocketPrefs.backdrop(root.getContext());
+        boolean gameLight = PocketPrefs.BACKDROP_AMBIENT.equals(style) || PocketPrefs.BACKDROP_ART.equals(style);
         boolean color = PocketPrefs.colorBackgroundArt(root.getContext());
-        aurora.tint(!color || art == null || isPlaceholder(art) ? 0 : vibrantColor(art));
+        aurora.tint(!gameLight || !color || art == null || isPlaceholder(art) ? 0 : vibrantColor(art));
+    }
+
+    private static final java.util.concurrent.ExecutorService LOADER =
+            java.util.concurrent.Executors.newFixedThreadPool(2);
+    private static final android.os.Handler MAIN = new android.os.Handler(android.os.Looper.getMainLooper());
+
+    public interface Callback {
+        void onArt(Bitmap bitmap);
+    }
+
+    /**
+     * A game's card art: its cover, or for a plain grey placeholder (Desktop and the like) a
+     * designed cover with its name. Null when there is no art on disk yet.
+     */
+    public static Bitmap loadCard(Context context, String pcUuid, int appId, String name) {
+        Bitmap b = load(context, pcUuid, appId);
+        if (b != null && isPlaceholder(b)) {
+            return PlaceholderArt.render(name, 300);
+        }
+        return b;
+    }
+
+    /** The card art if it is already in memory (null otherwise: use loadCardAsync). */
+    public static Bitmap cachedCard(Context context, String pcUuid, int appId, String name) {
+        File file = coverFile(context, pcUuid, appId);
+        if (file == null) {
+            return null;
+        }
+        Bitmap b = CACHE.get(file.getPath() + "@" + file.lastModified());
+        if (b != null && isPlaceholder(b)) {
+            return PlaceholderArt.render(name, 300);
+        }
+        return b;
+    }
+
+    /** Loads the card art off the main thread (decoding a cover there makes scrolling stutter). */
+    public static void loadCardAsync(Context context, final String pcUuid, final int appId, final String name,
+                                     final Callback callback) {
+        final Context app = context.getApplicationContext();
+        LOADER.execute(() -> {
+            final Bitmap b = loadCard(app, pcUuid, appId, name);
+            MAIN.post(() -> callback.onArt(b));
+        });
     }
 
     private final ImageView a;
     private final ImageView b;
     private boolean onA;
-    private Bitmap shown;
+    private String shownKey;
 
     public HeroArt(View root) {
         a = root.findViewById(R.id.pocketHeroArtA);
@@ -125,7 +170,7 @@ public final class HeroArt {
     }
 
     /** The cached box art of a game (scaled down for cards and backdrops), or null. */
-    public static Bitmap load(Context context, String pcUuid, int appId) {
+    private static File coverFile(Context context, String pcUuid, int appId) {
         if (pcUuid == null || appId == 0) {
             return null;
         }
@@ -134,7 +179,12 @@ public final class HeroArt {
         if (!file.exists()) {
             file = CacheHelper.openPath(false, context.getCacheDir(), "boxart", pcUuid, appId + ".png");
         }
-        if (!file.exists()) {
+        return file.exists() ? file : null;
+    }
+
+    public static Bitmap load(Context context, String pcUuid, int appId) {
+        File file = coverFile(context, pcUuid, appId);
+        if (file == null) {
             return null;
         }
         String key = file.getPath() + "@" + file.lastModified();
@@ -146,8 +196,9 @@ public final class HeroArt {
             BitmapFactory.Options bounds = new BitmapFactory.Options();
             bounds.inJustDecodeBounds = true;
             BitmapFactory.decodeFile(file.getPath(), bounds);
+            // About the size a card is drawn at (a full 600x900 cover is 2 MB in memory)
             int sample = 1;
-            while (bounds.outWidth / (sample * 2) >= 320) {
+            while (bounds.outWidth / (sample * 2) >= 280) {
                 sample *= 2;
             }
             BitmapFactory.Options opts = new BitmapFactory.Options();
@@ -209,29 +260,38 @@ public final class HeroArt {
         return result;
     }
 
-    /**
-     * Cross-fades the backdrop to bitmap (blurred, black and white unless colour art is on), or
-     * fades it away for null / placeholder art and when the backdrop setting isn't "art".
-     */
+    /** Cross-fades the backdrop to a game's cover (see {@link #show(Bitmap, String, boolean)}). */
     public void show(Bitmap bitmap) {
+        show(bitmap, bitmap != null ? "bmp@" + System.identityHashCode(bitmap) : null, false);
+    }
+
+    /**
+     * The backdrop for a piece of art. key names it (the same key again changes nothing, so a
+     * list refresh never re-fades it). keyArt: a wide background made to be seen (SteamGridDB),
+     * shown in every style but black; a cover is only blown up (blurred) in the "Art" style, and
+     * in the "Ambient" style only lends its colours to the light.
+     */
+    public void show(Bitmap bitmap, String key, boolean keyArt) {
         if (a == null || b == null) {
             return;
         }
         Context context = a.getContext();
-        if (bitmap != null && (isPlaceholder(bitmap) || !PocketPrefs.BACKDROP_ART.equals(PocketPrefs.backdrop(context)))) {
-            bitmap = null;
-        }
-        if (bitmap == shown) {
+        String style = PocketPrefs.backdrop(context);
+        boolean showImage = bitmap != null && !PocketPrefs.BACKDROP_BLACK.equals(style)
+                && (keyArt || (PocketPrefs.BACKDROP_ART.equals(style) && !isPlaceholder(bitmap)));
+        String effectiveKey = (showImage ? "img:" : "tint:") + key;
+        if (effectiveKey.equals(shownKey)) {
             return;
         }
-        shown = bitmap;
+        shownKey = effectiveKey;
+        // The light takes on the art's colour either way
+        ambient(a.getRootView(), bitmap);
         boolean animate = PocketPrefs.animationsEnabled(context);
         ImageView incoming = onA ? b : a;
         ImageView outgoing = onA ? a : b;
         incoming.animate().cancel();
         outgoing.animate().cancel();
-        if (bitmap == null) {
-            ambient(a.getRootView(), null);
+        if (!showImage) {
             if (animate) {
                 a.animate().alpha(0f).setDuration(320).start();
                 b.animate().alpha(0f).setDuration(320).start();
@@ -245,10 +305,10 @@ public final class HeroArt {
         onA = !onA;
         incoming.setImageBitmap(bitmap);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            incoming.setRenderEffect(RenderEffect.createBlurEffect(42f, 42f, Shader.TileMode.CLAMP));
+            float blur = keyArt ? 10f : 42f;
+            incoming.setRenderEffect(RenderEffect.createBlurEffect(blur, blur, Shader.TileMode.CLAMP));
         }
         boolean color = PocketPrefs.colorBackgroundArt(context);
-        ambient(a.getRootView(), bitmap);
         if (color) {
             incoming.clearColorFilter();
         }
@@ -257,13 +317,13 @@ public final class HeroArt {
             mono.setSaturation(0f);
             incoming.setColorFilter(new ColorMatrixColorFilter(mono));
         }
-        float target = color ? 0.58f : 0.42f;
-        incoming.setScaleX(1.08f);
-        incoming.setScaleY(1.08f);
+        float target = keyArt ? 0.55f : (color ? 0.5f : 0.42f);
+        incoming.setScaleX(1.06f);
+        incoming.setScaleY(1.06f);
         if (animate) {
-            incoming.animate().alpha(target).scaleX(1.04f).scaleY(1.04f).setDuration(420)
-                    .setInterpolator(PocketUi.EASE).start();
-            outgoing.animate().alpha(0f).setDuration(320).start();
+            incoming.animate().alpha(target).scaleX(1.02f).scaleY(1.02f).setDuration(480)
+                    .setInterpolator(PocketMotion.DECELERATE).start();
+            outgoing.animate().alpha(0f).setDuration(360).start();
         }
         else {
             incoming.setAlpha(target);

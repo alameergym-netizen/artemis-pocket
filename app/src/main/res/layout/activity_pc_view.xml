@@ -160,11 +160,11 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
-                android:fontFamily="sans-serif-light"
-                android:letterSpacing="-0.015"
+                android:fontFamily="sans-serif"
+                android:letterSpacing="-0.02"
                 android:maxLines="1"
                 android:textColor="@color/pocket_text"
-                android:textSize="28sp" />
+                android:textSize="26sp" />
 
             <!-- What A does, the PC's state, and what it played last (console style) -->
             <LinearLayout
@@ -241,15 +241,16 @@
                     android:overScrollMode="never"
                     android:paddingStart="14dp"
                     android:paddingTop="14dp"
-                    android:paddingEnd="4dp"
+                    android:paddingEnd="0dp"
                     android:paddingBottom="14dp" />
 
+                <!-- Same gap as between two cards, with a hairline in the middle -->
                 <View
                     android:id="@+id/pocketRecentDivider"
                     android:layout_width="1dp"
-                    android:layout_height="110dp"
-                    android:layout_marginStart="4dp"
-                    android:layout_marginEnd="4dp"
+                    android:layout_height="96dp"
+                    android:layout_marginStart="0dp"
+                    android:layout_marginEnd="0dp"
                     android:background="#29FFFFFF"
                     android:visibility="gone" />
 

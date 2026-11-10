@@ -93,11 +93,11 @@ public class AuroraView extends View {
         else {
             float[] hsv = new float[3];
             Color.colorToHSV(color, hsv);
-            toA = PocketTheme.withAlpha(color, 0x60);
+            toA = PocketTheme.withAlpha(color, 0x78);
             // The second pool: a neighbouring, deeper hue, so the light has some depth
             hsv[0] = (hsv[0] + 330f) % 360f;
             hsv[2] = hsv[2] * 0.8f;
-            toB = PocketTheme.withAlpha(Color.HSVToColor(hsv), 0x40);
+            toB = PocketTheme.withAlpha(Color.HSVToColor(hsv), 0x50);
         }
         if (tintAnimator != null) {
             tintAnimator.cancel();
@@ -135,7 +135,7 @@ public class AuroraView extends View {
         if (w <= 0 || h <= 0) {
             return;
         }
-        float r = Math.max(w, h) * 0.62f;
+        float r = Math.max(w, h) * 0.7f;
         // Centred at the origin; onDraw moves them
         glowA.setShader(new RadialGradient(0, 0, r, new int[]{colorA, PocketTheme.withAlpha(colorA, Color.alpha(colorA) / 3), 0},
                 new float[]{0f, 0.45f, 1f}, Shader.TileMode.CLAMP));
@@ -177,8 +177,10 @@ public class AuroraView extends View {
         }
         double t = drifting ? (SystemClock.uptimeMillis() - startMs) / 1000.0 : 0;
         // Slow, unrelated periods so the light never visibly loops
-        place(glowA, (float) (w * (0.2 + 0.10 * Math.sin(t / 23.0))), (float) (h * (0.04 + 0.08 * Math.sin(t / 17.0 + 1))));
-        place(glowB, (float) (w * (0.84 + 0.08 * Math.sin(t / 29.0 + 2))), (float) (h * (0.95 + 0.06 * Math.cos(t / 19.0))));
+        // The main light blooms top right (behind where a game's key art sits, away from the
+        // hero text on the left); a second, deeper one rises from the lower right
+        place(glowA, (float) (w * (0.74 + 0.08 * Math.sin(t / 23.0))), (float) (h * (0.02 + 0.07 * Math.sin(t / 17.0 + 1))));
+        place(glowB, (float) (w * (0.96 + 0.05 * Math.sin(t / 29.0 + 2))), (float) (h * (0.78 + 0.06 * Math.cos(t / 19.0))));
         place(glowC, (float) (w * (0.55 + 0.22 * Math.sin(t / 37.0 + 4))), (float) (h * (0.45 + 0.15 * Math.cos(t / 31.0 + 3))));
         canvas.drawRect(0, 0, w, h, glowA);
         canvas.drawRect(0, 0, w, h, glowB);

@@ -924,6 +924,11 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
     // ---- Artemis Pocket: per-game settings ----------------------------------------------------
 
     private String pocketHeroDetails(int appId) {
+        return pocketHeroDetails(appId, true);
+    }
+
+    /** Playtime and when it was last played (and, for the options panel, its own settings). */
+    private String pocketHeroDetails(int appId, boolean withSettings) {
         if (computer == null) {
             return "";
         }
@@ -940,7 +945,7 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
             sb.append(android.text.format.DateUtils.getRelativeTimeSpanString(last, System.currentTimeMillis(),
                     android.text.format.DateUtils.MINUTE_IN_MILLIS));
         }
-        String custom = com.limelight.pocket.GameProfile.summary(this, computer.uuid, appId);
+        String custom = withSettings ? com.limelight.pocket.GameProfile.summary(this, computer.uuid, appId) : "";
         if (!custom.isEmpty()) {
             if (sb.length() > 0) {
                 sb.append("  \u00b7  ");
@@ -1087,7 +1092,8 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         heroTitleForLaunch = obj.app.getAppName();
         TextView playtime = findViewById(R.id.pocketHeroPlaytime);
         if (playtime != null) {
-            String line = pocketHeroDetails(obj.app.getAppId());
+            // Short: the stream settings belong in the options, not in the hero
+            String line = pocketHeroDetails(obj.app.getAppId(), false);
             if (moved && !line.isEmpty() && com.limelight.pocket.ui.PocketMotion.on(playtime)) {
                 playtime.animate().cancel();
                 playtime.setAlpha(0f);
@@ -1272,7 +1278,8 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         }
         // The "Starting..." screen uses it too
         com.limelight.pocket.ui.LaunchOverlay.rememberKeyArt(heroTitleForLaunch, bitmap);
-        if (bitmap != null && !PocketPrefs.BACKDROP_ART.equals(PocketPrefs.backdrop(this))) {
+        // Key art is made to be seen: every style shows it, except pure black
+        if (bitmap != null && PocketPrefs.BACKDROP_BLACK.equals(PocketPrefs.backdrop(this))) {
             bitmap = null;
         }
         if (bitmap == keyArtShown && (bitmap != null || frame.getAlpha() == 0f)) {

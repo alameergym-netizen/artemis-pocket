@@ -127,9 +127,8 @@ public class PcGridAdapter extends GenericGridAdapter<PcView.ComputerObject> {
         if (art != null && scrim != null) {
             int appId = obj.details.runningGameId != 0 ? obj.details.runningGameId
                     : com.limelight.pocket.PocketPrefs.getLastAppId(context, obj.details.uuid);
-            // Its cover, or (for a plain one like Desktop) the latest game with real art
-            android.graphics.Bitmap bitmap = obj.details.pairState == com.limelight.nvstream.http.PairingManager.PairState.PAIRED
-                    ? com.limelight.pocket.RecentGames.coverFor(context, obj.details.uuid, appId) : null;
+            // The PC card stays the PC (its games are in the row next to it): no borrowed art
+            android.graphics.Bitmap bitmap = null;
             if (bitmap != null) {
                 art.setImageBitmap(bitmap);
                 art.setVisibility(View.VISIBLE);

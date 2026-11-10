@@ -347,6 +347,8 @@ public final class PocketPrefs {
     public static final String FRAME_GEN_LSFG = "lsfg";
 
     public static final String BACKDROP_GLOW = "glow";
+    /** Light in the colours of the focused game, its key art when it has one (the default). */
+    public static final String BACKDROP_AMBIENT = "ambient";
     public static final String BACKDROP_ART = "art";
     public static final String BACKDROP_BLACK = "black";
 
@@ -421,7 +423,7 @@ public final class PocketPrefs {
     }
 
     public static String backdrop(Context context) {
-        return prefs(context).getString(KEY_BACKDROP, BACKDROP_ART);
+        return prefs(context).getString(KEY_BACKDROP, BACKDROP_AMBIENT);
     }
 
     public static boolean introAnimation(Context context) {

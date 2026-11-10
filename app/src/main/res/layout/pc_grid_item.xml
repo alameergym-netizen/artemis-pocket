@@ -2,7 +2,7 @@
 <!-- Artemis Pocket: glass PC card. IDs grid_* are used by the upstream adapter. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="150dp"
-    android:layout_height="164dp"
+    android:layout_height="162dp"
     android:background="@drawable/pocket_card_bg">
 
     <!-- The game it is playing / played last, when there is art for it -->

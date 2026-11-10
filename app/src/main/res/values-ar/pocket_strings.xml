@@ -616,4 +616,6 @@
     <string name="pocket_quick_resume">كمّل %1$s</string>
     <string name="pocket_jump_back_in">كمّل من وين وقفت</string>
     <string name="pocket_hint_library">المكتبة</string>
+    <string name="pocket_backdrop_ambient">محيطي (ألوان اللعبة)</string>
+    <string name="pocket_hero_playing">شغّال: %1$s</string>
 </resources>

@@ -721,8 +721,9 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     rowsContainer.postDelayed(this::recreate, 250);
                 }, null);
 
-        final String[] backdropValues = {PocketPrefs.BACKDROP_ART, PocketPrefs.BACKDROP_GLOW, PocketPrefs.BACKDROP_BLACK};
-        final String[] backdropLabels = {getString(R.string.pocket_backdrop_art), getString(R.string.pocket_backdrop_glow),
+        final String[] backdropValues = {PocketPrefs.BACKDROP_AMBIENT, PocketPrefs.BACKDROP_ART, PocketPrefs.BACKDROP_GLOW,
+                PocketPrefs.BACKDROP_BLACK};
+        final String[] backdropLabels = {getString(R.string.pocket_backdrop_ambient), getString(R.string.pocket_backdrop_art), getString(R.string.pocket_backdrop_glow),
                 getString(R.string.pocket_backdrop_black)};
         addChoice(getString(R.string.pocket_set_backdrop), getString(R.string.pocket_set_backdrop_sub), backdropLabels,
                 () -> indexOf(backdropValues, PocketPrefs.backdrop(this)),

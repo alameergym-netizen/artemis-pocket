@@ -623,4 +623,6 @@
     <string name="pocket_quick_resume">Resume %1$s</string>
     <string name="pocket_jump_back_in">Jump back in</string>
     <string name="pocket_hint_library">Library</string>
+    <string name="pocket_backdrop_ambient">Ambient (game colours)</string>
+    <string name="pocket_hero_playing">Playing: %1$s</string>
 </resources>

@@ -225,12 +225,12 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
-                android:fontFamily="sans-serif-light"
-                android:letterSpacing="-0.015"
+                android:fontFamily="sans-serif"
+                android:letterSpacing="-0.02"
                 android:maxWidth="520dp"
                 android:maxLines="1"
                 android:textColor="@color/pocket_text"
-                android:textSize="28sp" />
+                android:textSize="26sp" />
 
             <!-- Play, status and playtime on one line (console style) -->
             <LinearLayout

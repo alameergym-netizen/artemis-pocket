@@ -114,6 +114,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         createdWithScale = PocketPrefs.uiScalePercent(this);
         createdWithLook = lookSignature();
+        bootOnLaunch = savedInstanceState == null && isTaskRoot() && allowsAutoResume()
+                && getIntent() != null && Intent.ACTION_MAIN.equals(getIntent().getAction());
         PocketSounds.preload(this);
         applyFullscreenWindow(this);
     }
@@ -450,13 +452,18 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     // ---- Boot sequence (once per app start) -----------------------------------------------
 
     private static boolean introShown;
+    /** This screen was just launched fresh (from the app icon): it opens with the boot sequence. */
+    private boolean bootOnLaunch;
     private com.limelight.pocket.ui.BootOverlay bootOverlay;
 
     private void maybeShowIntro() {
-        if (introShown || !allowsAutoResume()) {
+        // Every fresh launch of the app plays it, even if Android kept the app's process alive
+        // from before (that used to skip it); coming back from a game or a menu doesn't
+        if ((introShown && !bootOnLaunch) || !allowsAutoResume()) {
             return;
         }
         introShown = true;
+        bootOnLaunch = false;
         if (!PocketPrefs.introAnimation(this) || !PocketPrefs.animationsEnabled(this)) {
             return;
         }
@@ -599,6 +606,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         bootOverlay = null;
         afterBoot.clear();
         introShown = false;
+        bootOnLaunch = true;
         PocketSounds.releaseBoot();
         ViewGroup parent = (ViewGroup) overlay.getParent();
         if (parent != null) {

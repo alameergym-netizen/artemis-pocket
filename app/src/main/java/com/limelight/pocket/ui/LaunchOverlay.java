@@ -90,6 +90,23 @@ public class LaunchOverlay extends FrameLayout {
         image.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
         Bitmap wide = title != null && title.equals(keyArtTitle) ? keyArt : null;
         Bitmap bitmap = wide != null ? wide : artFor(title);
+        if (wide == null && bitmap != null
+                && !PocketPrefs.BACKDROP_ART.equals(PocketPrefs.backdrop(context))) {
+            // Ambient style: no blown-up cover, just the game's colour glowing behind the title
+            int glow = PocketPrefs.colorBackgroundArt(context) && !HeroArt.isPlaceholder(bitmap)
+                    ? HeroArt.vibrantColor(bitmap) : 0;
+            if (glow != 0) {
+                GradientDrawable light = new GradientDrawable();
+                light.setGradientType(GradientDrawable.RADIAL_GRADIENT);
+                light.setGradientCenter(0.78f, 0.1f);
+                light.setGradientRadius(Math.max(context.getResources().getDisplayMetrics().widthPixels,
+                        context.getResources().getDisplayMetrics().heightPixels) * 0.75f);
+                light.setColors(new int[]{PocketTheme.withAlpha(glow, 0x80), PocketTheme.withAlpha(glow, 0x22), 0x00000000});
+                image.setImageDrawable(light);
+                image.setScaleType(ImageView.ScaleType.FIT_XY);
+            }
+            bitmap = null;
+        }
         if (bitmap != null) {
             image.setImageBitmap(bitmap);
             // Key art is made to be seen: only a light blur; a cover is blown up, so more

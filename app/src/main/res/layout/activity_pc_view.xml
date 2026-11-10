@@ -220,19 +220,53 @@
             android:clipChildren="false"
             android:clipToPadding="false">
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/pocketPcCarousel"
+            <!-- Your PCs, then the games played last on the focused one (console home row) -->
+            <LinearLayout
+                android:id="@+id/pocketHomeRow"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
                 android:clipChildren="false"
                 android:clipToPadding="false"
-                android:descendantFocusability="afterDescendants"
-                android:overScrollMode="never"
-                android:paddingStart="14dp"
-                android:paddingTop="14dp"
-                android:paddingEnd="90dp"
-                android:paddingBottom="14dp" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/pocketPcCarousel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    android:descendantFocusability="afterDescendants"
+                    android:overScrollMode="never"
+                    android:paddingStart="14dp"
+                    android:paddingTop="14dp"
+                    android:paddingEnd="4dp"
+                    android:paddingBottom="14dp" />
+
+                <View
+                    android:id="@+id/pocketRecentDivider"
+                    android:layout_width="1dp"
+                    android:layout_height="110dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_marginEnd="4dp"
+                    android:background="#29FFFFFF"
+                    android:visibility="gone" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/pocketRecentCarousel"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    android:descendantFocusability="afterDescendants"
+                    android:overScrollMode="never"
+                    android:paddingTop="14dp"
+                    android:paddingEnd="90dp"
+                    android:paddingBottom="14dp"
+                    android:visibility="gone" />
+            </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/no_pc_found_layout"

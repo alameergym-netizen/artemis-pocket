@@ -44,6 +44,9 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
     private final float cardRadiusDp;
     private int generation = 0;
     private int focusedPosition = RecyclerView.NO_POSITION;
+    private static final Object REFRESH = new Object();
+    private int lastCount = -1;
+    private long lastBlurAt;
     private RecyclerView list;
     private FocusLens lens;
 
@@ -54,13 +57,24 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         source.registerDataSetObserver(new DataSetObserver() {
             @Override
             public void onChanged() {
-                notifyDataSetChanged();
+                // The lists refresh every few seconds (PC state, ping, running game). Rebinding the
+                // same cards in place keeps focus where it is; a full rebind would take the focus
+                // away and give it back, which made the focused card shrink and grow (a "pulse").
+                int count = CarouselAdapter.this.source.getCount();
+                if (list != null && count == lastCount && count > 0) {
+                    notifyItemRangeChanged(0, count, REFRESH);
+                }
+                else {
+                    lastCount = count;
+                    notifyDataSetChanged();
+                }
             }
 
             @Override
             public void onInvalidated() {
                 // The source switched item layouts; don't hand it views of the old layout
                 generation++;
+                lastCount = CarouselAdapter.this.source.getCount();
                 notifyDataSetChanged();
             }
         });
@@ -76,8 +90,6 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         list = recyclerView;
         lens = new FocusLens(recyclerView, this, cardRadiusDp);
         recyclerView.addItemDecoration(lens);
-        recyclerView.addOnScrollListener(parallaxScroll);
-        recyclerView.addOnLayoutChangeListener(parallaxLayout);
     }
 
     @Override
@@ -85,64 +97,9 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         if (lens != null) {
             recyclerView.removeItemDecoration(lens);
         }
-        recyclerView.removeOnScrollListener(parallaxScroll);
-        recyclerView.removeOnLayoutChangeListener(parallaxLayout);
         lens = null;
         list = null;
         super.onDetachedFromRecyclerView(recyclerView);
-    }
-
-    // ---- Parallax: the art sits a little deeper than its card --------------------------------
-
-    private static final float PARALLAX_DP = 9f;
-
-    private final RecyclerView.OnScrollListener parallaxScroll = new RecyclerView.OnScrollListener() {
-        @Override
-        public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
-            applyParallax(rv);
-        }
-    };
-
-    private final View.OnLayoutChangeListener parallaxLayout =
-            (v, l, t, r, b, ol, ot, or, ob) -> applyParallax((RecyclerView) v);
-
-    /** The picture inside each card shifts against the way the row moves (a window into depth). */
-    private static void applyParallax(RecyclerView rv) {
-        boolean on = PocketPrefs.animationsEnabled(rv.getContext());
-        float half = rv.getWidth() / 2f;
-        if (half <= 0) {
-            return;
-        }
-        float shift = PARALLAX_DP * rv.getResources().getDisplayMetrics().density;
-        for (int i = 0; i < rv.getChildCount(); i++) {
-            View child = rv.getChildAt(i);
-            View art = parallaxTarget(child);
-            if (art == null) {
-                continue;
-            }
-            if (!on) {
-                art.setScaleX(1f);
-                art.setScaleY(1f);
-                art.setTranslationX(0f);
-                continue;
-            }
-            float center = child.getLeft() + child.getWidth() / 2f;
-            float offset = Math.max(-1.3f, Math.min(1.3f, (center - half) / half));
-            if (art.getScaleX() != 1.14f) {
-                art.setScaleX(1.14f);
-                art.setScaleY(1.14f);
-            }
-            art.setTranslationX(-offset * shift);
-        }
-    }
-
-    /** The card's picture (game art), never an icon. */
-    private static View parallaxTarget(View frame) {
-        View pcArt = frame.findViewById(R.id.pc_art);
-        if (pcArt != null) {
-            return pcArt.getVisibility() == View.VISIBLE ? pcArt : null;
-        }
-        return frame.findViewById(R.id.grid_image);
     }
 
     private boolean zoomStyle() {
@@ -248,6 +205,24 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
     }
 
     @Override
+    public void onBindViewHolder(@NonNull Holder holder, int position, @NonNull java.util.List<Object> payloads) {
+        if (payloads.contains(REFRESH) && holder.boundGeneration == generation && holder.frame.getChildCount() > 0) {
+            // Refresh in place: new content, same card, same focus and size
+            View existing = holder.frame.getChildAt(0);
+            View content = source.getView(position, existing, holder.frame);
+            if (content != existing) {
+                holder.frame.removeAllViews();
+                holder.frame.addView(content);
+                content.setDuplicateParentStateEnabled(false);
+                content.setTranslationX(makeRoomShift(position, content));
+            }
+            content.setActivated(holder.frame.hasFocus());
+            return;
+        }
+        onBindViewHolder(holder, position);
+    }
+
+    @Override
     public void onBindViewHolder(@NonNull Holder holder, int position) {
         View existing = holder.frame.getChildCount() > 0 ? holder.frame.getChildAt(0) : null;
         if (holder.boundGeneration != generation) {
@@ -295,14 +270,31 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         });
         frame.setOnFocusChangeListener((v, hasFocus) -> {
             int pos = holder.getBindingAdapterPosition();
-            applyFocus(holder, hasFocus, true);
-            if (hasFocus && pos != RecyclerView.NO_POSITION) {
-                focusedPosition = pos;
-                updateMakeRoom(true);
-                PocketUi.tick(frame.getContext());
-                listener.onItemFocused(pos, frame.getChildAt(0));
+            if (!hasFocus) {
+                lastBlurAt = android.os.SystemClock.uptimeMillis();
+                // Wait a frame: a list refresh can take the focus away and hand it straight back
+                frame.post(() -> {
+                    if (!frame.hasFocus()) {
+                        applyFocus(holder, false, true);
+                    }
+                });
             }
-            else if (!hasFocus && list != null) {
+            else {
+                // Focus came back to the same card right after losing it (a refresh): no motion,
+                // no sound, as if nothing happened
+                boolean regained = pos == focusedPosition
+                        && android.os.SystemClock.uptimeMillis() - lastBlurAt < 400;
+                applyFocus(holder, true, !regained);
+                if (pos != RecyclerView.NO_POSITION) {
+                    focusedPosition = pos;
+                    updateMakeRoom(!regained);
+                    if (!regained) {
+                        PocketUi.tick(frame.getContext());
+                    }
+                    listener.onItemFocused(pos, frame.getChildAt(0));
+                }
+            }
+            if (!hasFocus && list != null) {
                 // If focus left the row altogether, the cards close ranks again
                 final RecyclerView rv = list;
                 rv.post(() -> {

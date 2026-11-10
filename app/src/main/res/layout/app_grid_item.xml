@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Artemis Pocket: game card (3:4 box art). IDs grid_* are used by the upstream adapter. -->
+<!-- Artemis Pocket: game card, 2:3 like Steam / SteamGridDB covers (so the art isn't cropped).
+     IDs grid_* are used by the upstream adapter. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="108dp"
-    android:layout_height="144dp">
+    android:layout_height="162dp">
 
     <androidx.cardview.widget.CardView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:foreground="@drawable/pocket_card_edge"
         android:tag="glow_target"
         app:cardBackgroundColor="#1AFFFFFF"
         app:cardCornerRadius="14dp"

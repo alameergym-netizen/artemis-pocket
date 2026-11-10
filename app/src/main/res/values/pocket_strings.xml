@@ -621,4 +621,6 @@
     <string name="pocket_sort_pc">PC order</string>
     <string name="pocket_quick_play">Play %1$s</string>
     <string name="pocket_quick_resume">Resume %1$s</string>
+    <string name="pocket_jump_back_in">Jump back in</string>
+    <string name="pocket_hint_library">Library</string>
 </resources>

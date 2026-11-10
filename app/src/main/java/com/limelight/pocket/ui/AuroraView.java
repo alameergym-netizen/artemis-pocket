@@ -30,6 +30,9 @@ public class AuroraView extends View {
     private int colorC = 0x14FFFFFF;
     private boolean pureBlack;
     private boolean drifting;
+    private int baseA;
+    private int baseB;
+    private android.animation.ValueAnimator tintAnimator;
     private long startMs;
 
     private final Runnable tick = new Runnable() {
@@ -56,6 +59,8 @@ public class AuroraView extends View {
         colorA = PocketTheme.withAlpha(accent, 0x2A);
         colorB = PocketTheme.withAlpha(accent, 0x18);
         colorC = PocketTheme.withAlpha(0xFFFFFFFF, 0x12);
+        baseA = colorA;
+        baseB = colorB;
         drifting = !pureBlack && com.limelight.pocket.PocketPrefs.animationsEnabled(getContext());
         startMs = SystemClock.uptimeMillis() - (long) (Math.random() * 60000);
         setWillNotDraw(false);
@@ -69,6 +74,55 @@ public class AuroraView extends View {
         colorB = b;
         buildShaders(getWidth(), getHeight());
         invalidate();
+    }
+
+    /**
+     * Ambient light: the glows take on a game's colour (0 = back to the theme's own light),
+     * blending over 0.7 s.
+     */
+    public void tint(int color) {
+        if (pureBlack) {
+            return;
+        }
+        final int toA;
+        final int toB;
+        if (color == 0) {
+            toA = baseA;
+            toB = baseB;
+        }
+        else {
+            float[] hsv = new float[3];
+            Color.colorToHSV(color, hsv);
+            toA = PocketTheme.withAlpha(color, 0x60);
+            // The second pool: a neighbouring, deeper hue, so the light has some depth
+            hsv[0] = (hsv[0] + 330f) % 360f;
+            hsv[2] = hsv[2] * 0.8f;
+            toB = PocketTheme.withAlpha(Color.HSVToColor(hsv), 0x40);
+        }
+        if (tintAnimator != null) {
+            tintAnimator.cancel();
+        }
+        final int fromA = colorA;
+        final int fromB = colorB;
+        if (fromA == toA && fromB == toB) {
+            return;
+        }
+        if (!com.limelight.pocket.PocketPrefs.animationsEnabled(getContext()) || getWidth() == 0) {
+            setColors(toA, toB);
+            return;
+        }
+        final android.animation.ArgbEvaluator mix = new android.animation.ArgbEvaluator();
+        tintAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        tintAnimator.setDuration(700);
+        tintAnimator.setInterpolator(PocketMotion.DECELERATE);
+        tintAnimator.addUpdateListener(a -> {
+            float f = a.getAnimatedFraction();
+            colorA = (Integer) mix.evaluate(f, fromA, toA);
+            colorB = (Integer) mix.evaluate(f, fromB, toB);
+            buildShaders(getWidth(), getHeight());
+            invalidate();
+        });
+        tintAnimator.start();
     }
 
     @Override
@@ -102,6 +156,9 @@ public class AuroraView extends View {
     @Override
     protected void onDetachedFromWindow() {
         removeCallbacks(tick);
+        if (tintAnimator != null) {
+            tintAnimator.cancel();
+        }
         super.onDetachedFromWindow();
     }
 

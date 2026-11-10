@@ -205,6 +205,15 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         carouselAdapter = new CarouselAdapter(pcGridAdapter, this, 20);
         pcCarousel.setAdapter(carouselAdapter);
 
+        // "Jump back in": the games played last on the focused PC, right after the PCs
+        pocketRecentCarousel = findViewById(R.id.pocketRecentCarousel);
+        if (pocketRecentCarousel != null) {
+            pocketRecentCarousel.setLayoutManager(new com.limelight.pocket.ui.AnchoredLayoutManager(this));
+            pocketRecentCarousel.setItemAnimator(null);
+            pocketRecentAdapter = new com.limelight.pocket.ui.RecentGamesAdapter(this);
+            pocketRecentCarousel.setAdapter(new CarouselAdapter(pocketRecentAdapter, pocketRecentListener, 14));
+        }
+
         setHints(hintA(this, R.string.pocket_hint_open),
                 hintY(this, R.string.pocket_hint_options),
                 hintX(this, R.string.pocket_hint_add_pc),
@@ -1228,6 +1237,17 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             position = 0;
         }
         ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(position);
+        pocketRefreshRecent(computer.details);
+        if (pocketRecentCarousel != null && pocketRecentCarousel.hasFocus()) {
+            // A game of the row has the focus: the hero is about that game, not the PC
+            return;
+        }
+        pocketHeroShowsGame = false;
+        TextView section = findViewById(R.id.pocketSectionTitle);
+        if (section != null) {
+            section.setText(R.string.pocket_my_pcs);
+        }
+        pocketHintsFor(false);
         int dir = pocketHeroPos < 0 ? 0 : Integer.signum(position - pocketHeroPos);
         if (title.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) {
             dir = -dir;
@@ -1296,7 +1316,8 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             pocketHeroArt().show(keyArt);
         }
         else {
-            pocketHeroArt().show(com.limelight.pocket.ui.HeroArt.load(this, artUuid, artId));
+            // That game's cover, or (for a plain one like Desktop) the latest game with real art
+            pocketHeroArt().show(com.limelight.pocket.RecentGames.coverFor(this, artUuid, artId));
             // That game's wide background (SteamGridDB), when it has one, is even better
             com.limelight.pocket.PocketArt.load(this, artUuid, artId, com.limelight.pocket.PocketArt.HERO, bitmap -> {
                 if (bitmap != null && pocketHeroPos == artFor && !isFinishing()) {
@@ -1308,6 +1329,216 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
     }
 
     private com.limelight.pocket.ui.HeroArt pocketHeroArt;
+
+    // ---- Artemis Pocket: "Jump back in" (recent games on the home screen) ---------------------
+
+    private RecyclerView pocketRecentCarousel;
+    private com.limelight.pocket.ui.RecentGamesAdapter pocketRecentAdapter;
+    private boolean pocketHeroShowsGame;
+    private int pocketRecentHeroPos = -1;
+    private Boolean pocketHintsRecent;
+
+    private final CarouselAdapter.Listener pocketRecentListener = new CarouselAdapter.Listener() {
+        @Override
+        public void onItemClicked(int position, View itemView) {
+            pocketPlayRecent(position);
+        }
+
+        @Override
+        public void onItemOptions(int position, View itemView) {
+            // Y: the whole library of that PC
+            ComputerDetails pc = pocketRecentPc();
+            if (pc != null && pc.state == ComputerDetails.State.ONLINE && pc.pairState == PairState.PAIRED) {
+                doAppList(pc, false, false);
+            }
+        }
+
+        @Override
+        public void onItemFocused(int position, View itemView) {
+            pocketShowRecentHero(position);
+        }
+    };
+
+    /** The PC whose games the row shows. */
+    private ComputerDetails pocketRecentPc() {
+        if (pocketRecentAdapter == null || pocketRecentAdapter.getUuid() == null) {
+            return null;
+        }
+        for (int i = 0; i < pcGridAdapter.getCount(); i++) {
+            ComputerObject o = (ComputerObject) pcGridAdapter.getItem(i);
+            if (pocketRecentAdapter.getUuid().equals(o.details.uuid)) {
+                return o.details;
+            }
+        }
+        return null;
+    }
+
+    /** Shows the recent games of this PC next to the PCs (only for a paired PC with a known list). */
+    private void pocketRefreshRecent(ComputerDetails pc) {
+        if (pocketRecentAdapter == null || pocketRecentCarousel == null) {
+            return;
+        }
+        boolean known = pc != null && pc.pairState == PairState.PAIRED;
+        java.util.List<com.limelight.pocket.RecentGames.Game> games = known
+                ? com.limelight.pocket.RecentGames.forPc(this, pc.uuid, 10)
+                : new ArrayList<com.limelight.pocket.RecentGames.Game>();
+        if (games.isEmpty() && pocketRecentCarousel.hasFocus()) {
+            // Don't pull the row away from under the focus
+            return;
+        }
+        pocketRecentAdapter.set(pc != null ? pc.uuid : null, games, pc != null ? pc.runningGameId : 0);
+        int visibility = games.isEmpty() ? View.GONE : View.VISIBLE;
+        if (pocketRecentCarousel.getVisibility() != visibility) {
+            pocketRecentCarousel.setVisibility(visibility);
+            View divider = findViewById(R.id.pocketRecentDivider);
+            if (divider != null) {
+                divider.setVisibility(visibility);
+            }
+            if (visibility == View.VISIBLE && com.limelight.pocket.PocketPrefs.animationsEnabled(this)) {
+                pocketRecentCarousel.post(() -> com.limelight.pocket.ui.PocketMotion.cascade(
+                        pocketRecentCarousel, 60, 40, 40, 0, 8));
+            }
+        }
+    }
+
+    private void pocketHintsFor(boolean recent) {
+        if (pocketHintsRecent != null && pocketHintsRecent == recent) {
+            return;
+        }
+        pocketHintsRecent = recent;
+        if (recent) {
+            setHints(hintA(this, R.string.pocket_hint_play),
+                    hintY(this, R.string.pocket_hint_library),
+                    hintX(this, R.string.pocket_hint_add_pc),
+                    hintStart(this, R.string.pocket_hint_settings));
+        }
+        else {
+            setHints(hintA(this, R.string.pocket_hint_open),
+                    hintY(this, R.string.pocket_hint_options),
+                    hintX(this, R.string.pocket_hint_add_pc),
+                    hintStart(this, R.string.pocket_hint_settings));
+        }
+    }
+
+    /** The hero tells about the focused game: name, Play / Resume, its PC, playtime; its art behind. */
+    private void pocketShowRecentHero(int position) {
+        if (pocketRecentAdapter == null || position < 0 || position >= pocketRecentAdapter.getCount()) {
+            return;
+        }
+        TextView section = findViewById(R.id.pocketSectionTitle);
+        TextView title = findViewById(R.id.pocketHeroTitle);
+        TextView subtitle = findViewById(R.id.pocketHeroSubtitle);
+        TextView play = findViewById(R.id.pocketHeroPlay);
+        TextView lastLine = findViewById(R.id.pocketHeroPlaytime);
+        if (title == null || subtitle == null) {
+            return;
+        }
+        com.limelight.pocket.RecentGames.Game game = pocketRecentAdapter.getItem(position);
+        String uuid = pocketRecentAdapter.getUuid();
+        ComputerDetails pc = pocketRecentPc();
+        int appId = game.app.getAppId();
+        boolean running = pc != null && pc.runningGameId == appId;
+
+        boolean moved = !pocketHeroShowsGame || position != pocketRecentHeroPos;
+        int dir = !pocketHeroShowsGame || pocketRecentHeroPos < 0 ? 1 : Integer.signum(position - pocketRecentHeroPos);
+        if (title.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL) {
+            dir = -dir;
+        }
+        pocketHeroShowsGame = true;
+        pocketRecentHeroPos = position;
+        pocketHintsFor(true);
+
+        if (section != null) {
+            section.setText(R.string.pocket_jump_back_in);
+        }
+        com.limelight.pocket.ui.PocketMotion.swapText(title, game.app.getAppName(), dir);
+        String sub = (pc != null ? pc.name + "  \u00b7  " : "")
+                + getString(running ? R.string.pocket_now_playing : R.string.pocket_ready_to_play);
+        if (!sub.contentEquals(subtitle.getText())) {
+            subtitle.setText(sub);
+            if (moved) {
+                com.limelight.pocket.ui.PocketMotion.bump(subtitle);
+            }
+        }
+        if (play != null) {
+            String text = "\u25B6  " + getString(running ? R.string.pocket_hero_resume : R.string.pocket_hero_play);
+            play.setVisibility(View.VISIBLE);
+            if (!text.contentEquals(play.getText())) {
+                play.setText(text);
+                if (moved) {
+                    com.limelight.pocket.ui.PocketMotion.bump(play);
+                }
+            }
+        }
+        if (lastLine != null) {
+            StringBuilder line = new StringBuilder();
+            long played = PocketPrefs.getPlaytime(this, uuid, appId);
+            if (played >= 60) {
+                long hours = played / 3600;
+                long minutes = (played % 3600) / 60;
+                line.append(getString(R.string.pocket_playtime, hours > 0
+                        ? getString(R.string.pocket_playtime_hm, hours, minutes)
+                        : getString(R.string.pocket_playtime_m, Math.max(1, minutes))));
+            }
+            if (game.lastPlayed > 0) {
+                if (line.length() > 0) {
+                    line.append("  \u00b7  ");
+                }
+                line.append(android.text.format.DateUtils.getRelativeTimeSpanString(game.lastPlayed,
+                        System.currentTimeMillis(), android.text.format.DateUtils.MINUTE_IN_MILLIS));
+            }
+            lastLine.setText(line);
+            lastLine.setVisibility(line.length() == 0 ? View.GONE : View.VISIBLE);
+        }
+        // Its art behind everything (its wide background if it has one)
+        final int heroFor = position;
+        android.graphics.Bitmap keyArt = com.limelight.pocket.PocketArt.cached(this, uuid, appId, com.limelight.pocket.PocketArt.HERO);
+        if (keyArt != null) {
+            pocketHeroArt().show(keyArt);
+        }
+        else {
+            pocketHeroArt().show(com.limelight.pocket.ui.HeroArt.load(this, uuid, appId));
+            com.limelight.pocket.PocketArt.load(this, uuid, appId, com.limelight.pocket.PocketArt.HERO, bitmap -> {
+                if (bitmap != null && pocketHeroShowsGame && pocketRecentHeroPos == heroFor && !isFinishing()) {
+                    pocketHeroArt().show(bitmap);
+                }
+            });
+        }
+    }
+
+    /** A: play it (or resume it); the library takes over when another game is running. */
+    private void pocketPlayRecent(int position) {
+        if (pocketRecentAdapter == null || position < 0 || position >= pocketRecentAdapter.getCount()) {
+            return;
+        }
+        com.limelight.pocket.RecentGames.Game game = pocketRecentAdapter.getItem(position);
+        ComputerDetails pc = pocketRecentPc();
+        if (pc == null) {
+            return;
+        }
+        if (pc.state == ComputerDetails.State.OFFLINE && pc.pairState == PairState.PAIRED && pc.macAddress != null) {
+            pocketWakeAndOpen(pc);
+            return;
+        }
+        if (pc.state != ComputerDetails.State.ONLINE) {
+            Toast.makeText(this, R.string.pair_pc_offline, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (pc.pairState != PairState.PAIRED) {
+            doPair(pc, null, null);
+            return;
+        }
+        if (pc.runningGameId != 0 && pc.runningGameId != game.app.getAppId()) {
+            // Another game is running: the library asks what to do with it
+            doAppList(pc, false, false);
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && managerBinder != null) {
+            com.limelight.pocket.RecentGames.invalidate(pc.uuid);
+            ServerHelper.doStart(this, game.app, pc, managerBinder,
+                    PreferenceConfiguration.readPreferences(this).useVirtualDisplay);
+        }
+    }
 
     private com.limelight.pocket.ui.HeroArt pocketHeroArt() {
         if (pocketHeroArt == null) {

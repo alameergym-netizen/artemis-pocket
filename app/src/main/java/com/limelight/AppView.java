@@ -1396,6 +1396,8 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         if (heroTitleForLaunch != null) {
             com.limelight.pocket.ui.LaunchOverlay.rememberArt(heroTitleForLaunch, bitmap);
         }
+        // The screen's light takes on the game's colour
+        com.limelight.pocket.ui.HeroArt.ambient(getWindow().getDecorView(), bitmap);
         if (!PocketPrefs.BACKDROP_ART.equals(PocketPrefs.backdrop(this))) {
             heroBitmap = bitmap;
             return;
@@ -1436,7 +1438,7 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
             incoming.setColorFilter(new ColorMatrixColorFilter(mono));
         }
         boolean animate = PocketPrefs.animationsEnabled(this);
-        float targetAlpha = PocketPrefs.colorBackgroundArt(this) ? 0.5f : 0.42f;
+        float targetAlpha = PocketPrefs.colorBackgroundArt(this) ? 0.58f : 0.42f;
         incoming.animate().cancel();
         outgoing.animate().cancel();
         incoming.setScaleX(1.04f);

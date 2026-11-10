@@ -29,13 +29,90 @@ import java.util.WeakHashMap;
  */
 public final class HeroArt {
 
-    private static final LruCache<String, Bitmap> CACHE = new LruCache<String, Bitmap>(6 * 1024 * 1024) {
+    private static final LruCache<String, Bitmap> CACHE = new LruCache<String, Bitmap>(14 * 1024 * 1024) {
         @Override
         protected int sizeOf(String key, Bitmap value) {
             return value.getByteCount();
         }
     };
     private static final Map<Bitmap, Boolean> PLACEHOLDER = new WeakHashMap<>();
+    private static final Map<Bitmap, Integer> VIBRANT = new WeakHashMap<>();
+
+    /**
+     * The art's most characteristic colour, made bright enough to light the screen with (0 when
+     * the art is colourless). Hues are pooled and the strongest, most saturated pool wins.
+     */
+    public static int vibrantColor(Bitmap bitmap) {
+        if (bitmap == null || bitmap.isRecycled()) {
+            return 0;
+        }
+        Integer known = VIBRANT.get(bitmap);
+        if (known != null) {
+            return known;
+        }
+        int result = 0;
+        try {
+            Bitmap source = bitmap;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && bitmap.getConfig() == Bitmap.Config.HARDWARE) {
+                source = bitmap.copy(Bitmap.Config.ARGB_8888, false);
+            }
+            Bitmap small = Bitmap.createScaledBitmap(source, 32, 48, true);
+            float[] hsv = new float[3];
+            float[] weight = new float[12];
+            float[] red = new float[12];
+            float[] green = new float[12];
+            float[] blue = new float[12];
+            for (int y = 0; y < small.getHeight(); y++) {
+                for (int x = 0; x < small.getWidth(); x++) {
+                    int c = small.getPixel(x, y);
+                    Color.colorToHSV(c, hsv);
+                    if (hsv[1] < 0.22f || hsv[2] < 0.18f) {
+                        continue;
+                    }
+                    int bucket = ((int) (hsv[0] / 30f)) % 12;
+                    float w = hsv[1] * hsv[1] * hsv[2];
+                    weight[bucket] += w;
+                    red[bucket] += Color.red(c) * w;
+                    green[bucket] += Color.green(c) * w;
+                    blue[bucket] += Color.blue(c) * w;
+                }
+            }
+            int best = 0;
+            for (int i = 1; i < 12; i++) {
+                if (weight[i] > weight[best]) {
+                    best = i;
+                }
+            }
+            if (weight[best] > 6f) {
+                int c = Color.rgb(Math.round(red[best] / weight[best]), Math.round(green[best] / weight[best]),
+                        Math.round(blue[best] / weight[best]));
+                Color.colorToHSV(c, hsv);
+                hsv[1] = Math.max(hsv[1], 0.6f);
+                hsv[2] = Math.max(hsv[2], 0.85f);
+                result = Color.HSVToColor(hsv);
+            }
+            if (small != source) {
+                small.recycle();
+            }
+            if (source != bitmap) {
+                source.recycle();
+            }
+        } catch (RuntimeException e) {
+            result = 0;
+        }
+        VIBRANT.put(bitmap, result);
+        return result;
+    }
+
+    /** Lights the screen's aurora with the art's colour (or the theme's own, for no / grey art). */
+    public static void ambient(View root, Bitmap art) {
+        AuroraView aurora = root != null ? root.findViewById(R.id.pocketAurora) : null;
+        if (aurora == null) {
+            return;
+        }
+        boolean color = PocketPrefs.colorBackgroundArt(root.getContext());
+        aurora.tint(!color || art == null || isPlaceholder(art) ? 0 : vibrantColor(art));
+    }
 
     private final ImageView a;
     private final ImageView b;
@@ -154,6 +231,7 @@ public final class HeroArt {
         incoming.animate().cancel();
         outgoing.animate().cancel();
         if (bitmap == null) {
+            ambient(a.getRootView(), null);
             if (animate) {
                 a.animate().alpha(0f).setDuration(320).start();
                 b.animate().alpha(0f).setDuration(320).start();
@@ -170,6 +248,7 @@ public final class HeroArt {
             incoming.setRenderEffect(RenderEffect.createBlurEffect(42f, 42f, Shader.TileMode.CLAMP));
         }
         boolean color = PocketPrefs.colorBackgroundArt(context);
+        ambient(a.getRootView(), bitmap);
         if (color) {
             incoming.clearColorFilter();
         }
@@ -178,7 +257,7 @@ public final class HeroArt {
             mono.setSaturation(0f);
             incoming.setColorFilter(new ColorMatrixColorFilter(mono));
         }
-        float target = color ? 0.5f : 0.42f;
+        float target = color ? 0.58f : 0.42f;
         incoming.setScaleX(1.08f);
         incoming.setScaleY(1.08f);
         if (animate) {

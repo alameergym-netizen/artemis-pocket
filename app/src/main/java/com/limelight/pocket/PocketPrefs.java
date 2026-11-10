@@ -237,7 +237,8 @@ public final class PocketPrefs {
     }
 
     public static boolean colorBackgroundArt(Context context) {
-        return prefs(context).getBoolean(KEY_COLOR_ART, false);
+        // Colour by default (the screen takes on the game's colours); off = black and white
+        return prefs(context).getBoolean(KEY_COLOR_ART, true);
     }
 
     public static boolean autoBatterySaver(Context context) {

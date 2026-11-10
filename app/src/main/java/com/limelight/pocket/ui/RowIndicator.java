@@ -24,6 +24,7 @@ public class RowIndicator extends View {
     private int index;
     private float alpha;
     private long lastFrame;
+    private final FrameClock clock = new FrameClock(this::invalidate);
 
     public RowIndicator(Context context) {
         this(context, null);
@@ -54,9 +55,15 @@ public class RowIndicator extends View {
     }
 
     @Override
+    protected void onDetachedFromWindow() {
+        clock.cancel();
+        super.onDetachedFromWindow();
+    }
+
+    @Override
     protected void onDraw(Canvas canvas) {
         // Same clock and spring as the row it sits under
-        long now = PocketMotion.frameNanos();
+        long now = clock.now();
         float dt = lastFrame == 0 ? 1f / 120f : Math.max(0f, Math.min(0.05f, (now - lastFrame) / 1e9f));
         lastFrame = now;
         boolean moving = position.step(dt);
@@ -86,7 +93,7 @@ public class RowIndicator extends View {
             canvas.drawRoundRect(rect, h, h, thumb);
         }
         if (moving) {
-            postInvalidateOnAnimation();
+            clock.request();
         }
         else {
             lastFrame = 0;

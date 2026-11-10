@@ -212,19 +212,6 @@ public final class PocketMotion {
                 .setInterpolator(DECELERATE).withEndAction(null).start();
     }
 
-    /**
-     * The time of the frame being drawn (its vsync), in ns. Animations stepped by hand use it so
-     * they move on the same clock as the system's: a delayed frame then still shows things where
-     * they belong, instead of the lens lagging behind or jumping after the cards.
-     */
-    public static long frameNanos() {
-        try {
-            return android.view.Choreographer.getInstance().getFrameTimeNanos();
-        } catch (RuntimeException e) {
-            return System.nanoTime();
-        }
-    }
-
     /** Starts quickly and lands softly, never overshooting. */
     public static final android.view.animation.Interpolator DECELERATE =
             new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f);

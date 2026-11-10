@@ -42,6 +42,8 @@ public class FocusLens extends RecyclerView.ItemDecoration {
     private static final float DIM = 0.30f;
 
     private final RecyclerView list;
+    /** Steps the lens on the display's frame clock (see FrameClock). */
+    private final FrameClock clock;
     private final Host host;
     private final float d;
     private final float cardRadius;
@@ -72,6 +74,7 @@ public class FocusLens extends RecyclerView.ItemDecoration {
 
     public FocusLens(RecyclerView list, Host host, float cardRadiusDp) {
         this.list = list;
+        this.clock = new FrameClock(list::invalidate);
         this.host = host;
         this.d = list.getResources().getDisplayMetrics().density;
         this.cardRadius = cardRadiusDp * d;
@@ -142,7 +145,7 @@ public class FocusLens extends RecyclerView.ItemDecoration {
     public void onDrawOver(@NonNull Canvas canvas, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
         // Stepped on the frame clock (vsync), like the row's glide and the cards' animations: on
         // the time the frame is shown, not whenever this draw happens to run
-        long now = PocketMotion.frameNanos();
+        long now = clock.now();
         float dt = lastFrameNanos == 0 ? 1f / 120f : Math.max(0f, Math.min(0.05f, (now - lastFrameNanos) / 1e9f));
         lastFrameNanos = now;
         boolean anim = animated();
@@ -295,7 +298,7 @@ public class FocusLens extends RecyclerView.ItemDecoration {
 
     private void schedule(boolean moving, boolean breathing) {
         if (moving) {
-            list.postInvalidateOnAnimation();
+            clock.request();
         }
         else if (breathing && !invalidatePosted) {
             // The breathing glow is slow; a calm 25 fps is plenty and spares the battery

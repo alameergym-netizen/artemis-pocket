@@ -2,6 +2,7 @@ package com.limelight.pocket.ui;
 
 import android.content.Context;
 import android.graphics.Rect;
+import android.view.Choreographer;
 import android.view.View;
 
 import androidx.annotation.NonNull;
@@ -38,10 +39,11 @@ public class AnchoredLayoutManager extends LinearLayoutManager {
     private boolean stepping;
     private int lastConsumed;
 
-    private final Runnable frame = new Runnable() {
+    // Stepped at the start of each frame, with that frame's vsync time
+    private final Choreographer.FrameCallback frame = new Choreographer.FrameCallback() {
         @Override
-        public void run() {
-            step();
+        public void doFrame(long frameTimeNanos) {
+            step(frameTimeNanos);
         }
     };
 
@@ -104,17 +106,14 @@ public class AnchoredLayoutManager extends LinearLayoutManager {
         offset = 0;
         velocity = 0;
         lastFrame = 0;
-        if (list != null) {
-            list.removeCallbacks(frame);
-        }
+        Choreographer.getInstance().removeFrameCallback(frame);
     }
 
-    private void step() {
+    private void step(long now) {
         RecyclerView rv = list;
         if (!running || rv == null) {
             return;
         }
-        long now = PocketMotion.frameNanos();
         float dt = lastFrame == 0 ? 1f / 120f : (now - lastFrame) / 1e9f;
         lastFrame = now;
         // A long frame is caught up in small steps (the spring stays exact), but never more than
@@ -146,7 +145,7 @@ public class AnchoredLayoutManager extends LinearLayoutManager {
             stop();
         }
         else {
-            rv.postOnAnimation(frame);
+            Choreographer.getInstance().postFrameCallback(frame);
         }
     }
 
@@ -201,7 +200,7 @@ public class AnchoredLayoutManager extends LinearLayoutManager {
             offset = 0;
             velocity = 0;
             lastFrame = 0;
-            parent.postOnAnimation(frame);
+            Choreographer.getInstance().postFrameCallback(frame);
         }
         // Retarget: the row keeps its speed and simply heads further
         remaining += dx;

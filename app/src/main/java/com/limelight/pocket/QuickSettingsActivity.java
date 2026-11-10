@@ -809,6 +809,22 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 () -> PocketPrefs.showLatency(this),
                 value -> prefs().edit().putBoolean(PocketPrefs.KEY_SHOW_LATENCY, value).apply());
 
+        addHeader(R.string.pocket_header_art);
+
+        addAction(getString(R.string.pocket_set_sgdb_key), getString(R.string.pocket_set_sgdb_key_sub),
+                () -> getString(PocketArt.hasKey(this) ? R.string.pocket_art_key_set : R.string.pocket_art_key_missing),
+                () -> ArtPickerActivity.askForKey(this, this::refreshRows));
+
+        addToggle(getString(R.string.pocket_set_auto_art), getString(R.string.pocket_set_auto_art_sub),
+                () -> PocketArt.autoArt(this),
+                value -> prefs().edit().putBoolean(PocketArt.KEY_AUTO_ART, value).apply());
+
+        addAction(getString(R.string.pocket_set_clear_art), getString(R.string.pocket_set_clear_art_sub), null, () -> {
+            PocketArt.clearAll(this);
+            PocketSounds.play(this, PocketSounds.TOGGLE_OFF);
+            Toast.makeText(this, R.string.pocket_art_cleared, Toast.LENGTH_SHORT).show();
+        });
+
         addHeader(R.string.pocket_header_device);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

@@ -23,9 +23,9 @@ import java.util.WeakHashMap;
  *
  *  - It aims at where the focused card will come to rest, so with the anchored row it simply stays
  *    in its slot while the row slides the next game into it; at the ends of the row it glides.
- *  - It locks on with a little squeeze when the row gains focus, and re-locks (a soft breath) on
- *    every move, stretching slightly when it travels fast.
- *  - While you rest on a card it breathes softly and a sheen of light sweeps over the card once.
+ *  - Calm on purpose: it fades in at its exact size, never bounces, squeezes or "breathes" (that
+ *    read as a pulse); it only stretches a hair while it travels fast.
+ *  - When you rest on a card a sheen of light sweeps over it once.
  *  - The other cards dim a touch so the focused one pops.
  */
 public class FocusLens extends RecyclerView.ItemDecoration {
@@ -46,10 +46,11 @@ public class FocusLens extends RecyclerView.ItemDecoration {
     private final float d;
     private final float cardRadius;
 
-    private final Spring cx = new Spring(900, 0.86f, 0);
-    private final Spring cy = new Spring(900, 0.86f, 0);
-    private final Spring w = new Spring(620, 0.62f, 0);
-    private final Spring h = new Spring(620, 0.62f, 0);
+    // Critically damped: they settle without overshoot (no wobble, no pulse)
+    private final Spring cx = new Spring(820, 1f, 0);
+    private final Spring cy = new Spring(820, 1f, 0);
+    private final Spring w = new Spring(700, 1f, 0);
+    private final Spring h = new Spring(700, 1f, 0);
     private float alpha;
 
     private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -103,8 +104,8 @@ public class FocusLens extends RecyclerView.ItemDecoration {
         if (!animated()) {
             return;
         }
-        w.value -= 10 * d;
-        h.value -= 10 * d;
+        w.value -= 5 * d;
+        h.value -= 5 * d;
         sheenStart = SystemClock.uptimeMillis();
         sheenDone = false;
         list.invalidate();
@@ -191,26 +192,17 @@ public class FocusLens extends RecyclerView.ItemDecoration {
 
             boolean lockOn = alpha < 0.05f || lastFocused == null;
             if (lockOn || !anim) {
+                // Appears right on the card (it only fades in)
                 cx.snap(tx);
                 cy.snap(ty);
                 w.snap(tw);
                 h.snap(th);
-                if (anim) {
-                    // Lock on: the lens starts a little wide and squeezes onto the card
-                    w.value += 18 * d;
-                    h.value += 18 * d;
-                }
             }
             else {
                 cx.target = tx;
                 cy.target = ty;
                 w.target = tw;
                 h.target = th;
-                if (parent.getChildAdapterPosition(focused) != lastFocusedPos) {
-                    // Re-lock on the new card: a soft breath out and back in
-                    w.velocity += 260 * d;
-                    h.velocity += 260 * d;
-                }
             }
             int pos = parent.getChildAdapterPosition(focused);
             if (pos != lastFocusedPos || lockOn) {
@@ -290,12 +282,7 @@ public class FocusLens extends RecyclerView.ItemDecoration {
             rect.set(cx.value - lw / 2f, cy.value - lh / 2f, cx.value + lw / 2f, cy.value + lh / 2f);
             float r = cardRadius * host.focusScale() + GAP_DP * d;
 
-            float glow = 0.55f;
-            if (anim && rowFocused) {
-                double phase = (SystemClock.uptimeMillis() % 3200L) / 3200.0 * Math.PI * 2;
-                glow = 0.42f + 0.22f * (float) Math.sin(phase);
-                breathing = true;
-            }
+            float glow = 0.5f;
             int a = Math.round(255 * alpha);
             ring.setColor(PocketTheme.withAlpha(accent, a));
             ring.setShadowLayer(9 * d, 0, 0, PocketTheme.withAlpha(accent, Math.round(a * glow)));

@@ -52,7 +52,11 @@ public final class HeroArt {
         if (pcUuid == null || appId == 0) {
             return null;
         }
-        File file = CacheHelper.openPath(false, context.getCacheDir(), "boxart", pcUuid, appId + ".png");
+        // A cover chosen on the handheld wins over the PC's own box art
+        File file = com.limelight.pocket.PocketArt.file(context, pcUuid, appId, com.limelight.pocket.PocketArt.COVER);
+        if (!file.exists()) {
+            file = CacheHelper.openPath(false, context.getCacheDir(), "boxart", pcUuid, appId + ".png");
+        }
         if (!file.exists()) {
             return null;
         }

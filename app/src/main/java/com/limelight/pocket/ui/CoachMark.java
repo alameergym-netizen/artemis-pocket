@@ -239,17 +239,16 @@ public final class CoachMark extends FrameLayout {
         hole.addRoundRect(r, rad, rad, Path.Direction.CW);
         canvas.drawPath(hole, scrim);
 
-        // A soft ring that breathes around the spotlight
-        float breathe = anim ? (float) (0.5 + 0.5 * Math.sin((now - shownAt) / 1000.0 * Math.PI * 2 / 1.6)) : 0.5f;
-        float grow = 3 * d + 4 * d * breathe;
+        // A steady ring around the spotlight (no pulsing)
+        float grow = 4 * d;
         r.inset(-grow, -grow);
-        ring.setColor(PocketTheme.withAlpha(accent, Math.round(255 * visible * (0.35f + 0.4f * (1 - breathe)))));
+        ring.setColor(PocketTheme.withAlpha(accent, Math.round(255 * visible * 0.6f)));
         canvas.drawRoundRect(r, rad + grow, rad + grow, ring);
 
         if (!placed) {
             placeCard();
         }
-        if (anim || out > 0) {
+        if ((anim && in < 1f) || out > 0 || !placed) {
             postInvalidateOnAnimation();
         }
     }

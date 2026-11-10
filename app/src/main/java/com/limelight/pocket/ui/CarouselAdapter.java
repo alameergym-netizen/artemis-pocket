@@ -33,6 +33,9 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
     }
 
     private static final int CARD_PADDING_DP = 14;
+    /** Starts quickly and lands softly, without overshoot. */
+    private static final android.view.animation.Interpolator GLIDE =
+            new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f);
     /** Extra room the neighbours of the focused card step aside by. */
     private static final float MAKE_ROOM_DP = 4f;
 
@@ -143,8 +146,8 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
             }
             content.animate().cancel();
             if (animated) {
-                content.animate().setStartDelay(0).translationX(target).setDuration(460)
-                        .setInterpolator(Spring.SOFT)
+                content.animate().setStartDelay(0).translationX(target).setDuration(300)
+                        .setInterpolator(GLIDE)
                         .setUpdateListener(a -> rv.invalidate())
                         .start();
             }
@@ -308,10 +311,10 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         // No cancel(): the row's entrance may still be sliding this card in (alpha / X); the
         // focus animation only takes over scale, Y and Z
         if (animated) {
-            // In: a quick spring with a hint of overshoot; out: a calm settle
+            // A smooth glide in size, no overshoot (a bounce reads as a pulse)
             frame.animate().setStartDelay(0).scaleX(scale).scaleY(scale).translationY(0).translationZ(z)
-                    .setDuration(focused ? 480 : 260)
-                    .setInterpolator(focused ? Spring.SOFT : PocketUi.EASE)
+                    .setDuration(focused ? 300 : 240)
+                    .setInterpolator(GLIDE)
                     .setUpdateListener(a -> {
                         if (frame.getParent() instanceof View) {
                             ((View) frame.getParent()).invalidate();

@@ -66,6 +66,13 @@ public class MemoryAssetLoader {
         memoryCache.put(constructKey(tuple), bitmap);
     }
 
+    /** Artemis Pocket: forget one game's art (new art was chosen for it). */
+    public static void evict(String computerUuid, int appId) {
+        String key = computerUuid + "-" + appId;
+        memoryCache.remove(key);
+        evictionCache.remove(key);
+    }
+
     public void clearCache() {
         // We must evict first because that will push all items into the eviction cache
         memoryCache.evictAll();

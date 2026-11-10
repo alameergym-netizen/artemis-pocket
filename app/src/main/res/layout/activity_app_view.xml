@@ -37,6 +37,44 @@
             android:importantForAccessibility="no"
             android:scaleType="centerCrop" />
 
+        <!-- Key art (a SteamGridDB background): sharp across the top, console style. The black
+             underlay hides the blurred art while it shows. -->
+        <View
+            android:id="@+id/pocketKeyArtUnderlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            android:background="#FF000000" />
+
+        <FrameLayout
+            android:id="@+id/pocketKeyArtFrame"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:alpha="0">
+
+            <ImageView
+                android:id="@+id/pocketKeyArtA"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:scaleType="fitCenter" />
+
+            <ImageView
+                android:id="@+id/pocketKeyArtB"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:adjustViewBounds="true"
+                android:alpha="0"
+                android:importantForAccessibility="no"
+                android:scaleType="fitCenter" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/pocket_keyart_fade" />
+        </FrameLayout>
+
         <View
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -167,6 +205,20 @@
                 android:textAllCaps="true"
                 android:textColor="@color/pocket_text_dim"
                 android:textSize="9.5sp" />
+
+            <!-- The game's logo (when there is one) takes the place of its name -->
+            <ImageView
+                android:id="@+id/pocketHeroLogo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="3dp"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:maxWidth="320dp"
+                android:maxHeight="58dp"
+                android:scaleType="fitCenter"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/pocketHeroTitle"

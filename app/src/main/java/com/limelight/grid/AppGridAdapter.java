@@ -118,6 +118,12 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
         Collections.sort(list, new Comparator<AppView.AppObject>() {
             @Override
             public int compare(AppView.AppObject lhs, AppView.AppObject rhs) {
+                // Artemis Pocket: favourites always lead the row
+                boolean lf = com.limelight.pocket.PocketPrefs.isFavorite(context, computer.uuid, lhs.app.getAppId());
+                boolean rf = com.limelight.pocket.PocketPrefs.isFavorite(context, computer.uuid, rhs.app.getAppId());
+                if (lf != rf) {
+                    return lf ? -1 : 1;
+                }
                 if (recentFirst) {
                     // Artemis Pocket: games you played recently come first
                     long l = com.limelight.pocket.PocketPrefs.getLastPlayed(context, computer.uuid, lhs.app.getAppId());
@@ -135,6 +141,13 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
                 }
             }
         });
+    }
+
+    /** Artemis Pocket: sorts again (a favourite was added or removed). */
+    public void resort() {
+        sortList(allApps);
+        sortList(itemList);
+        notifyDataSetChanged();
     }
 
     public void addApp(AppView.AppObject app) {

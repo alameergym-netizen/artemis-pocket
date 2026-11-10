@@ -1272,8 +1272,22 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             lastLine.setText(line);
             lastLine.setVisibility(line.isEmpty() ? View.GONE : View.VISIBLE);
         }
-        int artId = computer.details.runningGameId != 0 ? computer.details.runningGameId : lastId;
-        pocketHeroArt().show(com.limelight.pocket.ui.HeroArt.load(this, computer.details.uuid, artId));
+        final int artId = computer.details.runningGameId != 0 ? computer.details.runningGameId : lastId;
+        final String artUuid = computer.details.uuid;
+        final int artFor = position;
+        android.graphics.Bitmap keyArt = com.limelight.pocket.PocketArt.cached(this, artUuid, artId, com.limelight.pocket.PocketArt.HERO);
+        if (keyArt != null) {
+            pocketHeroArt().show(keyArt);
+        }
+        else {
+            pocketHeroArt().show(com.limelight.pocket.ui.HeroArt.load(this, artUuid, artId));
+            // That game's wide background (SteamGridDB), when it has one, is even better
+            com.limelight.pocket.PocketArt.load(this, artUuid, artId, com.limelight.pocket.PocketArt.HERO, bitmap -> {
+                if (bitmap != null && pocketHeroPos == artFor && !isFinishing()) {
+                    pocketHeroArt().show(bitmap);
+                }
+            });
+        }
         probeLatency(computer.details);
     }
 

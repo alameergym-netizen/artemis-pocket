@@ -508,4 +508,24 @@ public final class PocketPrefs {
         }
         e.apply();
     }
+
+    // ---- Favourites ---------------------------------------------------------------------------
+
+    private static final String KEY_FAVORITE_PREFIX = "pocket_fav_";
+
+    /** Favourite games stay at the front of the library. */
+    public static boolean isFavorite(Context context, String pcUuid, int appId) {
+        return pcUuid != null && prefs(context).getBoolean(KEY_FAVORITE_PREFIX + pcUuid + "_" + appId, false);
+    }
+
+    public static void setFavorite(Context context, String pcUuid, int appId, boolean favorite) {
+        SharedPreferences.Editor e = prefs(context).edit();
+        if (favorite) {
+            e.putBoolean(KEY_FAVORITE_PREFIX + pcUuid + "_" + appId, true);
+        }
+        else {
+            e.remove(KEY_FAVORITE_PREFIX + pcUuid + "_" + appId);
+        }
+        e.apply();
+    }
 }

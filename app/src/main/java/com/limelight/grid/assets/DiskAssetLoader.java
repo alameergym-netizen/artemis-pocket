@@ -25,9 +25,11 @@ public class DiskAssetLoader {
 
     private final boolean isLowRamDevice;
     private final File cacheDir;
+    private final File filesDir;
 
     public DiskAssetLoader(Context context) {
         this.cacheDir = context.getCacheDir();
+        this.filesDir = context.getFilesDir();
         this.isLowRamDevice =
                 ((ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE)).isLowRamDevice();
     }
@@ -144,6 +146,11 @@ public class DiskAssetLoader {
     }
 
     public File getFile(String computerUuid, int appId) {
+        // Artemis Pocket: a cover chosen on the handheld (SteamGridDB) wins over the PC's box art
+        File chosen = CacheHelper.openPath(false, filesDir, "pocket_art", computerUuid, String.valueOf(appId), "cover.jpg");
+        if (chosen.exists()) {
+            return chosen;
+        }
         return CacheHelper.openPath(false, cacheDir, "boxart", computerUuid, appId + ".png");
     }
 

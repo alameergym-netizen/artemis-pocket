@@ -297,7 +297,7 @@
                 android:clipToPadding="false"
                 android:orientation="vertical">
 
-                <androidx.recyclerview.widget.RecyclerView
+                <com.limelight.pocket.ui.CarouselRow
                     android:id="@+id/pocketAppCarousel"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

@@ -244,17 +244,9 @@
                     android:paddingEnd="0dp"
                     android:paddingBottom="14dp" />
 
-                <!-- Same gap as between two cards, with a hairline in the middle -->
-                <View
-                    android:id="@+id/pocketRecentDivider"
-                    android:layout_width="1dp"
-                    android:layout_height="96dp"
-                    android:layout_marginStart="0dp"
-                    android:layout_marginEnd="0dp"
-                    android:background="#29FFFFFF"
-                    android:visibility="gone" />
-
-                <androidx.recyclerview.widget.RecyclerView
+                <!-- Starts with a section gap (with a hairline in it); its cards fade out there
+                     as they scroll away instead of sliding over the PC card -->
+                <com.limelight.pocket.ui.CarouselRow
                     android:id="@+id/pocketRecentCarousel"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
@@ -263,6 +255,7 @@
                     android:clipToPadding="false"
                     android:descendantFocusability="afterDescendants"
                     android:overScrollMode="never"
+                    android:paddingStart="28dp"
                     android:paddingTop="14dp"
                     android:paddingEnd="90dp"
                     android:paddingBottom="14dp"

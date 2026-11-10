@@ -89,7 +89,7 @@ public class RecentGamesAdapter extends BaseAdapter {
         final String tag = uuid + ":" + appId;
         text.setText(name);
         if (badge != null) {
-            boolean running = appId == runningAppId;
+            boolean running = runningAppId != 0 && appId == runningAppId;
             badge.setImageResource(R.drawable.ic_pocket_playing);
             badge.setVisibility(running ? View.VISIBLE : View.GONE);
         }

@@ -210,6 +210,9 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         if (pocketRecentCarousel != null) {
             pocketRecentCarousel.setLayoutManager(new com.limelight.pocket.ui.AnchoredLayoutManager(this));
             pocketRecentCarousel.setItemAnimator(null);
+            if (pocketRecentCarousel instanceof com.limelight.pocket.ui.CarouselRow) {
+                ((com.limelight.pocket.ui.CarouselRow) pocketRecentCarousel).setStartDivider(true);
+            }
             pocketRecentAdapter = new com.limelight.pocket.ui.RecentGamesAdapter(this);
             pocketRecentCarousel.setAdapter(new CarouselAdapter(pocketRecentAdapter, pocketRecentListener, 14));
         }
@@ -1424,10 +1427,6 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         int visibility = games.isEmpty() ? View.GONE : View.VISIBLE;
         if (pocketRecentCarousel.getVisibility() != visibility) {
             pocketRecentCarousel.setVisibility(visibility);
-            View divider = findViewById(R.id.pocketRecentDivider);
-            if (divider != null) {
-                divider.setVisibility(visibility);
-            }
             if (visibility == View.VISIBLE && com.limelight.pocket.PocketPrefs.animationsEnabled(this)) {
                 pocketRecentCarousel.post(() -> com.limelight.pocket.ui.PocketMotion.cascade(
                         pocketRecentCarousel, 60, 40, 40, 0, 8));
@@ -1471,7 +1470,7 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         String uuid = pocketRecentAdapter.getUuid();
         ComputerDetails pc = pocketRecentPc();
         int appId = game.app.getAppId();
-        boolean running = pc != null && pc.runningGameId == appId;
+        boolean running = pc != null && pc.runningGameId != 0 && pc.runningGameId == appId;
 
         boolean moved = !pocketHeroShowsGame || position != pocketRecentHeroPos;
         int dir = !pocketHeroShowsGame || pocketRecentHeroPos < 0 ? 1 : Integer.signum(position - pocketRecentHeroPos);

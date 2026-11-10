@@ -259,6 +259,11 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         return false;
     }
 
+    /** L2 / R2. Return true if the screen used it. */
+    protected boolean onTrigger(int direction) {
+        return false;
+    }
+
     public void openQuickSettings() {
         PocketSounds.play(this, PocketSounds.OPEN);
         startActivity(new Intent(this, QuickSettingsActivity.class));
@@ -930,6 +935,16 @@ public abstract class ConsoleActivity extends AppCompatActivity {
                     onShoulder(1);
                 }
                 return true;
+            case KeyEvent.KEYCODE_BUTTON_L2:
+                if (up) {
+                    onTrigger(-1);
+                }
+                return true;
+            case KeyEvent.KEYCODE_BUTTON_R2:
+                if (up) {
+                    onTrigger(1);
+                }
+                return true;
         }
         return super.dispatchKeyEvent(event);
     }
@@ -946,9 +961,23 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     private void updateBattery() {
         TextView battery = findViewById(R.id.pocketBattery);
         if (battery != null && batteryPct >= 0) {
-            battery.setText((charging ? "⚡ " : "") + batteryPct + "%");
-            battery.setTextColor(ContextCompat.getColor(this,
-                    batteryPct <= 15 && !charging ? R.color.pocket_off : R.color.pocket_text_dim));
+            battery.setText(batteryPct + "%");
+            int color = ContextCompat.getColor(this,
+                    batteryPct <= 15 && !charging ? R.color.pocket_off : R.color.pocket_text_dim);
+            battery.setTextColor(color);
+            // A drawn battery next to the number (fill to the level, a bolt while charging)
+            com.limelight.pocket.ui.BatteryGlyph glyph;
+            Drawable[] current = battery.getCompoundDrawablesRelative();
+            if (current[0] instanceof com.limelight.pocket.ui.BatteryGlyph) {
+                glyph = (com.limelight.pocket.ui.BatteryGlyph) current[0];
+            }
+            else {
+                glyph = new com.limelight.pocket.ui.BatteryGlyph(getResources().getDisplayMetrics().density);
+                battery.setCompoundDrawablesRelative(glyph, null, null, null);
+                battery.setCompoundDrawablePadding(dp(5));
+                battery.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            }
+            glyph.set(batteryPct, charging, color);
         }
     }
 

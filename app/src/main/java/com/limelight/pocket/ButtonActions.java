@@ -41,7 +41,8 @@ public final class ButtonActions {
             PocketAction.ALT_TAB,
             PocketAction.ESC,
             PocketAction.TASK_MANAGER,
-            PocketAction.STATS,
+            // The PC keyboard you tap on the screen (Esc, Ctrl, Alt, F-keys...)
+            PocketAction.TOUCH_KEYBOARD,
             PocketAction.KEYBOARD,
     };
 

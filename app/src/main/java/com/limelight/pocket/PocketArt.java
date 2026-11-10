@@ -39,6 +39,7 @@ public final class PocketArt {
 
     public static final String KEY_SGDB_KEY = "pocket_sgdb_key";
     public static final String KEY_AUTO_ART = "pocket_auto_art";
+    public static final String KEY_LOGOS = "pocket_logos_for_names";
     private static final String KEY_MATCH = "pocket_sgdb_match_";
     private static final String KEY_TRIED = "pocket_sgdb_tried_";
     private static final long RETRY_AFTER_MS = 3L * 24 * 3600 * 1000;
@@ -81,6 +82,11 @@ public final class PocketArt {
     /** Fetch backgrounds and logos (and covers for games without one) by itself. */
     public static boolean autoArt(Context context) {
         return PocketPrefs.prefs(context).getBoolean(KEY_AUTO_ART, true);
+    }
+
+    /** Show a game's logo in place of its name (library, launch screen). */
+    public static boolean logosForNames(Context context) {
+        return PocketPrefs.prefs(context).getBoolean(KEY_LOGOS, true);
     }
 
     /** Changes every time some art is saved or reset (screens refresh when it moved on). */

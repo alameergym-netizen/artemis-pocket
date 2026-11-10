@@ -797,9 +797,12 @@ public class QuickSettingsActivity extends ConsoleActivity {
 
         addHeader(R.string.pocket_header_library);
 
-        addToggle(getString(R.string.pocket_set_sort_recent), getString(R.string.pocket_set_sort_recent_sub),
-                () -> PocketPrefs.sortRecent(this),
-                value -> prefs().edit().putBoolean(PocketPrefs.KEY_SORT_RECENT, value).apply());
+        addChoice(getString(R.string.pocket_set_sort), getString(R.string.pocket_set_sort_sub),
+                new String[]{getString(R.string.pocket_sort_recent), getString(R.string.pocket_sort_az),
+                        getString(R.string.pocket_sort_pc)},
+                () -> PocketPrefs.sortModeIndex(this),
+                index -> prefs().edit().putString(PocketPrefs.KEY_SORT_MODE, PocketPrefs.SORT_MODES[index]).apply(),
+                null);
 
         addToggle(getString(R.string.pocket_set_open_last), getString(R.string.pocket_set_open_last_sub),
                 () -> PocketPrefs.openLastPc(this),
@@ -818,6 +821,10 @@ public class QuickSettingsActivity extends ConsoleActivity {
         addToggle(getString(R.string.pocket_set_auto_art), getString(R.string.pocket_set_auto_art_sub),
                 () -> PocketArt.autoArt(this),
                 value -> prefs().edit().putBoolean(PocketArt.KEY_AUTO_ART, value).apply());
+
+        addToggle(getString(R.string.pocket_set_logos), getString(R.string.pocket_set_logos_sub),
+                () -> PocketArt.logosForNames(this),
+                value -> prefs().edit().putBoolean(PocketArt.KEY_LOGOS, value).apply());
 
         addAction(getString(R.string.pocket_set_clear_art), getString(R.string.pocket_set_clear_art_sub), null, () -> {
             PocketArt.clearAll(this);

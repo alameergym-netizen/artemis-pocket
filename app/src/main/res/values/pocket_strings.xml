@@ -610,4 +610,15 @@
     <string name="pocket_set_auto_art_sub">Fetches them for the game you look at (and covers for games without one)</string>
     <string name="pocket_set_clear_art">Remove chosen art</string>
     <string name="pocket_set_clear_art_sub">Back to each PC\'s own art everywhere</string>
+    <string name="pocket_act_touch_keyboard">PC touch keyboard</string>
+    <string name="pocket_short_touch_keyboard">Touch keys</string>
+    <string name="pocket_set_logos">Logos instead of names</string>
+    <string name="pocket_set_logos_sub">A game\'s logo in the library and on the launch screen, when it has one</string>
+    <string name="pocket_set_sort">Library order</string>
+    <string name="pocket_set_sort_sub">Favourites always come first · in A to Z, L2 / R2 jump by letter</string>
+    <string name="pocket_sort_recent">Recently played</string>
+    <string name="pocket_sort_az">A to Z</string>
+    <string name="pocket_sort_pc">PC order</string>
+    <string name="pocket_quick_play">Play %1$s</string>
+    <string name="pocket_quick_resume">Resume %1$s</string>
 </resources>

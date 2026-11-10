@@ -56,6 +56,22 @@ public class LaunchOverlay extends FrameLayout {
         return title != null && title.equals(artTitle) ? art : null;
     }
 
+    // ... and its logo and wide key art, when it has them (SteamGridDB)
+    private static String logoTitle;
+    private static Bitmap logo;
+    private static String keyArtTitle;
+    private static Bitmap keyArt;
+
+    public static void rememberLogo(String title, Bitmap bitmap) {
+        logoTitle = title;
+        logo = bitmap;
+    }
+
+    public static void rememberKeyArt(String title, Bitmap bitmap) {
+        keyArtTitle = title;
+        keyArt = bitmap;
+    }
+
     private final float d;
     private final LinearLayout column;
     private final TextView status;
@@ -72,12 +88,15 @@ public class LaunchOverlay extends FrameLayout {
         image = new ImageView(context);
         image.setScaleType(ImageView.ScaleType.CENTER_CROP);
         image.setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
-        Bitmap bitmap = artFor(title);
+        Bitmap wide = title != null && title.equals(keyArtTitle) ? keyArt : null;
+        Bitmap bitmap = wide != null ? wide : artFor(title);
         if (bitmap != null) {
             image.setImageBitmap(bitmap);
-            image.setAlpha(0.5f);
+            // Key art is made to be seen: only a light blur; a cover is blown up, so more
+            image.setAlpha(wide != null ? 0.62f : 0.5f);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                image.setRenderEffect(RenderEffect.createBlurEffect(36f, 36f, Shader.TileMode.CLAMP));
+                float blur = wide != null ? 6f : 36f;
+                image.setRenderEffect(RenderEffect.createBlurEffect(blur, blur, Shader.TileMode.CLAMP));
             }
             if (!PocketPrefs.colorBackgroundArt(context)) {
                 ColorMatrix mono = new ColorMatrix();
@@ -106,12 +125,30 @@ public class LaunchOverlay extends FrameLayout {
         caption.setText(context.getString(com.limelight.R.string.pocket_launch_caption));
         column.addView(caption);
 
-        TextView titleView = text(30, 0xFFFFFFFF, true);
-        titleView.setText(title);
-        titleView.setMaxWidth(dp(560));
-        titleView.setMaxLines(2);
-        titleView.setPadding(0, dp(6), 0, dp(4));
-        column.addView(titleView);
+        Bitmap mark = title != null && title.equals(logoTitle) ? logo : null;
+        if (mark != null) {
+            // The game's logo in place of its name
+            ImageView logoView = new ImageView(context);
+            logoView.setImageBitmap(mark);
+            logoView.setAdjustViewBounds(true);
+            logoView.setMaxWidth(dp(420));
+            logoView.setMaxHeight(dp(84));
+            logoView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+            logoView.setContentDescription(title);
+            LinearLayout.LayoutParams logoLp = new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            logoLp.topMargin = dp(10);
+            logoLp.bottomMargin = dp(8);
+            column.addView(logoView, logoLp);
+        }
+        else {
+            TextView titleView = text(30, 0xFFFFFFFF, true);
+            titleView.setText(title);
+            titleView.setMaxWidth(dp(560));
+            titleView.setMaxLines(2);
+            titleView.setPadding(0, dp(6), 0, dp(4));
+            column.addView(titleView);
+        }
 
         TextView detailView = text(12.5f, 0xA3FFFFFF, false);
         detailView.setText(detail);

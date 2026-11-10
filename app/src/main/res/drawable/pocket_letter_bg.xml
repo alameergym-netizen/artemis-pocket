@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Glass disc for the alphabet jump letter -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#B3141418" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@android:color/transparent" />
+            <stroke android:width="1dp" android:color="#38FFFFFF" />
+        </shape>
+    </item>
+</layer-list>

@@ -76,6 +76,8 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         list = recyclerView;
         lens = new FocusLens(recyclerView, this, cardRadiusDp);
         recyclerView.addItemDecoration(lens);
+        recyclerView.addOnScrollListener(parallaxScroll);
+        recyclerView.addOnLayoutChangeListener(parallaxLayout);
     }
 
     @Override
@@ -83,9 +85,64 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         if (lens != null) {
             recyclerView.removeItemDecoration(lens);
         }
+        recyclerView.removeOnScrollListener(parallaxScroll);
+        recyclerView.removeOnLayoutChangeListener(parallaxLayout);
         lens = null;
         list = null;
         super.onDetachedFromRecyclerView(recyclerView);
+    }
+
+    // ---- Parallax: the art sits a little deeper than its card --------------------------------
+
+    private static final float PARALLAX_DP = 9f;
+
+    private final RecyclerView.OnScrollListener parallaxScroll = new RecyclerView.OnScrollListener() {
+        @Override
+        public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+            applyParallax(rv);
+        }
+    };
+
+    private final View.OnLayoutChangeListener parallaxLayout =
+            (v, l, t, r, b, ol, ot, or, ob) -> applyParallax((RecyclerView) v);
+
+    /** The picture inside each card shifts against the way the row moves (a window into depth). */
+    private static void applyParallax(RecyclerView rv) {
+        boolean on = PocketPrefs.animationsEnabled(rv.getContext());
+        float half = rv.getWidth() / 2f;
+        if (half <= 0) {
+            return;
+        }
+        float shift = PARALLAX_DP * rv.getResources().getDisplayMetrics().density;
+        for (int i = 0; i < rv.getChildCount(); i++) {
+            View child = rv.getChildAt(i);
+            View art = parallaxTarget(child);
+            if (art == null) {
+                continue;
+            }
+            if (!on) {
+                art.setScaleX(1f);
+                art.setScaleY(1f);
+                art.setTranslationX(0f);
+                continue;
+            }
+            float center = child.getLeft() + child.getWidth() / 2f;
+            float offset = Math.max(-1.3f, Math.min(1.3f, (center - half) / half));
+            if (art.getScaleX() != 1.14f) {
+                art.setScaleX(1.14f);
+                art.setScaleY(1.14f);
+            }
+            art.setTranslationX(-offset * shift);
+        }
+    }
+
+    /** The card's picture (game art), never an icon. */
+    private static View parallaxTarget(View frame) {
+        View pcArt = frame.findViewById(R.id.pc_art);
+        if (pcArt != null) {
+            return pcArt.getVisibility() == View.VISIBLE ? pcArt : null;
+        }
+        return frame.findViewById(R.id.grid_image);
     }
 
     private boolean zoomStyle() {

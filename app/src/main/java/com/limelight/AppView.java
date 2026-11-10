@@ -898,6 +898,19 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
                         }
                         pocketFocusApp(appId);
                     }));
+            // Library order, changed right here with left / right
+            final String[] orderLabels = {getString(R.string.pocket_sort_recent), getString(R.string.pocket_sort_az),
+                    getString(R.string.pocket_sort_pc)};
+            extra.add(com.limelight.pocket.ui.StreamMenuView.Item.value(getString(R.string.pocket_set_sort),
+                    orderLabels[PocketPrefs.sortModeIndex(this)], direction -> {
+                        int next = (PocketPrefs.sortModeIndex(this) + direction + orderLabels.length) % orderLabels.length;
+                        PocketPrefs.prefs(this).edit().putString(PocketPrefs.KEY_SORT_MODE, PocketPrefs.SORT_MODES[next]).apply();
+                        if (appGridAdapter != null) {
+                            appGridAdapter.resort();
+                        }
+                        pocketFocusApp(appId);
+                        return orderLabels[next];
+                    }));
             if (com.limelight.pocket.PocketArt.hasKey(this)) {
                 extra.add(com.limelight.pocket.ui.StreamMenuView.Item.action(getString(R.string.pocket_art_fetch_all), () -> {
                     hideConsolePanel();
@@ -1066,6 +1079,10 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         }
         boolean moved = position != pocketHeroPos;
         pocketHeroPos = position;
+        com.limelight.pocket.ui.RowIndicator indicator = findViewById(R.id.pocketRowIndicator);
+        if (indicator != null) {
+            indicator.set(position, appGridAdapter.getCount());
+        }
         com.limelight.pocket.ui.PocketMotion.swapText(title, obj.app.getAppName(), dir);
         heroTitleForLaunch = obj.app.getAppName();
         TextView playtime = findViewById(R.id.pocketHeroPlaytime);
@@ -1253,6 +1270,8 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         if (frame == null || under == null || a == null || b == null) {
             return;
         }
+        // The "Starting..." screen uses it too
+        com.limelight.pocket.ui.LaunchOverlay.rememberKeyArt(heroTitleForLaunch, bitmap);
         if (bitmap != null && !PocketPrefs.BACKDROP_ART.equals(PocketPrefs.backdrop(this))) {
             bitmap = null;
         }
@@ -1343,9 +1362,10 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         if (view == null || title == null) {
             return;
         }
-        if (logo != null && pocketDarkLogo(logo)) {
+        if (logo != null && (!com.limelight.pocket.PocketArt.logosForNames(this) || pocketDarkLogo(logo))) {
             logo = null;
         }
+        com.limelight.pocket.ui.LaunchOverlay.rememberLogo(heroTitleForLaunch, logo);
         if (logo == logoShown && (logo != null) == (view.getVisibility() == View.VISIBLE)) {
             return;
         }
@@ -1466,6 +1486,102 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
                     });
         }, null);
         return true;
+    }
+
+    /** First letter of a game's name, for jumping through an A to Z library. */
+    private char pocketInitial(int position) {
+        String name = ((AppObject) appGridAdapter.getItem(position)).app.getAppName();
+        for (int i = 0; i < name.length(); i++) {
+            char c = name.charAt(i);
+            if (Character.isLetterOrDigit(c)) {
+                return Character.isDigit(c) ? '#' : Character.toUpperCase(c);
+            }
+        }
+        return '#';
+    }
+
+    /** L2 / R2: the next / previous letter (A to Z order), or the first / last game otherwise. */
+    @Override
+    protected boolean onTrigger(int direction) {
+        if (appCarousel == null || appGridAdapter == null || appGridAdapter.getCount() == 0) {
+            return false;
+        }
+        int count = appGridAdapter.getCount();
+        int current = carouselAdapter != null ? Math.max(0, carouselAdapter.getFocusedPosition()) : 0;
+        int target;
+        boolean letters = PocketPrefs.SORT_AZ.equals(PocketPrefs.sortMode(this));
+        if (letters) {
+            char letter = pocketInitial(current);
+            int i = current;
+            if (direction > 0) {
+                while (i < count && pocketInitial(i) == letter) {
+                    i++;
+                }
+                target = Math.min(i, count - 1);
+            }
+            else {
+                while (i > 0 && pocketInitial(i - 1) == letter) {
+                    i--;
+                }
+                if (i == current && i > 0) {
+                    char previous = pocketInitial(i - 1);
+                    i--;
+                    while (i > 0 && pocketInitial(i - 1) == previous) {
+                        i--;
+                    }
+                }
+                target = i;
+            }
+        }
+        else {
+            target = direction > 0 ? count - 1 : 0;
+        }
+        if (target == current) {
+            return true;
+        }
+        final int pos = target;
+        appCarousel.scrollToPosition(pos);
+        appCarousel.post(() -> {
+            RecyclerView.ViewHolder holder = appCarousel.findViewHolderForAdapterPosition(pos);
+            if (holder != null) {
+                holder.itemView.requestFocus();
+            }
+        });
+        if (letters) {
+            pocketShowLetter(pocketInitial(pos));
+        }
+        return true;
+    }
+
+    private TextView pocketLetter;
+
+    /** A big letter in a glass disc, for a moment, while jumping through the alphabet. */
+    private void pocketShowLetter(char letter) {
+        ViewGroup content = findViewById(android.R.id.content);
+        if (content == null) {
+            return;
+        }
+        float d = getResources().getDisplayMetrics().density;
+        if (pocketLetter == null) {
+            pocketLetter = new TextView(this);
+            pocketLetter.setGravity(android.view.Gravity.CENTER);
+            pocketLetter.setTextColor(0xFFFFFFFF);
+            pocketLetter.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 38);
+            pocketLetter.setTypeface(android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL));
+            pocketLetter.setBackgroundResource(R.drawable.pocket_letter_bg);
+            pocketLetter.setAlpha(0f);
+            int size = Math.round(96 * d);
+            content.addView(pocketLetter, new android.widget.FrameLayout.LayoutParams(size, size, android.view.Gravity.CENTER));
+        }
+        pocketLetter.setText(String.valueOf(letter));
+        pocketLetter.animate().cancel();
+        pocketLetter.setScaleX(0.92f);
+        pocketLetter.setScaleY(0.92f);
+        pocketLetter.animate().alpha(1f).scaleX(1f).scaleY(1f).setStartDelay(0).setDuration(160)
+                .setInterpolator(com.limelight.pocket.ui.PocketMotion.DECELERATE)
+                .withEndAction(() -> pocketLetter.animate().alpha(0f).setStartDelay(520).setDuration(260)
+                        .withEndAction(null).start())
+                .start();
     }
 
     @Override

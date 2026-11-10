@@ -603,4 +603,15 @@
     <string name="pocket_set_auto_art_sub">بيجيبهم للعبة اللي واقف عليها (وأغلفة للألعاب اللي ما إلها)</string>
     <string name="pocket_set_clear_art">احذف الصور المختارة</string>
     <string name="pocket_set_clear_art_sub">بيرجّع صور الكمبيوتر الأصلية بكل مكان</string>
+    <string name="pocket_act_touch_keyboard">كيبورد الكمبيوتر باللمس</string>
+    <string name="pocket_short_touch_keyboard">كيبورد لمس</string>
+    <string name="pocket_set_logos">الشعار بدل الاسم</string>
+    <string name="pocket_set_logos_sub">شعار اللعبة بالمكتبة وبشاشة التشغيل، إذا إلها شعار</string>
+    <string name="pocket_set_sort">ترتيب المكتبة</string>
+    <string name="pocket_set_sort_sub">المفضلة دايماً أول · بترتيب A–Z، زر L2 / R2 بينط بين الحروف</string>
+    <string name="pocket_sort_recent">آخر ما لعبت</string>
+    <string name="pocket_sort_az">من A لـ Z</string>
+    <string name="pocket_sort_pc">ترتيب الكمبيوتر</string>
+    <string name="pocket_quick_play">العب %1$s</string>
+    <string name="pocket_quick_resume">كمّل %1$s</string>
 </resources>

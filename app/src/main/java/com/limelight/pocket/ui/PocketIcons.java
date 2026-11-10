@@ -145,6 +145,16 @@ public final class PocketIcons {
                 c.drawLine(19f, 10f, 19.01f, 10f, stroke(p));
                 c.drawLine(8f, 14.5f, 16f, 14.5f, stroke(p));
                 break;
+            case "TOUCH_KEYBOARD":
+                // A keyboard with a fingertip tapping a key
+                rect(c, p, 2.5f, 4.5f, 21.5f, 15f, 2.5f, false);
+                c.drawLine(6f, 8.3f, 6.01f, 8.3f, stroke(p));
+                c.drawLine(10f, 8.3f, 10.01f, 8.3f, stroke(p));
+                c.drawLine(14f, 8.3f, 14.01f, 8.3f, stroke(p));
+                c.drawLine(18f, 8.3f, 18.01f, 8.3f, stroke(p));
+                c.drawLine(8f, 11.6f, 13f, 11.6f, stroke(p));
+                circle(c, p, 17f, 18.6f, 2.6f, true);
+                break;
             case "MOUSE":
                 rect(c, p, 6.5f, 3f, 17.5f, 21f, 5.5f, false);
                 c.drawLine(12f, 3f, 12f, 9f, stroke(p));
@@ -299,6 +309,7 @@ public final class PocketIcons {
             case "MUTE":
             case "STATS":
             case "KEYBOARD":
+            case "TOUCH_KEYBOARD":
             case "MOUSE":
             case "ANDROID_HOME":
             case "DISCONNECT":

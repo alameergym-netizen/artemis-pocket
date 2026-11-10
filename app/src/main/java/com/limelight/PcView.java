@@ -1086,6 +1086,22 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         // Artemis Pocket: the options open as a console panel instead of Android's menu
         final ComputerObject computer = (ComputerObject) pcGridAdapter.getItem(pos);
         List<com.limelight.pocket.ui.StreamMenuView.Item> extra = new ArrayList<>();
+        // Quick play: straight into the last game, without opening the library
+        final int lastId = PocketPrefs.getLastAppId(this, computer.details.uuid);
+        final String lastName = PocketPrefs.getLastAppName(this, computer.details.uuid);
+        if (computer.details.state == ComputerDetails.State.ONLINE && computer.details.pairState == PairState.PAIRED
+                && lastId != 0 && lastName != null && !lastName.isEmpty() && managerBinder != null
+                && (computer.details.runningGameId == 0 || computer.details.runningGameId == lastId)
+                && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            boolean resume = computer.details.runningGameId == lastId;
+            extra.add(com.limelight.pocket.ui.StreamMenuView.Item.action("\u25B6  " + getString(
+                    resume ? R.string.pocket_quick_resume : R.string.pocket_quick_play, lastName), () -> {
+                hideConsolePanel();
+                com.limelight.utils.ServerHelper.doStart(this,
+                        new com.limelight.nvstream.http.NvApp(lastName, null, lastId, false), computer.details,
+                        managerBinder, com.limelight.preferences.PreferenceConfiguration.readPreferences(this).useVirtualDisplay);
+            }));
+        }
         if (computer.details.state == ComputerDetails.State.ONLINE) {
             extra.add(com.limelight.pocket.ui.StreamMenuView.Item.action(getString(R.string.pocket_nettest),
                     () -> {

@@ -2742,6 +2742,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 () -> performPocketAction(PocketAction.MOUSE, -1, true)).withIcon("MOUSE"));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_keyboard),
                 () -> performPocketAction(PocketAction.KEYBOARD, -1, false)).withIcon("KEYBOARD"));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_act_touch_keyboard),
+                () -> performPocketAction(PocketAction.TOUCH_KEYBOARD, -1, false)).withIcon("TOUCH_KEYBOARD"));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_sm_radial), () -> openRadial(-1)).withIcon("RADIAL"));
 
         items.add(StreamMenuView.Item.header(getString(R.string.pocket_sm_header_handheld)));
@@ -3489,6 +3491,10 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 break;
             case KEYBOARD:
                 toggleKeyboard();
+                break;
+            case TOUCH_KEYBOARD:
+                // Artemis' full PC keyboard, drawn over the game and tapped on the touchscreen
+                toggleFullKeyboard();
                 break;
             case MOUSE:
                 if (controllerHandler != null) {

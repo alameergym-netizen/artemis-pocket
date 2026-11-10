@@ -122,15 +122,22 @@ public final class PocketMotion {
                         .setInterpolator(Spring.POP).withEndAction(null).start()).start();
     }
 
-    /** Draws attention to something that just changed: it swells slightly and settles. */
+    /**
+     * Something just changed (a chip, a pill): it rises a few dp into place while it fades up.
+     * Calm on purpose: no swelling or springing back, which read as a pulse on every move.
+     */
     public static void bump(final View v) {
         if (!on(v)) {
             return;
         }
-        // Takes over the scale only (an entrance still running on the view carries on)
-        v.setScaleX(0.9f);
-        v.setScaleY(0.9f);
-        v.animate().scaleX(1f).scaleY(1f).setStartDelay(0).setDuration(420).setInterpolator(Spring.POP)
-                .withEndAction(null).start();
+        // Takes over alpha and Y only (an entrance still running on the view carries on)
+        v.setAlpha(0.35f);
+        v.setTranslationY(dp(v, 4));
+        v.animate().alpha(1f).translationY(0f).setStartDelay(0).setDuration(320)
+                .setInterpolator(DECELERATE).withEndAction(null).start();
     }
+
+    /** Starts quickly and lands softly, never overshooting. */
+    public static final android.view.animation.Interpolator DECELERATE =
+            new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f);
 }

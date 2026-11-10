@@ -32,6 +32,7 @@ public enum PocketAction {
     MUTE("mute", R.string.pocket_act_mute),
     STATS("stats", R.string.pocket_act_stats),
     KEYBOARD("keyboard", R.string.pocket_act_keyboard),
+    TOUCH_KEYBOARD("touchkeys", R.string.pocket_act_touch_keyboard),
     MOUSE("mouse", R.string.pocket_act_mouse),
     ANDROID_HOME("androidhome", R.string.pocket_act_androidhome),
     DISCONNECT("disconnect", R.string.pocket_act_disconnect),
@@ -74,6 +75,7 @@ public enum PocketAction {
             case VOLUME_DOWN: res = R.string.pocket_short_voldown; break;
             case STATS: res = R.string.pocket_short_stats; break;
             case KEYBOARD: res = R.string.pocket_short_keyboard; break;
+            case TOUCH_KEYBOARD: res = R.string.pocket_short_touch_keyboard; break;
             case MOUSE: res = R.string.pocket_short_mouse; break;
             case ANDROID_HOME: res = R.string.pocket_short_androidhome; break;
             case DISCONNECT: res = R.string.pocket_short_disconnect; break;

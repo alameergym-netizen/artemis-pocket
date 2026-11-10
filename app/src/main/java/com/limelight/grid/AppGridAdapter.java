@@ -114,7 +114,9 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
     }
 
     private void sortList(List<AppView.AppObject> list) {
-        final boolean recentFirst = com.limelight.pocket.PocketPrefs.sortRecent(context);
+        final String mode = com.limelight.pocket.PocketPrefs.sortMode(context);
+        final boolean recentFirst = com.limelight.pocket.PocketPrefs.SORT_RECENT.equals(mode);
+        final boolean alphabetical = com.limelight.pocket.PocketPrefs.SORT_AZ.equals(mode);
         Collections.sort(list, new Comparator<AppView.AppObject>() {
             @Override
             public int compare(AppView.AppObject lhs, AppView.AppObject rhs) {
@@ -130,6 +132,12 @@ public class AppGridAdapter extends GenericGridAdapter<AppView.AppObject> {
                     long r = com.limelight.pocket.PocketPrefs.getLastPlayed(context, computer.uuid, rhs.app.getAppId());
                     if (l != r) {
                         return Long.compare(r, l);
+                    }
+                }
+                if (alphabetical) {
+                    int byName = lhs.app.getAppName().compareToIgnoreCase(rhs.app.getAppName());
+                    if (byName != 0) {
+                        return byName;
                     }
                 }
                 int lIndex = lhs.app.getAppIndex();

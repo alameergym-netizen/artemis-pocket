@@ -289,19 +289,35 @@
             android:clipChildren="false"
             android:clipToPadding="false">
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/pocketAppCarousel"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center_vertical"
                 android:clipChildren="false"
                 android:clipToPadding="false"
-                android:descendantFocusability="afterDescendants"
-                android:overScrollMode="never"
-                android:paddingStart="16dp"
-                android:paddingTop="14dp"
-                android:paddingEnd="90dp"
-                android:paddingBottom="14dp" />
+                android:orientation="vertical">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/pocketAppCarousel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    android:descendantFocusability="afterDescendants"
+                    android:overScrollMode="never"
+                    android:paddingStart="16dp"
+                    android:paddingTop="14dp"
+                    android:paddingEnd="90dp"
+                    android:paddingBottom="14dp" />
+
+                <!-- Where you are in the row -->
+                <com.limelight.pocket.ui.RowIndicator
+                    android:id="@+id/pocketRowIndicator"
+                    android:layout_width="132dp"
+                    android:layout_height="6dp"
+                    android:layout_marginStart="30dp"
+                    android:importantForAccessibility="no" />
+            </LinearLayout>
         </FrameLayout>
 
         <!-- Profile + button hints -->

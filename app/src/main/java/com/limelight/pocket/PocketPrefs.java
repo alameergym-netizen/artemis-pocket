@@ -249,7 +249,32 @@ public final class PocketPrefs {
     }
 
     public static boolean sortRecent(Context context) {
-        return prefs(context).getBoolean(KEY_SORT_RECENT, true);
+        return SORT_RECENT.equals(sortMode(context));
+    }
+
+    public static final String KEY_SORT_MODE = "pocket_sort_mode";
+    public static final String SORT_RECENT = "recent";
+    public static final String SORT_AZ = "az";
+    public static final String SORT_PC = "pc";
+    public static final String[] SORT_MODES = {SORT_RECENT, SORT_AZ, SORT_PC};
+
+    /** Library order: recently played, A to Z, or the PC's own order (favourites always first). */
+    public static String sortMode(Context context) {
+        String mode = prefs(context).getString(KEY_SORT_MODE, null);
+        if (mode == null) {
+            return prefs(context).getBoolean(KEY_SORT_RECENT, true) ? SORT_RECENT : SORT_PC;
+        }
+        return mode;
+    }
+
+    public static int sortModeIndex(Context context) {
+        String mode = sortMode(context);
+        for (int i = 0; i < SORT_MODES.length; i++) {
+            if (SORT_MODES[i].equals(mode)) {
+                return i;
+            }
+        }
+        return 0;
     }
 
     public static boolean showLatency(Context context) {

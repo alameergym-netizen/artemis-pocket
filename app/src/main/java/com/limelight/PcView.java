@@ -1233,6 +1233,7 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             if (lastLine != null) {
                 lastLine.setVisibility(View.GONE);
             }
+            pocketBackdropKey = null;
             pocketHeroArt().show(null);
             return;
         }
@@ -1334,12 +1335,43 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
     }
 
     private int pocketBackdropToken;
+    private String pocketBackdropKey;
+    private String pocketBackdropUuid;
+    private int pocketBackdropAppId;
+    private String pocketBackdropName;
+    private final Runnable pocketBackdropTask = () ->
+            pocketApplyBackdrop(pocketBackdropUuid, pocketBackdropAppId, pocketBackdropName);
 
     /**
      * The backdrop for a game: its wide key art when it has one; otherwise its colours light the
-     * screen. Requests are named, so a refresh asking for the same thing changes nothing.
+     * screen. A refresh asking for the same thing changes nothing, and while you move through
+     * the rows it waits until you rest on something (moving stays light and smooth).
      */
     private void pocketBackdropFor(final String uuid, final int appId, final String name) {
+        String key = uuid + ":" + appId + "@" + com.limelight.pocket.PocketArt.version();
+        if (key.equals(pocketBackdropKey)) {
+            return;
+        }
+        boolean first = pocketBackdropKey == null;
+        pocketBackdropKey = key;
+        pocketBackdropUuid = uuid;
+        pocketBackdropAppId = appId;
+        pocketBackdropName = name;
+        View host = getWindow().getDecorView();
+        host.removeCallbacks(pocketBackdropTask);
+        ++pocketBackdropToken;
+        if (first || !com.limelight.pocket.PocketPrefs.animationsEnabled(this)) {
+            pocketBackdropTask.run();
+        }
+        else {
+            host.postDelayed(pocketBackdropTask, 150);
+        }
+    }
+
+    private void pocketApplyBackdrop(final String uuid, final int appId, final String name) {
+        if (isFinishing()) {
+            return;
+        }
         final int token = ++pocketBackdropToken;
         final String key = uuid + ":" + appId;
         android.graphics.Bitmap keyArt = com.limelight.pocket.PocketArt.cached(this, uuid, appId, com.limelight.pocket.PocketArt.HERO);

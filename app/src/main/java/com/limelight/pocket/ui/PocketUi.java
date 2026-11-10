@@ -47,25 +47,32 @@ public final class PocketUi {
         return base.createConfigurationContext(config);
     }
 
+    /** Haptics talk to a system service: done off the main thread so a move never waits on it. */
+    private static final java.util.concurrent.ExecutorService HAPTICS =
+            java.util.concurrent.Executors.newSingleThreadExecutor();
+
     /** A very light tick when moving between items, like a console menu. */
     public static void tick(Context context) {
         com.limelight.pocket.PocketSounds.play(context, com.limelight.pocket.PocketSounds.NAV);
         if (!PocketPrefs.hapticsEnabled(context)) {
             return;
         }
-        Vibrator vibrator = (Vibrator) context.getSystemService(Context.VIBRATOR_SERVICE);
-        if (vibrator == null || !vibrator.hasVibrator()) {
-            return;
-        }
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK));
+        final Context app = context.getApplicationContext();
+        HAPTICS.execute(() -> {
+            try {
+                Vibrator vibrator = (Vibrator) app.getSystemService(Context.VIBRATOR_SERVICE);
+                if (vibrator == null || !vibrator.hasVibrator()) {
+                    return;
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    vibrator.vibrate(VibrationEffect.createPredefined(VibrationEffect.EFFECT_TICK));
+                }
+                else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    vibrator.vibrate(VibrationEffect.createOneShot(8, 60));
+                }
+            } catch (RuntimeException ignored) {
             }
-            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vibrator.vibrate(VibrationEffect.createOneShot(8, 60));
-            }
-        } catch (RuntimeException ignored) {
-        }
+        });
     }
 
     /** Sets text without flicker (kept as a helper so callers stay simple). */

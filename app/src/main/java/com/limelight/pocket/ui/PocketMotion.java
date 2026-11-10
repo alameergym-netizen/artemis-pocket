@@ -99,6 +99,14 @@ public final class PocketMotion {
             return;
         }
         final float shift = dp(view, 18) * direction;
+        if (rapid(view)) {
+            // Moving quickly (holding the D-pad): no time for the old name to leave; the new one
+            // just slides in, so the names stay readable instead of blinking out at every step
+            view.animate().cancel();
+            view.setText(text);
+            arriveQuick(view, shift);
+            return;
+        }
         // No cancel(): that would freeze an entrance that is still moving the view (it would stay
         // half-faded or off its line). A new animation only takes over alpha and X.
         view.animate().alpha(0f).translationX(-shift * 0.6f).setStartDelay(0).setDuration(90)
@@ -109,6 +117,67 @@ public final class PocketMotion {
                     view.animate().alpha(1f).translationX(0).setDuration(420)
                             .setInterpolator(Spring.SOFT).withEndAction(null).start();
                 }).start();
+    }
+
+    /**
+     * Changes a picture (a game's logo) the way swapText changes a name: the old one slips out
+     * in the direction you moved, the new one comes in from the other side. direction 0: the
+     * picture simply arrives. Moving on before it finishes just carries on with the newest.
+     */
+    public static void swapImage(final android.widget.ImageView view, final android.graphics.Bitmap bitmap,
+                                 final int direction) {
+        if (view == null) {
+            return;
+        }
+        if (!on(view)) {
+            view.setImageBitmap(bitmap);
+            return;
+        }
+        final float shift = dp(view, 18) * (direction == 0 ? 1 : direction);
+        if (direction != 0 && view.getDrawable() != null && rapid(view)) {
+            view.animate().cancel();
+            view.setImageBitmap(bitmap);
+            arriveQuick(view, shift);
+            return;
+        }
+        if (direction == 0 || view.getDrawable() == null || view.getAlpha() < 0.05f) {
+            view.animate().cancel();
+            view.setImageBitmap(bitmap);
+            view.setAlpha(0f);
+            view.setTranslationX(shift * 0.67f);
+            view.animate().alpha(1f).translationX(0).setStartDelay(0).setDuration(420)
+                    .setInterpolator(Spring.SOFT).withEndAction(null).start();
+            return;
+        }
+        // A new animation of the same properties cancels the previous one and its end action,
+        // so only the newest picture is ever put in
+        view.animate().alpha(0f).translationX(-shift * 0.6f).setStartDelay(0).setDuration(90)
+                .setInterpolator(PocketUi.EASE)
+                .withEndAction(() -> {
+                    view.setImageBitmap(bitmap);
+                    view.setTranslationX(shift);
+                    view.animate().alpha(1f).translationX(0).setDuration(420)
+                            .setInterpolator(Spring.SOFT).withEndAction(null).start();
+                }).start();
+    }
+
+    /** When each view last changed (to tell a held D-pad from single moves). */
+    private static final java.util.WeakHashMap<View, Long> LAST_CHANGE = new java.util.WeakHashMap<>();
+    private static final long RAPID_MS = 170;
+
+    /** True when the view changed moments ago too (records this change). */
+    private static boolean rapid(View view) {
+        long now = android.os.SystemClock.uptimeMillis();
+        Long last = LAST_CHANGE.put(view, now);
+        return last != null && now - last < RAPID_MS;
+    }
+
+    /** The quick arrival used while moving fast: from where it is, a short slide, never hidden. */
+    private static void arriveQuick(View view, float shift) {
+        view.setAlpha(Math.max(view.getAlpha(), 0.45f));
+        view.setTranslationX(shift * 0.45f);
+        view.animate().alpha(1f).translationX(0).setStartDelay(0).setDuration(260)
+                .setInterpolator(DECELERATE).withEndAction(null).start();
     }
 
     /** A small "pop": shrinks a touch, then springs back (button glyphs, chips). */
@@ -130,11 +199,30 @@ public final class PocketMotion {
         if (!on(v)) {
             return;
         }
-        // Takes over alpha and Y only (an entrance still running on the view carries on)
-        v.setAlpha(0.35f);
-        v.setTranslationY(dp(v, 4));
+        // Takes over alpha and Y only (an entrance still running on the view carries on). Held
+        // D-pad: it stays readable, just settling, instead of dimming at every step
+        if (rapid(v)) {
+            v.setAlpha(Math.max(v.getAlpha(), 0.7f));
+        }
+        else {
+            v.setAlpha(0.35f);
+            v.setTranslationY(dp(v, 4));
+        }
         v.animate().alpha(1f).translationY(0f).setStartDelay(0).setDuration(320)
                 .setInterpolator(DECELERATE).withEndAction(null).start();
+    }
+
+    /**
+     * The time of the frame being drawn (its vsync), in ns. Animations stepped by hand use it so
+     * they move on the same clock as the system's: a delayed frame then still shows things where
+     * they belong, instead of the lens lagging behind or jumping after the cards.
+     */
+    public static long frameNanos() {
+        try {
+            return android.view.Choreographer.getInstance().getFrameTimeNanos();
+        } catch (RuntimeException e) {
+            return System.nanoTime();
+        }
     }
 
     /** Starts quickly and lands softly, never overshooting. */

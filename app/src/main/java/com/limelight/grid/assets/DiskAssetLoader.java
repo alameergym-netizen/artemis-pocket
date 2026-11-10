@@ -130,6 +130,9 @@ public class DiskAssetLoader {
                             targetWidth = (int) (aspectRatio / standardAspectRatio * targetWidth);
                         }
                         imageDecoder.setTargetSize(targetWidth, targetHeight);
+                        // Artemis Pocket: decoded readable, so its colours can be worked out here on
+                        // the loader thread; HeroArt.prepare() then moves it to the GPU
+                        imageDecoder.setAllocator(ImageDecoder.ALLOCATOR_SOFTWARE);
                         if (isLowRamDevice) {
                             imageDecoder.setMemorySizePolicy(ImageDecoder.MEMORY_POLICY_LOW_RAM);
                         }

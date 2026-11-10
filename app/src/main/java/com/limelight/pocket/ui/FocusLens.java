@@ -23,8 +23,8 @@ import java.util.WeakHashMap;
  *
  *  - It aims at where the focused card will come to rest, so with the anchored row it simply stays
  *    in its slot while the row slides the next game into it; at the ends of the row it glides.
- *  - Calm on purpose: it fades in at its exact size, never bounces, squeezes or "breathes" (that
- *    read as a pulse); it only stretches a hair while it travels fast.
+ *  - Calm on purpose: it fades in at its exact size, never bounces, stretches, squeezes or
+ *    "breathes" (those read as a pulse or a wobble).
  *  - When you rest on a card a sheen of light sweeps over it once.
  *  - The other cards dim a touch so the focused one pops.
  */
@@ -46,11 +46,12 @@ public class FocusLens extends RecyclerView.ItemDecoration {
     private final float d;
     private final float cardRadius;
 
-    // Critically damped: they settle without overshoot (no wobble, no pulse)
-    private final Spring cx = new Spring(820, 1f, 0);
-    private final Spring cy = new Spring(820, 1f, 0);
-    private final Spring w = new Spring(700, 1f, 0);
-    private final Spring h = new Spring(700, 1f, 0);
+    // Critically damped, with the same stiffness as the row's glide and the cards' growth: no
+    // overshoot (no wobble, no pulse), and what moves together arrives together
+    private final Spring cx = new Spring(Spring.UI_STIFFNESS, 1f, 0);
+    private final Spring cy = new Spring(Spring.UI_STIFFNESS, 1f, 0);
+    private final Spring w = new Spring(Spring.UI_STIFFNESS, 1f, 0);
+    private final Spring h = new Spring(Spring.UI_STIFFNESS, 1f, 0);
     private float alpha;
 
     private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -139,8 +140,10 @@ public class FocusLens extends RecyclerView.ItemDecoration {
 
     @Override
     public void onDrawOver(@NonNull Canvas canvas, @NonNull RecyclerView parent, @NonNull RecyclerView.State state) {
-        long now = System.nanoTime();
-        float dt = lastFrameNanos == 0 ? 1f / 60f : Math.min(1f / 30f, (now - lastFrameNanos) / 1e9f);
+        // Stepped on the frame clock (vsync), like the row's glide and the cards' animations: on
+        // the time the frame is shown, not whenever this draw happens to run
+        long now = PocketMotion.frameNanos();
+        float dt = lastFrameNanos == 0 ? 1f / 120f : Math.max(0f, Math.min(0.05f, (now - lastFrameNanos) / 1e9f));
         lastFrameNanos = now;
         boolean anim = animated();
         boolean moving = false;
@@ -275,10 +278,9 @@ public class FocusLens extends RecyclerView.ItemDecoration {
 
         boolean breathing = false;
         if (host.showRing()) {
-            // A little stretch along the way the lens travels
-            float stretch = Math.min(1f, Math.abs(cx.velocity) / (2600f * d));
-            float lw = w.value + stretch * 12 * d;
-            float lh = h.value - stretch * 5 * d;
+            // Its exact size all the way (a stretch that followed its speed read as a wobble)
+            float lw = w.value;
+            float lh = h.value;
             rect.set(cx.value - lw / 2f, cy.value - lh / 2f, cx.value + lw / 2f, cy.value + lh / 2f);
             float r = cardRadius * host.focusScale() + GAP_DP * d;
 

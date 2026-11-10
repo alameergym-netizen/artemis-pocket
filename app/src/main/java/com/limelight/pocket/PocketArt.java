@@ -49,7 +49,9 @@ public final class PocketArt {
     private static final Handler MAIN = new Handler(Looper.getMainLooper());
     private static final Set<String> IN_FLIGHT = new HashSet<>();
 
-    private static final LruCache<String, Bitmap> BITMAPS = new LruCache<String, Bitmap>(16 * 1024 * 1024) {
+    // Room for a library's worth of backgrounds (each ~4.7 MB): with only three, moving through
+    // the games kept decoding and uploading them again
+    private static final LruCache<String, Bitmap> BITMAPS = new LruCache<String, Bitmap>(56 * 1024 * 1024) {
         @Override
         protected int sizeOf(String key, Bitmap value) {
             return value.getByteCount();
@@ -226,6 +228,54 @@ public final class PocketArt {
         }
     }
 
+    private static final java.util.Map<Bitmap, Boolean> DARK_LOGOS =
+            java.util.Collections.synchronizedMap(new java.util.WeakHashMap<Bitmap, Boolean>());
+
+    /** True for a logo too dark to read on a dark screen (known for loaded logos, so it's free). */
+    public static boolean isDarkLogo(Bitmap logo) {
+        if (logo == null || logo.isRecycled()) {
+            return false;
+        }
+        Boolean known = DARK_LOGOS.get(logo);
+        if (known != null) {
+            return known;
+        }
+        boolean dark = false;
+        try {
+            Bitmap source = logo;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
+                    && logo.getConfig() == Bitmap.Config.HARDWARE) {
+                source = logo.copy(Bitmap.Config.ARGB_8888, false);
+            }
+            if (source != null) {
+                int w = 48;
+                int h = Math.max(1, 48 * source.getHeight() / Math.max(1, source.getWidth()));
+                Bitmap small = Bitmap.createScaledBitmap(source, w, h, true);
+                int[] pixels = new int[small.getWidth() * small.getHeight()];
+                small.getPixels(pixels, 0, small.getWidth(), 0, 0, small.getWidth(), small.getHeight());
+                double sum = 0;
+                int n = 0;
+                for (int c : pixels) {
+                    if (android.graphics.Color.alpha(c) > 160) {
+                        sum += (0.299 * android.graphics.Color.red(c) + 0.587 * android.graphics.Color.green(c)
+                                + 0.114 * android.graphics.Color.blue(c)) / 255.0;
+                        n++;
+                    }
+                }
+                dark = n == 0 || sum / n < 0.22;
+                if (small != source) {
+                    small.recycle();
+                }
+                if (source != logo) {
+                    source.recycle();
+                }
+            }
+        } catch (RuntimeException ignored) {
+        }
+        DARK_LOGOS.put(logo, dark);
+        return dark;
+    }
+
     /** Loads the art off the main thread; callback on the main thread (null when there is none). */
     public static void load(Context context, final String uuid, final int appId, final int kind, final BitmapCallback callback) {
         final Context app = context.getApplicationContext();
@@ -238,14 +288,27 @@ public final class PocketArt {
             Bitmap bitmap = null;
             File f = file(app, uuid, appId, kind);
             if (f.exists()) {
-                try {
-                    bitmap = BitmapFactory.decodeFile(f.getPath());
-                    if (bitmap != null) {
-                        synchronized (BITMAPS) {
-                            BITMAPS.put(cacheKey(f), bitmap);
+                String key = cacheKey(f);
+                synchronized (BITMAPS) {
+                    // Asked again while it was queued (moving back and forth)
+                    bitmap = BITMAPS.get(key);
+                }
+                if (bitmap == null) {
+                    try {
+                        Bitmap raw = BitmapFactory.decodeFile(f.getPath());
+                        if (raw != null) {
+                            boolean dark = kind == LOGO && isDarkLogo(raw);
+                            // Colours worked out and uploaded to the GPU here, not mid-animation
+                            bitmap = com.limelight.pocket.ui.HeroArt.prepare(raw, true);
+                            if (kind == LOGO) {
+                                DARK_LOGOS.put(bitmap, dark);
+                            }
+                            synchronized (BITMAPS) {
+                                BITMAPS.put(key, bitmap);
+                            }
                         }
+                    } catch (OutOfMemoryError ignored) {
                     }
-                } catch (OutOfMemoryError ignored) {
                 }
             }
             final Bitmap result = bitmap;

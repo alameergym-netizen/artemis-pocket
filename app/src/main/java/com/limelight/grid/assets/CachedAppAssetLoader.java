@@ -180,7 +180,12 @@ public class CachedAppAssetLoader {
             // cover with the app's name
             if (bmp != null && bmp.bitmap != null && com.limelight.pocket.ui.HeroArt.isPlaceholder(bmp.bitmap)) {
                 Bitmap designed = com.limelight.pocket.ui.PlaceholderArt.render(tuple.app.getAppName(), 300);
-                bmp = new ScaledBitmap(designed.getWidth(), designed.getHeight(), designed);
+                bmp = new ScaledBitmap(designed.getWidth(), designed.getHeight(),
+                        com.limelight.pocket.ui.HeroArt.prepare(designed, false));
+            }
+            else if (bmp != null && bmp.bitmap != null) {
+                // Colours worked out and uploaded to the GPU here, not while the row is moving
+                bmp.bitmap = com.limelight.pocket.ui.HeroArt.prepare(bmp.bitmap, true);
             }
 
             // Cache the bitmap

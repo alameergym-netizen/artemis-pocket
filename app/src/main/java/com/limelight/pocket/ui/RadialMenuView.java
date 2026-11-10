@@ -316,7 +316,7 @@ public class RadialMenuView extends FrameLayout {
         }
 
         private boolean stepAll() {
-            long now = System.nanoTime();
+            long now = PocketMotion.frameNanos();
             float dt = lastFrameNanos == 0 ? 0.016f : Math.min(0.033f, (now - lastFrameNanos) / 1e9f);
             lastFrameNanos = now;
             boolean moving = open.step(dt);

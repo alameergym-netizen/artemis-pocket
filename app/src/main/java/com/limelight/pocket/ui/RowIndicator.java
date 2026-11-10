@@ -18,7 +18,7 @@ public class RowIndicator extends View {
     private final Paint track = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint thumb = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rect = new RectF();
-    private final Spring position = new Spring(420, 1f, 0);
+    private final Spring position = new Spring(Spring.UI_STIFFNESS, 1f, 0);
     private final float d;
     private int count;
     private int index;
@@ -55,8 +55,9 @@ public class RowIndicator extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        long now = System.nanoTime();
-        float dt = lastFrame == 0 ? 1f / 60f : Math.min(1f / 30f, (now - lastFrame) / 1e9f);
+        // Same clock and spring as the row it sits under
+        long now = PocketMotion.frameNanos();
+        float dt = lastFrame == 0 ? 1f / 120f : Math.max(0f, Math.min(0.05f, (now - lastFrame) / 1e9f));
         lastFrame = now;
         boolean moving = position.step(dt);
 

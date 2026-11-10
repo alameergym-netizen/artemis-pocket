@@ -73,6 +73,45 @@ public final class Spring {
         }
     }
 
+    /**
+     * The one feel of the console UI: how fast the row scrolls, the focus lens travels and the
+     * cards grow and step aside. All of them use this stiffness (critically damped), so things
+     * that move together arrive together.
+     */
+    public static final float UI_STIFFNESS = 640f;
+    /** Natural frequency of the UI spring (rad/s). */
+    public static final float UI_OMEGA = (float) Math.sqrt(UI_STIFFNESS);
+    /** About when the UI spring has settled (to a fraction of a pixel), for timed animations. */
+    public static final long UI_DURATION_MS = Math.round(8.0 / UI_OMEGA * 1000);
+    /** The UI spring's curve for ViewPropertyAnimator & co. (use with UI_DURATION_MS). */
+    public static final Interpolator UI_CURVE = new CriticalInterpolator(8f);
+
+    /**
+     * The curve of a critically damped spring released from rest: no overshoot, eases in over
+     * the first few frames and glides to a stop. omegaT = natural frequency x duration.
+     */
+    public static final class CriticalInterpolator implements Interpolator {
+        private final double a;
+        private final double norm;
+
+        public CriticalInterpolator(float omegaT) {
+            a = omegaT;
+            norm = 1 - (1 + a) * Math.exp(-a);
+        }
+
+        @Override
+        public float getInterpolation(float t) {
+            if (t >= 1f) {
+                return 1f;
+            }
+            if (t <= 0f) {
+                return 0f;
+            }
+            double x = a * t;
+            return (float) ((1 - (1 + x) * Math.exp(-x)) / norm);
+        }
+    }
+
     /** A soft settle with a hint of overshoot (cards, panels). */
     public static final Interpolator SOFT = new SpringInterpolator(0.78f);
     /** A livelier pop (radial selection, toggles). */

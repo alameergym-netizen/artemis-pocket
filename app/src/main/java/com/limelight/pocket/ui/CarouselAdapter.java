@@ -33,9 +33,9 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
     }
 
     private static final int CARD_PADDING_DP = 14;
-    /** Starts quickly and lands softly, without overshoot. */
-    private static final android.view.animation.Interpolator GLIDE =
-            new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f);
+    /** The UI spring's curve: the cards move exactly like the row's glide and the lens. */
+    private static final android.view.animation.Interpolator GLIDE = Spring.UI_CURVE;
+    private static final long GLIDE_MS = Spring.UI_DURATION_MS;
     /** Extra room the neighbours of the focused card step aside by. */
     private static final float MAKE_ROOM_DP = 4f;
 
@@ -160,7 +160,7 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
             }
             content.animate().cancel();
             if (animated) {
-                content.animate().setStartDelay(0).translationX(target).setDuration(300)
+                content.animate().setStartDelay(0).translationX(target).setDuration(GLIDE_MS)
                         .setInterpolator(GLIDE)
                         .setUpdateListener(a -> rv.invalidate())
                         .start();
@@ -362,7 +362,7 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         if (animated) {
             // A smooth glide in size, no overshoot (a bounce reads as a pulse)
             frame.animate().setStartDelay(0).scaleX(scale).scaleY(scale).translationY(0).translationZ(z)
-                    .setDuration(focused ? 300 : 240)
+                    .setDuration(GLIDE_MS)
                     .setInterpolator(GLIDE)
                     .setUpdateListener(a -> {
                         if (frame.getParent() instanceof View) {

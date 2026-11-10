@@ -39,21 +39,14 @@ public class LaunchOverlay extends FrameLayout {
         if (bitmap == null || bitmap.isRecycled() || title == null) {
             return;
         }
-        try {
-            int w = Math.min(480, bitmap.getWidth());
-            int h = Math.max(1, Math.round(bitmap.getHeight() * (w / (float) bitmap.getWidth())));
-            Bitmap copy = Bitmap.createScaledBitmap(bitmap, w, h, true);
-            if (copy == bitmap) {
-                copy = bitmap.copy(bitmap.getConfig() != null ? bitmap.getConfig() : Bitmap.Config.ARGB_8888, false);
-            }
-            art = copy;
-            artTitle = title;
-        } catch (RuntimeException | OutOfMemoryError ignored) {
-        }
+        // Just a reference: this runs on every move through the library, and copying the art
+        // (it lives on the GPU) stalled a frame each time
+        art = bitmap;
+        artTitle = title;
     }
 
     private static Bitmap artFor(String title) {
-        return title != null && title.equals(artTitle) ? art : null;
+        return title != null && title.equals(artTitle) && art != null && !art.isRecycled() ? art : null;
     }
 
     // ... and its logo and wide key art, when it has them (SteamGridDB)

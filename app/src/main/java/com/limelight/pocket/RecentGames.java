@@ -3,7 +3,6 @@ package com.limelight.pocket;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
-import android.os.SystemClock;
 
 import com.limelight.AppView;
 import com.limelight.nvstream.http.NvApp;
@@ -38,8 +37,7 @@ public final class RecentGames {
     }
 
     private static final Map<String, List<Game>> CACHE = new HashMap<>();
-    private static final Map<String, Long> CACHED_AT = new HashMap<>();
-    private static final long FRESH_MS = 15000;
+    private static final Map<String, String> CACHED_FOR = new HashMap<>();
 
     private RecentGames() {
     }
@@ -47,7 +45,23 @@ public final class RecentGames {
     /** Forget what was read (a game was just played, the list changed). */
     public static synchronized void invalidate(String uuid) {
         CACHE.remove(uuid);
-        CACHED_AT.remove(uuid);
+        CACHED_FOR.remove(uuid);
+    }
+
+    /**
+     * What the cached list depends on: the game list file and the hidden games. Checking it is
+     * cheap, so the list is only read and parsed again when one of them really changed (it used
+     * to be re-read every 15 s on the main thread, a small hitch on the home screen).
+     */
+    private static String stamp(Context context, String uuid) {
+        java.io.File f = CacheHelper.openPath(false, context.getCacheDir(), "applist", uuid);
+        SharedPreferences hiddenPrefs = context.getSharedPreferences(AppView.HIDDEN_APPS_PREF_FILENAME, Context.MODE_PRIVATE);
+        Set<String> hidden = hiddenPrefs.getStringSet(uuid, Collections.<String>emptySet());
+        // ...and the last game played here (the order is by when they were played)
+        int lastId = PocketPrefs.getLastAppId(context, uuid);
+        long lastAt = lastId != 0 ? PocketPrefs.getLastPlayed(context, uuid, lastId) : 0;
+        return f.lastModified() + ":" + f.length() + ":" + (hidden != null ? hidden.hashCode() + "/" + hidden.size() : "0")
+                + ":" + lastId + "@" + lastAt;
     }
 
     /** The PC's games, most recently played here first (hidden games left out), at most max. */
@@ -55,12 +69,12 @@ public final class RecentGames {
         if (uuid == null) {
             return Collections.emptyList();
         }
-        Long at = CACHED_AT.get(uuid);
+        String stamp = stamp(context, uuid);
         List<Game> all = CACHE.get(uuid);
-        if (all == null || at == null || SystemClock.uptimeMillis() - at > FRESH_MS) {
+        if (all == null || !stamp.equals(CACHED_FOR.get(uuid))) {
             all = read(context, uuid);
             CACHE.put(uuid, all);
-            CACHED_AT.put(uuid, SystemClock.uptimeMillis());
+            CACHED_FOR.put(uuid, stamp);
         }
         return all.size() > max ? new ArrayList<>(all.subList(0, max)) : new ArrayList<>(all);
     }

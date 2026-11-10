@@ -18,6 +18,7 @@ import com.limelight.pocket.PocketPrefs;
 import com.limelight.utils.CacheHelper;
 
 import java.io.File;
+import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 
@@ -35,8 +36,61 @@ public final class HeroArt {
             return value.getByteCount();
         }
     };
-    private static final Map<Bitmap, Boolean> PLACEHOLDER = new WeakHashMap<>();
-    private static final Map<Bitmap, Integer> VIBRANT = new WeakHashMap<>();
+    // Worked out once per bitmap (by the loaders, off the main thread: see prepare())
+    private static final Map<Bitmap, Boolean> PLACEHOLDER = Collections.synchronizedMap(new WeakHashMap<Bitmap, Boolean>());
+    private static final Map<Bitmap, Integer> VIBRANT = Collections.synchronizedMap(new WeakHashMap<Bitmap, Integer>());
+
+    /**
+     * Gets art ready to be drawn without costing a frame. It works out the art's colours while
+     * its pixels can still be read cheaply, then moves it into graphics memory (a hardware
+     * bitmap, uploaded right here on the worker thread instead of by the renderer in the middle
+     * of an animation, and never thrown out of the GPU's texture cache and uploaded again).
+     * Call it off the main thread. Returns the bitmap to use from now on.
+     */
+    public static Bitmap prepare(Bitmap bitmap, boolean recycleSource) {
+        if (bitmap == null || bitmap.isRecycled()) {
+            return bitmap;
+        }
+        boolean placeholder = isPlaceholder(bitmap);
+        int vibrant = vibrantColor(bitmap);
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || bitmap.getConfig() == Bitmap.Config.HARDWARE) {
+            return bitmap;
+        }
+        Bitmap hardware;
+        try {
+            hardware = bitmap.copy(Bitmap.Config.HARDWARE, false);
+        } catch (RuntimeException | OutOfMemoryError e) {
+            hardware = null;
+        }
+        if (hardware == null) {
+            // At least start the upload now rather than on the first frame it is drawn in
+            bitmap.prepareToDraw();
+            return bitmap;
+        }
+        PLACEHOLDER.put(hardware, placeholder);
+        VIBRANT.put(hardware, vibrant);
+        if (recycleSource) {
+            bitmap.recycle();
+        }
+        return hardware;
+    }
+
+    /** Small software copy of any bitmap, for reading its pixels (null on failure). */
+    private static Bitmap sample(Bitmap bitmap, int w, int h) {
+        Bitmap source = bitmap;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && bitmap.getConfig() == Bitmap.Config.HARDWARE) {
+            // Slow (read back from the GPU): the loaders analyse art before it goes there
+            source = bitmap.copy(Bitmap.Config.ARGB_8888, false);
+            if (source == null) {
+                return null;
+            }
+        }
+        Bitmap small = Bitmap.createScaledBitmap(source, w, h, true);
+        if (source != bitmap && source != small) {
+            source.recycle();
+        }
+        return small;
+    }
 
     /**
      * The art's most characteristic colour, made bright enough to light the screen with (0 when
@@ -52,30 +106,28 @@ public final class HeroArt {
         }
         int result = 0;
         try {
-            Bitmap source = bitmap;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && bitmap.getConfig() == Bitmap.Config.HARDWARE) {
-                source = bitmap.copy(Bitmap.Config.ARGB_8888, false);
+            Bitmap small = sample(bitmap, 32, 48);
+            if (small == null) {
+                return 0;
             }
-            Bitmap small = Bitmap.createScaledBitmap(source, 32, 48, true);
+            int[] pixels = new int[small.getWidth() * small.getHeight()];
+            small.getPixels(pixels, 0, small.getWidth(), 0, 0, small.getWidth(), small.getHeight());
             float[] hsv = new float[3];
             float[] weight = new float[12];
             float[] red = new float[12];
             float[] green = new float[12];
             float[] blue = new float[12];
-            for (int y = 0; y < small.getHeight(); y++) {
-                for (int x = 0; x < small.getWidth(); x++) {
-                    int c = small.getPixel(x, y);
-                    Color.colorToHSV(c, hsv);
-                    if (hsv[1] < 0.22f || hsv[2] < 0.18f) {
-                        continue;
-                    }
-                    int bucket = ((int) (hsv[0] / 30f)) % 12;
-                    float w = hsv[1] * hsv[1] * hsv[2];
-                    weight[bucket] += w;
-                    red[bucket] += Color.red(c) * w;
-                    green[bucket] += Color.green(c) * w;
-                    blue[bucket] += Color.blue(c) * w;
+            for (int c : pixels) {
+                Color.colorToHSV(c, hsv);
+                if (hsv[1] < 0.22f || hsv[2] < 0.18f) {
+                    continue;
                 }
+                int bucket = ((int) (hsv[0] / 30f)) % 12;
+                float w = hsv[1] * hsv[1] * hsv[2];
+                weight[bucket] += w;
+                red[bucket] += Color.red(c) * w;
+                green[bucket] += Color.green(c) * w;
+                blue[bucket] += Color.blue(c) * w;
             }
             int best = 0;
             for (int i = 1; i < 12; i++) {
@@ -91,11 +143,8 @@ public final class HeroArt {
                 hsv[2] = Math.max(hsv[2], 0.85f);
                 result = Color.HSVToColor(hsv);
             }
-            if (small != source) {
+            if (small != bitmap) {
                 small.recycle();
-            }
-            if (source != bitmap) {
-                source.recycle();
             }
         } catch (RuntimeException e) {
             result = 0;
@@ -205,6 +254,10 @@ public final class HeroArt {
             opts.inSampleSize = sample;
             Bitmap bitmap = BitmapFactory.decodeFile(file.getPath(), opts);
             if (bitmap != null) {
+                // Off the main thread (it decodes): ready to draw, colours known
+                if (android.os.Looper.myLooper() != android.os.Looper.getMainLooper()) {
+                    bitmap = prepare(bitmap, true);
+                }
                 CACHE.put(key, bitmap);
             }
             return bitmap;
@@ -227,31 +280,26 @@ public final class HeroArt {
         }
         boolean result = false;
         try {
-            Bitmap source = bitmap;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && bitmap.getConfig() == Bitmap.Config.HARDWARE) {
-                source = bitmap.copy(Bitmap.Config.ARGB_8888, false);
+            Bitmap small = sample(bitmap, 24, 32);
+            if (small == null) {
+                return false;
             }
-            Bitmap small = Bitmap.createScaledBitmap(source, 24, 32, true);
+            int[] pixels = new int[small.getWidth() * small.getHeight()];
+            small.getPixels(pixels, 0, small.getWidth(), 0, 0, small.getWidth(), small.getHeight());
             float[] hsv = new float[3];
             float saturation = 0;
             int n = 0;
-            for (int y = 0; y < small.getHeight(); y++) {
-                for (int x = 0; x < small.getWidth(); x++) {
-                    int c = small.getPixel(x, y);
-                    Color.colorToHSV(c, hsv);
-                    // Near-black pixels have meaningless saturation
-                    if (hsv[2] > 0.12f) {
-                        saturation += hsv[1];
-                        n++;
-                    }
+            for (int c : pixels) {
+                Color.colorToHSV(c, hsv);
+                // Near-black pixels have meaningless saturation
+                if (hsv[2] > 0.12f) {
+                    saturation += hsv[1];
+                    n++;
                 }
             }
             result = n == 0 || saturation / n < 0.12f;
-            if (small != source) {
+            if (small != bitmap) {
                 small.recycle();
-            }
-            if (source != bitmap) {
-                source.recycle();
             }
         } catch (RuntimeException e) {
             result = false;

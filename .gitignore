@@ -47,3 +47,5 @@ app/.externalNativeBuild/
 
 # agent files
 AGENTS.md
+# Made by pc-setup/tests/make_fixtures.py in CI
+pc-setup/tests/fixtures/

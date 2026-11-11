@@ -1,0 +1,29 @@
+name: PC helper (Windows self-test)
+
+# Pocket Nexus PC is compiled by Windows PowerShell on the user's PC: this checks it compiles and
+# answers on a real Windows (Windows PowerShell 5.1, the .NET Framework C# compiler).
+on:
+  push:
+    branches: [ "**" ]
+    paths:
+      - "pc-setup/**"
+      - ".github/workflows/pc-helper.yml"
+  workflow_dispatch:
+
+jobs:
+  selftest:
+    if: github.ref_name != 'ci-logs'
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Make test fixtures
+        run: python pc-setup/tests/make_fixtures.py
+
+      - name: Self-test (Windows PowerShell 5.1)
+        shell: powershell
+        run: |
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File pc-setup\PocketNexus-PC.ps1 -SelfTest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

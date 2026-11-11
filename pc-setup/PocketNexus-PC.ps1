@@ -1,4 +1,4 @@
-# Pocket Nexus PC - everything the handheld needs on the gaming PC, in one window
+# Pocket Nexus PC - everything the handheld needs on the gaming PC
 #
 #  1. USB bridge   Streams to the handheld over the USB-C cable on ROMs where Android's USB
 #                  tethering is turned off (Retroid Pocket). Needs USB debugging on the handheld.
@@ -6,21 +6,26 @@
 #                  turn the display off, read its status, and use the handheld's microphone
 #                  on this PC (through VB-Audio Virtual Cable, free: https://vb-audio.com/Cable/).
 #                  Through the cable it just works; over Wi-Fi the handheld links once with the
-#                  PIN shown below (or by itself after one stream over the cable).
-#  3. PC library   Lists the games installed here (Steam, Epic, GOG) for the handheld, starts
-#                  them on request and asks Steam to install games (GAMES, LAUNCH, STEAM INSTALL).
+#                  PIN (or by itself after one stream over the cable).
+#  3. PC library   The games here for the handheld: Steam (installed, owned but not installed,
+#                  tools, non-Steam games), Epic, GOG and PC apps picked on the handheld; it starts
+#                  them and asks Steam to install games.
+#
+# How to run it
+#   PocketNexus-PC.bat              sets it up, then it runs hidden in the background (an icon
+#                                   next to the clock: PIN, status, Start with Windows, Quit)
+#                                   and starts with Windows, hidden
+#   PocketNexus-PC.bat -Console     runs in this window instead (to watch what it does)
 #
 # How the cable part works
 #   adb reverse   handheld 127.0.0.1:47984/47989/48010 -> Apollo on this PC   (TCP)
 #   adb reverse   handheld 127.0.0.1:47100             -> the bridge (stream packets)
 #   adb reverse   handheld 127.0.0.1:47110             -> the PC helper
-#
-# Leave this window open (it can be minimised) while you play.
 
-param([switch]$Autostart)
+param([switch]$Autostart, [switch]$Background, [switch]$Console, [switch]$SelfTest)
 
 $ErrorActionPreference = "Continue"
-$Host.UI.RawUI.WindowTitle = "Pocket Nexus PC"
+if ($Autostart) { $Background = $true }
 $ScriptPath = $MyInvocation.MyCommand.Path
 $here = Split-Path -Parent $ScriptPath
 $TunnelPort = 47100
@@ -28,17 +33,75 @@ $CompanionPort = 47110
 $TcpPorts = @(47984, 47989, 48010, 47990)
 $DataDir = "$env:LOCALAPPDATA\ArtemisPocket"
 New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
+$LogFile = "$DataDir\pocket-nexus-pc.log"
+$StatusFile = "$DataDir\status.txt"
+$Launcher = "$DataDir\PocketNexus-PC.vbs"
+$StartupLink = (Join-Path ([Environment]::GetFolderPath("Startup")) "Pocket Nexus PC.lnk")
+$Quiet = [bool]$Background
 
-function Say($text, $color = "Gray") { Write-Host ("  " + $text) -ForegroundColor $color }
-function Stamp($text, $color = "Gray") { Write-Host ("  [" + (Get-Date -Format "HH:mm:ss") + "] " + $text) -ForegroundColor $color }
+$script:tray = $null
+$script:adb = $null
+$script:pin = ""
+$script:companionOk = $false
+$script:bridgeOk = $false
+$script:pcLibraryError = ""
+$script:lastState = ""
+$script:lastSessions = 0
 
-Write-Host ""
-Write-Host "  POCKET NEXUS PC" -ForegroundColor White
-Write-Host ""
+if (-not $Quiet) { try { $Host.UI.RawUI.WindowTitle = "Pocket Nexus PC" } catch { } }
+
+function Write-Log($text) {
+    try {
+        if ((Test-Path $LogFile) -and ((Get-Item $LogFile).Length -gt 1MB)) { Move-Item -Force $LogFile "$LogFile.old" }
+        Add-Content -Path $LogFile -Value ("[" + (Get-Date -Format "yyyy-MM-dd HH:mm:ss") + "] " + $text) -Encoding UTF8
+    } catch { }
+}
+
+# Notifications next to the clock for what matters (background mode)
+function Show-Note($text) {
+    if ($script:tray -eq $null) { return }
+    if ($text -match "Connected|Allow|PIN|confirm|Starting|install") {
+        try { $script:tray.ShowBalloonTip(4000, "Pocket Nexus PC", $text, [System.Windows.Forms.ToolTipIcon]::Info) } catch { }
+    }
+}
+
+function Say($text, $color = "Gray") {
+    Write-Log $text
+    if (-not $Quiet) { Write-Host ("  " + $text) -ForegroundColor $color }
+}
+
+function Stamp($text, $color = "Gray") {
+    Write-Log $text
+    if ($Quiet) { Show-Note $text }
+    else { Write-Host ("  [" + (Get-Date -Format "HH:mm:ss") + "] " + $text) -ForegroundColor $color }
+}
+
+# ---- One helper at a time --------------------------------------------------------------------
+# The old Artemis Pocket PC (or another copy of this one) holds the same ports: it's closed first.
+# serversOnly: leave the setup window that started this one alone.
+function Stop-OtherHelpers([bool]$serversOnly) {
+    $stopped = 0
+    $procs = @()
+    try { $procs = @(Get-CimInstance Win32_Process -Filter "Name='powershell.exe' OR Name='pwsh.exe'" -ErrorAction Stop) }
+    catch { try { $procs = @(Get-WmiObject Win32_Process -Filter "Name='powershell.exe' OR Name='pwsh.exe'") } catch { } }
+    foreach ($p in $procs) {
+        if ($p.ProcessId -eq $PID) { continue }
+        $cl = "" + $p.CommandLine
+        $old = $cl -match "ArtemisPocket-PC\.ps1|ArtemisPocket-USB-Bridge"
+        $ours = $cl -match "PocketNexus-PC\.ps1"
+        if ($ours -and $serversOnly -and ($cl -notmatch "-Background|-Autostart|-Console")) { continue }
+        if ($old -or $ours) {
+            try { Stop-Process -Id $p.ProcessId -Force -ErrorAction Stop; $stopped++ }
+            catch { Say "Couldn't close an older Pocket helper (process $($p.ProcessId)): close its window by hand" "Yellow" }
+        }
+    }
+    if ($stopped -gt 0) { Start-Sleep -Milliseconds 1500 }
+    return $stopped
+}
 
 # ---- ADB ---------------------------------------------------------------------------------
 function Find-Adb {
-    foreach ($p in @("$here\platform-tools\adb.exe", "$here\adb.exe", "$env:LOCALAPPDATA\ArtemisPocket\platform-tools\adb.exe")) {
+    foreach ($p in @("$here\platform-tools\adb.exe", "$here\adb.exe", "$DataDir\platform-tools\adb.exe")) {
         if (Test-Path $p) { return $p }
     }
     $cmd = Get-Command adb.exe -ErrorAction SilentlyContinue
@@ -46,30 +109,25 @@ function Find-Adb {
     return $null
 }
 
-$adb = Find-Adb
-if (-not $adb) {
+function Get-Adb {
+    $found = Find-Adb
+    if ($found) { return $found }
     Say "ADB not found - downloading Google's platform-tools (about 7 MB)..." "Yellow"
-    $dest = "$env:LOCALAPPDATA\ArtemisPocket"
-    New-Item -ItemType Directory -Force -Path $dest | Out-Null
-    $zip = "$dest\platform-tools.zip"
+    $zip = "$DataDir\platform-tools.zip"
     try {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
         Invoke-WebRequest -UseBasicParsing -Uri "https://dl.google.com/android/repository/platform-tools-latest-windows.zip" -OutFile $zip
-        Expand-Archive -Path $zip -DestinationPath $dest -Force
+        Expand-Archive -Path $zip -DestinationPath $DataDir -Force
         Remove-Item $zip -ErrorAction SilentlyContinue
     } catch {
-        Say "Download failed: $($_.Exception.Message)" "Red"
-        Say "Download 'SDK Platform-Tools for Windows' from developer.android.com and put the" "Red"
-        Say "platform-tools folder next to this script, then run it again." "Red"
-        Read-Host "  Press Enter to close"
-        exit 1
+        Say "ADB download failed: $($_.Exception.Message). USB-C streaming needs it (Wi-Fi works without)." "Yellow"
+        return $null
     }
-    $adb = Find-Adb
-    if (-not $adb) { Say "ADB still not found." "Red"; Read-Host "  Press Enter to close"; exit 1 }
+    return Find-Adb
 }
-Say "ADB: $adb" "DarkGray"
 
-# ---- The relay (compiled on the fly, runs at native speed) ---------------------------------
+# ---- The code (compiled on the fly, runs at native speed) ----------------------------------
+function Load-Types {
 if (-not ("PocketBridge" -as [type])) {
 Add-Type -TypeDefinition @'
 using System;
@@ -183,15 +241,6 @@ public static class PocketBridge {
 '@
 }
 
-try {
-    [PocketBridge]::Start($TunnelPort)
-} catch {
-    Say "Could not open port $TunnelPort - close the old USB bridge window (or another copy of this one) and try again." "Red"
-    Read-Host "  Press Enter to close"
-    exit 1
-}
-
-# ---- The PC helper (power, status, microphone) ----------------------------------------------
 if (-not ("PocketCompanion" -as [type])) {
 Add-Type -IgnoreWarnings -TypeDefinition @'
 using System;
@@ -209,6 +258,8 @@ public static class PocketCompanion {
     public static string Pin = "";
     // Commands from add-ons compiled separately (so a problem there never stops this helper)
     public static Func<string, string[], NetworkStream, bool> Extra;
+    // Why the PC library add-on isn't there (shown on the handheld)
+    public static string ExtraError = "";
     public static readonly ConcurrentQueue<string> Events = new ConcurrentQueue<string>();
     static TcpListener listener;
     static readonly object pinLock = new object();
@@ -304,7 +355,7 @@ public static class PocketCompanion {
                 } else if (cmd == "POWER") {
                     WriteLine(s, Power(p.Length > 1 ? p[1].ToLowerInvariant() : ""));
                 } else if (cmd == "VERSION") {
-                    WriteLine(s, "VERSION 2" + (Extra != null ? " games" : ""));
+                    WriteLine(s, "VERSION 3" + (Extra != null ? " games" : ""));
                 } else if (cmd == "MIC") {
                     int rate = p.Length > 1 ? ParseInt(p[1], 48000) : 48000;
                     int channels = p.Length > 2 ? ParseInt(p[2], 1) : 1;
@@ -313,7 +364,12 @@ public static class PocketCompanion {
                 } else {
                     // Add-ons (the PC library) get the commands this doesn't know
                     Func<string, string[], NetworkStream, bool> extra = Extra;
-                    if (extra == null || !extra(cmd, p, s)) { WriteLine(s, "ERR unknown"); }
+                    if (extra == null && (cmd == "GAMES" || cmd == "LAUNCH" || cmd == "STEAM" || cmd == "PROGRAMS"
+                            || cmd == "ADDAPP" || cmd == "REMOVEAPP" || cmd == "PCLIB")) {
+                        WriteLine(s, "ERR pclib " + (ExtraError.Length > 0 ? ExtraError.Replace('\n', ' ').Replace('\r', ' ') : "not loaded"));
+                    } else if (extra == null || !extra(cmd, p, s)) {
+                        WriteLine(s, "ERR unknown");
+                    }
                 }
             }
         } catch {
@@ -552,14 +608,16 @@ public static class MicPlayer {
 '@
 }
 
-# ---- PC library (an add-on: if it can't load, everything else still works) ------------------
-$pcLibraryOk = $false
-if (-not ("PcGames" -as [type])) {
-    try {
-Add-Type -IgnoreWarnings -TypeDefinition @'
+    # The PC library: an add-on compiled on its own (if it can't load, everything else works)
+    $script:pcLibraryError = ""
+    $script:pcLibraryErrors = @()
+    if (-not ("PcGames" -as [type])) {
+        try {
+Add-Type -IgnoreWarnings -ErrorAction Stop -TypeDefinition @'
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
@@ -568,22 +626,53 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using Microsoft.Win32;
 
-// The PC's games for the handheld's PC library: Steam (every library folder), Epic and GOG.
-// Only games found by a scan can be started or installed (never an arbitrary command).
+// The PC's games for the handheld's PC library:
+//   Steam      installed games (every library folder), games owned but not installed, tools,
+//              and non-Steam games added to Steam
+//   Epic, GOG  installed games
+//   PC apps    programs picked on the handheld from this PC's Start menu and desktop
+// Only things found by a scan can be started or installed (never an arbitrary command).
+// C# 5 on purpose: Windows PowerShell compiles this with the .NET Framework compiler.
 public static class PcGames {
     public class Game {
-        public string Source = "", Id = "", Name = "", State = "installed", Exe = "", Dir = "", Uri = "", ArtId = "";
+        public string Source = "", Id = "", Name = "", State = "installed", Exe = "", Dir = "", Uri = "", ArtId = "", Kind = "game";
         public int Progress = -1;
-        public long SizeMb = 0, LastPlayed = 0;
+        public long SizeMb = 0, LastPlayed = 0, Playtime = 0;
 
         public string Line() {
             return "G\t" + Source + "\t" + Clean(Id) + "\t" + Clean(Name) + "\t" + State + "\t" + Progress + "\t"
-                + SizeMb + "\t" + LastPlayed + "\t" + Clean(ArtId);
+                + SizeMb + "\t" + LastPlayed + "\t" + Clean(ArtId) + "\t" + Playtime + "\t" + Kind;
         }
     }
 
+    public class Program {
+        public string Id = "", Name = "", Path = "", Where = "";
+    }
+
     public static Action<string> Logger;
+    /** Where custom apps are kept (set by the script). */
+    public static string DataDir = "";
+    /** For the self-test: a Steam folder to read instead of the real one. */
+    public static string SteamRootOverride;
+    /** What the last scan found (for the PCLIB command and the log). */
+    public static string LastNote = "";
+
     static readonly object scanLock = new object();
+    static List<Game> last = new List<Game>();
+    static List<Program> lastPrograms = new List<Program>();
+    static readonly Regex KeyValue = new Regex(@"""([^""]+)""\s+""((?:[^""\\]|\\.)*)""");
+    static readonly Regex LibPath = new Regex(@"""(?:path|\d+)""\s+""([A-Za-z]:(?:[^""\\]|\\.)*)""");
+    const long SteamId64Base = 76561197960265728L;
+
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowsProc proc, IntPtr lParam);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int max);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int cmd);
+    [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+    delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
     static void Log(string text) {
         Action<string> l = Logger;
@@ -596,7 +685,7 @@ public static class PcGames {
         s.Flush();
     }
 
-    // The library's commands: GAMES, LAUNCH <source> <id>, STEAM INSTALL <appid>
+    // The library's commands
     public static bool Handle(string cmd, string[] p, NetworkStream s) {
         if (cmd == "GAMES") {
             List<Game> games = Scan();
@@ -612,21 +701,26 @@ public static class PcGames {
             Send(s, SteamInstall(p[2]));
             return true;
         }
+        if (cmd == "PROGRAMS") {
+            List<Program> programs = ScanPrograms();
+            foreach (Program pr in programs) { Send(s, "P\t" + pr.Id + "\t" + Clean(pr.Name) + "\t" + Clean(pr.Where)); }
+            Send(s, "END " + programs.Count);
+            return true;
+        }
+        if (cmd == "ADDAPP" && p.Length > 1) {
+            Send(s, AddApp(p[1]));
+            return true;
+        }
+        if (cmd == "REMOVEAPP" && p.Length > 1) {
+            Send(s, RemoveApp(p[1]));
+            return true;
+        }
+        if (cmd == "PCLIB") {
+            Send(s, "PCLIB " + Clean(LastNote));
+            return true;
+        }
         return false;
     }
-    static List<Game> last = new List<Game>();
-    static readonly Regex KeyValue = new Regex(@"""([^""]+)""\s+""((?:[^""\\]|\\.)*)""");
-    static readonly Regex LibPath = new Regex(@"""(?:path|\d+)""\s+""([A-Za-z]:(?:[^""\\]|\\.)*)""");
-
-    [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowsProc proc, IntPtr lParam);
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int max);
-    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
-    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
-    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
-    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
-    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int cmd);
-    [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
-    delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
     public static string Clean(string text) {
         if (text == null) { return ""; }
@@ -640,11 +734,11 @@ public static class PcGames {
 
     static long ParseLong(string text) {
         long v;
-        return long.TryParse(text, out v) ? v : 0;
+        return long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out v) ? v : 0;
     }
 
     static bool IsDigits(string text) {
-        if (string.IsNullOrEmpty(text) || text.Length > 12) { return false; }
+        if (string.IsNullOrEmpty(text) || text.Length > 20) { return false; }
         foreach (char c in text) { if (c < '0' || c > '9') { return false; } }
         return true;
     }
@@ -660,6 +754,7 @@ public static class PcGames {
     }
 
     public static string SteamPath() {
+        if (!string.IsNullOrEmpty(SteamRootOverride)) { return SteamRootOverride; }
         string p = RegValue(Registry.CurrentUser, @"Software\Valve\Steam", "SteamPath");
         if (string.IsNullOrEmpty(p)) { p = RegValue(Registry.LocalMachine, @"SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath"); }
         if (string.IsNullOrEmpty(p)) { p = RegValue(Registry.LocalMachine, @"SOFTWARE\Valve\Steam", "InstallPath"); }
@@ -682,15 +777,331 @@ public static class PcGames {
         return d.TryGetValue(key, out v) ? v : "";
     }
 
-    static void ScanSteam(List<Game> into) {
+    // ---- KeyValues: Valve's text (.vdf, .acf) and binary (shortcuts.vdf, appinfo.vdf) files ----
+
+    public class KvNode {
+        public Dictionary<string, object> Values = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
+        public KvNode Child(string key) {
+            object v;
+            return Values.TryGetValue(key, out v) ? v as KvNode : null;
+        }
+
+        public string Text(string key) {
+            object v;
+            if (!Values.TryGetValue(key, out v) || v == null || v is KvNode) { return ""; }
+            return Convert.ToString(v, CultureInfo.InvariantCulture);
+        }
+
+        public long Number(string key) {
+            object v;
+            if (!Values.TryGetValue(key, out v) || v == null) { return 0; }
+            if (v is int) { return (int)v; }
+            if (v is long) { return (long)v; }
+            if (v is ulong) { return unchecked((long)(ulong)v); }
+            return ParseLong(Convert.ToString(v, CultureInfo.InvariantCulture));
+        }
+
+        public bool Has(string key) {
+            return Values.ContainsKey(key);
+        }
+    }
+
+    public static KvNode ParseText(string text) {
+        int i = 0;
+        return TextObject(text, ref i, 0);
+    }
+
+    static KvNode TextObject(string s, ref int i, int depth) {
+        KvNode node = new KvNode();
+        string key = null;
+        while (true) {
+            string token;
+            int kind = NextToken(s, ref i, out token);
+            if (kind == 0 || kind == 3) { return node; }
+            if (kind == 2) {
+                KvNode child = depth > 64 ? new KvNode() : TextObject(s, ref i, depth + 1);
+                if (key != null) { node.Values[key] = child; }
+                key = null;
+                continue;
+            }
+            if (key == null) { key = token; }
+            else { node.Values[key] = token; key = null; }
+        }
+    }
+
+    // 0: end, 1: a string, 2: {, 3: }
+    static int NextToken(string s, ref int i, out string token) {
+        token = null;
+        while (i < s.Length) {
+            char c = s[i];
+            if (char.IsWhiteSpace(c)) { i++; continue; }
+            if (c == '/' && i + 1 < s.Length && s[i + 1] == '/') {
+                while (i < s.Length && s[i] != '\n') { i++; }
+                continue;
+            }
+            if (c == '{') { i++; return 2; }
+            if (c == '}') { i++; return 3; }
+            if (c == '"') {
+                StringBuilder b = new StringBuilder();
+                i++;
+                while (i < s.Length && s[i] != '"') {
+                    if (s[i] == '\\' && i + 1 < s.Length) {
+                        i++;
+                        char e = s[i];
+                        b.Append(e == 'n' ? '\n' : (e == 't' ? '\t' : e));
+                    } else {
+                        b.Append(s[i]);
+                    }
+                    i++;
+                }
+                i++;
+                token = b.ToString();
+                return 1;
+            }
+            int start = i;
+            while (i < s.Length && !char.IsWhiteSpace(s[i]) && s[i] != '{' && s[i] != '}' && s[i] != '"') { i++; }
+            token = s.Substring(start, i - start);
+            return 1;
+        }
+        return 0;
+    }
+
+    public class BinReader {
+        public byte[] Data;
+        public int Pos;
+        /** appinfo.vdf v29: keys are indexes into this table. */
+        public string[] Strings;
+
+        public byte U8() { return Data[Pos++]; }
+        public int I32() { int v = BitConverter.ToInt32(Data, Pos); Pos += 4; return v; }
+        public uint U32() { uint v = BitConverter.ToUInt32(Data, Pos); Pos += 4; return v; }
+        public long I64() { long v = BitConverter.ToInt64(Data, Pos); Pos += 8; return v; }
+        public ulong U64() { ulong v = BitConverter.ToUInt64(Data, Pos); Pos += 8; return v; }
+
+        public string CStr() {
+            int start = Pos;
+            while (Pos < Data.Length && Data[Pos] != 0) { Pos++; }
+            string s = Encoding.UTF8.GetString(Data, start, Pos - start);
+            Pos++;
+            return s;
+        }
+
+        public string Key() {
+            if (Strings == null) { return CStr(); }
+            int i = I32();
+            return i >= 0 && i < Strings.Length ? Strings[i] : "";
+        }
+
+        public KvNode Object(int depth) {
+            KvNode node = new KvNode();
+            while (Pos < Data.Length) {
+                byte t = U8();
+                if (t == 0x08 || t == 0x0B) { return node; }
+                string key = Key();
+                switch (t) {
+                    case 0x00:
+                        if (depth > 48) { throw new Exception("too deep"); }
+                        node.Values[key] = Object(depth + 1);
+                        break;
+                    case 0x01:
+                        node.Values[key] = CStr();
+                        break;
+                    case 0x02:
+                    case 0x04:
+                    case 0x06:
+                        node.Values[key] = I32();
+                        break;
+                    case 0x03:
+                        node.Values[key] = (double)BitConverter.ToSingle(Data, Pos);
+                        Pos += 4;
+                        break;
+                    case 0x05:
+                        while (Pos + 1 < Data.Length && (Data[Pos] != 0 || Data[Pos + 1] != 0)) { Pos += 2; }
+                        Pos += 2;
+                        break;
+                    case 0x07:
+                        node.Values[key] = U64();
+                        break;
+                    case 0x0A:
+                        node.Values[key] = I64();
+                        break;
+                    default:
+                        throw new Exception("unknown value type " + t);
+                }
+            }
+            return node;
+        }
+    }
+
+    /** Non-Steam games added to Steam (userdata/<id>/config/shortcuts.vdf). */
+    public static List<Game> ReadShortcuts(byte[] data) {
+        List<Game> games = new List<Game>();
+        BinReader r = new BinReader();
+        r.Data = data;
+        KvNode root = r.Object(0);
+        KvNode list = root.Child("shortcuts");
+        if (list == null) { return games; }
+        foreach (KeyValuePair<string, object> e in list.Values) {
+            KvNode sc = e.Value as KvNode;
+            if (sc == null || !sc.Has("appid")) { continue; }
+            if (sc.Number("IsHidden") != 0) { continue; }
+            string name = sc.Text("AppName").Trim();
+            string exe = sc.Text("Exe").Trim();
+            if (name.Length == 0 || exe.Length == 0) { continue; }
+            uint appid = unchecked((uint)sc.Number("appid"));
+            ulong gameId = ((ulong)appid << 32) | 0x02000000UL;
+            Game g = new Game();
+            g.Source = "nonsteam";
+            g.Id = appid.ToString(CultureInfo.InvariantCulture);
+            g.Name = name;
+            g.Exe = exe.Trim('"');
+            g.Dir = sc.Text("StartDir").Trim('"');
+            g.Uri = "steam://rungameid/" + gameId.ToString(CultureInfo.InvariantCulture);
+            g.LastPlayed = sc.Number("LastPlayTime");
+            games.Add(g);
+        }
+        return games;
+    }
+
+    /** appinfo.vdf (v27, v28, v29): name and type of the wanted apps (null: all). */
+    public static Dictionary<uint, string[]> ReadAppInfo(byte[] data, Dictionary<uint, bool> wanted) {
+        Dictionary<uint, string[]> found = new Dictionary<uint, string[]>();
+        BinReader r = new BinReader();
+        r.Data = data;
+        uint magic = r.U32();
+        r.U32(); // universe
+        if ((magic >> 8) != 0x075644) { throw new Exception("not an appinfo file"); }
+        int version = (int)(magic & 0xFF);
+        if (version >= 0x29) {
+            long tableAt = r.I64();
+            BinReader t = new BinReader();
+            t.Data = data;
+            t.Pos = (int)tableAt;
+            uint count = t.U32();
+            if (count > 10000000) { throw new Exception("bad string table"); }
+            string[] strings = new string[count];
+            for (uint i = 0; i < count; i++) { strings[i] = t.CStr(); }
+            r.Strings = strings;
+        }
+        int header = version >= 0x28 ? 60 : 40;
+        while (r.Pos + 8 <= data.Length) {
+            uint appid = r.U32();
+            if (appid == 0) { break; }
+            uint size = r.U32();
+            int end = r.Pos + (int)size;
+            if (end > data.Length || end < r.Pos) { break; }
+            if (wanted == null || wanted.ContainsKey(appid)) {
+                try {
+                    r.Pos += header;
+                    KvNode root = r.Object(0);
+                    KvNode info = root.Child("appinfo");
+                    KvNode common = info != null ? info.Child("common") : null;
+                    if (common != null) {
+                        found[appid] = new string[] { common.Text("name"), common.Text("type").ToLowerInvariant() };
+                    }
+                } catch { }
+            }
+            r.Pos = end;
+        }
+        return found;
+    }
+
+    // ---- Steam ----------------------------------------------------------------------------------
+
+    static Dictionary<uint, string[]> appInfoCache = new Dictionary<uint, string[]>();
+    static Dictionary<uint, bool> appInfoAsked = new Dictionary<uint, bool>();
+    static long appInfoStamp = 0;
+
+    static Dictionary<uint, string[]> AppInfoFor(string steam, Dictionary<uint, bool> wanted) {
+        string file = Path.Combine(steam, @"appcache\appinfo.vdf");
+        if (!File.Exists(file)) { return new Dictionary<uint, string[]>(); }
+        long stamp = File.GetLastWriteTimeUtc(file).Ticks;
+        bool fresh = stamp == appInfoStamp;
+        if (fresh) {
+            foreach (uint id in wanted.Keys) {
+                if (!appInfoAsked.ContainsKey(id)) { fresh = false; break; }
+            }
+        }
+        if (!fresh) {
+            byte[] data;
+            using (FileStream f = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)) {
+                data = new byte[f.Length];
+                int off = 0;
+                while (off < data.Length) {
+                    int n = f.Read(data, off, data.Length - off);
+                    if (n <= 0) { break; }
+                    off += n;
+                }
+            }
+            Dictionary<uint, string[]> found = ReadAppInfo(data, wanted);
+            appInfoCache = found;
+            appInfoAsked = new Dictionary<uint, bool>(wanted);
+            appInfoStamp = stamp;
+        }
+        return appInfoCache;
+    }
+
+    static string ReadShared(string path) {
+        using (FileStream f = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)) {
+            using (StreamReader r = new StreamReader(f, Encoding.UTF8)) { return r.ReadToEnd(); }
+        }
+    }
+
+    /** The Steam accounts to read (userdata folder names): the one signed in last first. */
+    static List<string> SteamAccounts(string steam) {
+        List<string> ids = new List<string>();
+        try {
+            string users = Path.Combine(steam, @"config\loginusers.vdf");
+            if (File.Exists(users)) {
+                KvNode root = ParseText(ReadShared(users));
+                KvNode list = root.Child("users");
+                if (list != null) {
+                    foreach (KeyValuePair<string, object> e in list.Values) {
+                        KvNode u = e.Value as KvNode;
+                        long id64;
+                        if (u == null || !long.TryParse(e.Key, out id64) || id64 <= SteamId64Base) { continue; }
+                        string account = (id64 - SteamId64Base).ToString(CultureInfo.InvariantCulture);
+                        if (u.Text("MostRecent") == "1") { ids.Insert(0, account); } else { ids.Add(account); }
+                    }
+                }
+            }
+        } catch { }
+        try {
+            string userdata = Path.Combine(steam, "userdata");
+            if (Directory.Exists(userdata)) {
+                foreach (string d in Directory.GetDirectories(userdata)) {
+                    string n = Path.GetFileName(d);
+                    if (IsDigits(n) && n != "0" && !ids.Contains(n)) { ids.Add(n); }
+                }
+            }
+        } catch { }
+        return ids;
+    }
+
+    static bool Excluded(string id, string name) {
+        return id == "228980" || id == "7" || id == "753"
+            || name.StartsWith("Steamworks Common", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith("Proton", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith("Steam Linux Runtime", StringComparison.OrdinalIgnoreCase);
+    }
+
+    static string KindOf(string type) {
+        if (type == "tool") { return "tool"; }
+        if (type == "application") { return "app"; }
+        if (type == "demo") { return "demo"; }
+        return "game";
+    }
+
+    static void ScanSteam(List<Game> into, StringBuilder note) {
         string steam = SteamPath();
-        if (steam == null) { return; }
+        if (steam == null) { note.Append("steam=none "); return; }
         List<string> libs = new List<string>();
         libs.Add(steam);
         string vdf = Path.Combine(steam, @"steamapps\libraryfolders.vdf");
         try {
             if (File.Exists(vdf)) {
-                foreach (Match m in LibPath.Matches(File.ReadAllText(vdf))) {
+                foreach (Match m in LibPath.Matches(ReadShared(vdf))) {
                     string lib = Unescape(m.Groups[1].Value);
                     bool seen = false;
                     foreach (string l in libs) { if (string.Equals(l.TrimEnd('\\'), lib.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)) { seen = true; } }
@@ -698,21 +1109,19 @@ public static class PcGames {
                 }
             }
         } catch { }
-        HashSet<string> ids = new HashSet<string>();
+
+        // Installed (and installing) games: one manifest each
+        Dictionary<string, Game> byId = new Dictionary<string, Game>();
         foreach (string lib in libs) {
             string apps = Path.Combine(lib, "steamapps");
             string[] files;
             try { files = Directory.GetFiles(apps, "appmanifest_*.acf"); } catch { continue; }
             foreach (string f in files) {
                 try {
-                    Dictionary<string, string> kv = Kv(File.ReadAllText(f));
+                    Dictionary<string, string> kv = Kv(ReadShared(f));
                     string id = Get(kv, "appid");
                     string name = Get(kv, "name");
-                    if (!IsDigits(id) || name.Length == 0 || ids.Contains(id)) { continue; }
-                    if (id == "228980" || name.StartsWith("Steamworks Common", StringComparison.OrdinalIgnoreCase)
-                            || name.StartsWith("Proton", StringComparison.OrdinalIgnoreCase)
-                            || name.StartsWith("Steam Linux Runtime", StringComparison.OrdinalIgnoreCase)) { continue; }
-                    ids.Add(id);
+                    if (!IsDigits(id) || name.Length == 0 || byId.ContainsKey(id) || Excluded(id, name)) { continue; }
                     Game g = new Game();
                     g.Source = "steam";
                     g.Id = id;
@@ -734,10 +1143,116 @@ public static class PcGames {
                     g.SizeMb = ParseLong(Get(kv, "SizeOnDisk")) / (1024 * 1024);
                     g.LastPlayed = ParseLong(Get(kv, "LastPlayed"));
                     g.Dir = Path.Combine(apps, @"common\" + Get(kv, "installdir"));
+                    byId[id] = g;
                     into.Add(g);
                 } catch { }
             }
         }
+        note.Append("installed=" + byId.Count + " ");
+
+        // The account: playtime, and the games of its library that aren't installed
+        List<string> accounts = SteamAccounts(steam);
+        Dictionary<uint, long[]> played = new Dictionary<uint, long[]>();
+        int shortcuts = 0;
+        foreach (string account in accounts) {
+            string config = Path.Combine(steam, @"userdata\" + account + @"\config");
+            try {
+                string local = Path.Combine(config, "localconfig.vdf");
+                if (File.Exists(local)) {
+                    KvNode root = ParseText(ReadShared(local));
+                    KvNode store = root.Child("UserLocalConfigStore");
+                    KvNode node = store != null ? store.Child("Software") : null;
+                    node = node != null ? node.Child("Valve") : null;
+                    node = node != null ? node.Child("Steam") : null;
+                    KvNode apps = node != null ? node.Child("apps") : null;
+                    if (apps != null) {
+                        foreach (KeyValuePair<string, object> e in apps.Values) {
+                            KvNode a = e.Value as KvNode;
+                            uint id;
+                            if (a == null || !uint.TryParse(e.Key, out id) || played.ContainsKey(id)) { continue; }
+                            played[id] = new long[] { a.Number("Playtime"), a.Number("LastPlayed") };
+                        }
+                    }
+                }
+            } catch { }
+            try {
+                string sc = Path.Combine(config, "shortcuts.vdf");
+                if (File.Exists(sc)) {
+                    foreach (Game g in ReadShortcuts(File.ReadAllBytes(sc))) {
+                        bool dup = false;
+                        foreach (Game other in into) { if (other.Source == "nonsteam" && other.Id == g.Id) { dup = true; } }
+                        if (!dup) { into.Add(g); shortcuts++; }
+                    }
+                }
+            } catch (Exception e) { note.Append("shortcuts-error=" + Clean(e.Message) + " "); }
+        }
+        note.Append("nonsteam=" + shortcuts + " ");
+
+        // In the library: what Steam keeps library art for, and what this account has played
+        Dictionary<uint, bool> wanted = new Dictionary<uint, bool>();
+        try {
+            string cache = Path.Combine(steam, @"appcache\librarycache");
+            if (Directory.Exists(cache)) {
+                foreach (string entry in Directory.GetFileSystemEntries(cache)) {
+                    string n = Path.GetFileName(entry);
+                    int k = 0;
+                    while (k < n.Length && n[k] >= '0' && n[k] <= '9') { k++; }
+                    uint id;
+                    if (k > 0 && uint.TryParse(n.Substring(0, k), out id) && id > 0) { wanted[id] = true; }
+                }
+            }
+        } catch { }
+        foreach (uint id in played.Keys) { wanted[id] = true; }
+        foreach (Game g in into) {
+            uint id;
+            if (g.Source == "steam" && uint.TryParse(g.Id, out id)) { wanted[id] = true; }
+        }
+
+        Dictionary<uint, string[]> info;
+        try {
+            info = AppInfoFor(steam, wanted);
+            note.Append("appinfo=" + info.Count + " ");
+        } catch (Exception e) {
+            info = new Dictionary<uint, string[]>();
+            note.Append("appinfo-error=" + Clean(e.Message) + " ");
+        }
+
+        int owned = 0;
+        foreach (uint id in wanted.Keys) {
+            string key = id.ToString(CultureInfo.InvariantCulture);
+            string[] about;
+            info.TryGetValue(id, out about);
+            long[] time;
+            played.TryGetValue(id, out time);
+            Game local;
+            if (byId.TryGetValue(key, out local)) {
+                if (about != null) { local.Kind = KindOf(about[1]); }
+                if (time != null) {
+                    local.Playtime = time[0];
+                    local.LastPlayed = Math.Max(local.LastPlayed, time[1]);
+                }
+                continue;
+            }
+            // Not installed: only what is surely a game, an app or a tool of this library
+            if (about == null || about[0].Length == 0) { continue; }
+            string type = about[1];
+            if (type != "game" && type != "application" && type != "tool" && type != "demo") { continue; }
+            if (Excluded(key, about[0])) { continue; }
+            Game g = new Game();
+            g.Source = "steam";
+            g.Id = key;
+            g.ArtId = key;
+            g.Name = about[0];
+            g.State = "notinstalled";
+            g.Kind = KindOf(type);
+            if (time != null) {
+                g.Playtime = time[0];
+                g.LastPlayed = time[1];
+            }
+            into.Add(g);
+            owned++;
+        }
+        note.Append("notinstalled=" + owned + " ");
     }
 
     static string JsonText(string text, string key) {
@@ -757,7 +1272,7 @@ public static class PcGames {
         try { files = Directory.GetFiles(dir, "*.item"); } catch { return; }
         foreach (string f in files) {
             try {
-                string t = File.ReadAllText(f);
+                string t = ReadShared(f);
                 if (Regex.IsMatch(t, @"""AppCategories""\s*:\s*\[[^\]]*""addons""")) { continue; }
                 string app = JsonText(t, "AppName");
                 string name = JsonText(t, "DisplayName");
@@ -810,11 +1325,129 @@ public static class PcGames {
         }
     }
 
+    // ---- PC apps: programs from the Start menu and the desktop, picked on the handheld ----------
+
+    static string HashId(string text) {
+        uint h = 2166136261;
+        foreach (char c in text.ToLowerInvariant()) {
+            h ^= c;
+            h = unchecked(h * 16777619u);
+        }
+        return h.ToString("x8", CultureInfo.InvariantCulture);
+    }
+
+    static readonly Regex NotAProgram = new Regex(@"\b(uninstall|readme|read me|help|manual|website|license|documentation|release notes|changelog|support)\b|^about ",
+        RegexOptions.IgnoreCase);
+
+    public static List<Program> ScanPrograms() {
+        List<Program> found = new List<Program>();
+        Dictionary<string, bool> seen = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        string[][] roots = new string[][] {
+            new string[] { Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu), "Start menu" },
+            new string[] { Environment.GetFolderPath(Environment.SpecialFolder.StartMenu), "Start menu" },
+            new string[] { Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), "Desktop" },
+            new string[] { Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), "Desktop" }
+        };
+        foreach (string[] root in roots) {
+            if (string.IsNullOrEmpty(root[0]) || !Directory.Exists(root[0])) { continue; }
+            string[] files;
+            try { files = Directory.GetFiles(root[0], "*.*", SearchOption.AllDirectories); } catch { continue; }
+            foreach (string f in files) {
+                string ext = Path.GetExtension(f).ToLowerInvariant();
+                if (ext != ".lnk" && ext != ".url" && ext != ".exe" && ext != ".appref-ms") { continue; }
+                string name = Path.GetFileNameWithoutExtension(f);
+                if (NotAProgram.IsMatch(name) || seen.ContainsKey(name)) { continue; }
+                seen[name] = true;
+                Program p = new Program();
+                p.Id = HashId(f);
+                p.Name = name;
+                p.Path = f;
+                string folder = Path.GetFileName(Path.GetDirectoryName(f));
+                p.Where = root[1] + (folder == "Programs" || folder == "Desktop" ? "" : " > " + folder);
+                found.Add(p);
+            }
+        }
+        found.Sort(delegate (Program a, Program b) { return string.Compare(a.Name, b.Name, StringComparison.OrdinalIgnoreCase); });
+        lock (scanLock) { lastPrograms = found; }
+        return found;
+    }
+
+    static string AppsFile() {
+        return Path.Combine(DataDir.Length > 0 ? DataDir : Path.GetTempPath(), "pc-apps.txt");
+    }
+
+    static List<Program> LoadApps() {
+        List<Program> apps = new List<Program>();
+        try {
+            string file = AppsFile();
+            if (!File.Exists(file)) { return apps; }
+            foreach (string line in File.ReadAllLines(file, Encoding.UTF8)) {
+                string[] p = line.Split('\t');
+                if (p.Length < 3 || p[0].Length == 0) { continue; }
+                Program a = new Program();
+                a.Id = p[0];
+                a.Name = p[1];
+                a.Path = p[2];
+                apps.Add(a);
+            }
+        } catch { }
+        return apps;
+    }
+
+    static void SaveApps(List<Program> apps) {
+        List<string> lines = new List<string>();
+        foreach (Program a in apps) { lines.Add(a.Id + "\t" + Clean(a.Name) + "\t" + a.Path); }
+        File.WriteAllLines(AppsFile(), lines.ToArray(), Encoding.UTF8);
+    }
+
+    public static string AddApp(string id) {
+        Program pick = null;
+        lock (scanLock) { foreach (Program p in lastPrograms) { if (p.Id == id) { pick = p; } } }
+        if (pick == null) {
+            foreach (Program p in ScanPrograms()) { if (p.Id == id) { pick = p; } }
+        }
+        if (pick == null) { return "ERR unknown"; }
+        List<Program> apps = LoadApps();
+        foreach (Program a in apps) { if (a.Id == id) { return "OK"; } }
+        apps.Add(pick);
+        try { SaveApps(apps); } catch (Exception e) { return "ERR " + Clean(e.Message); }
+        Log("PC app added for the handheld: " + pick.Name);
+        return "OK";
+    }
+
+    public static string RemoveApp(string id) {
+        List<Program> apps = LoadApps();
+        List<Program> keep = new List<Program>();
+        foreach (Program a in apps) { if (a.Id != id) { keep.Add(a); } }
+        if (keep.Count == apps.Count) { return "ERR unknown"; }
+        try { SaveApps(keep); } catch (Exception e) { return "ERR " + Clean(e.Message); }
+        return "OK";
+    }
+
+    static void ScanApps(List<Game> into) {
+        foreach (Program a in LoadApps()) {
+            if (!File.Exists(a.Path)) { continue; }
+            Game g = new Game();
+            g.Source = "pc";
+            g.Id = a.Id;
+            g.Name = a.Name;
+            g.Exe = a.Path;
+            g.Kind = "app";
+            into.Add(g);
+        }
+    }
+
+    // ---- All of it --------------------------------------------------------------------------
+
     public static List<Game> Scan() {
         List<Game> games = new List<Game>();
-        ScanSteam(games);
+        StringBuilder note = new StringBuilder();
+        try { ScanSteam(games, note); } catch (Exception e) { note.Append("steam-error=" + Clean(e.Message) + " "); }
         ScanEpic(games);
         ScanGog(games);
+        ScanApps(games);
+        note.Append("total=" + games.Count);
+        LastNote = note.ToString();
         lock (scanLock) { last = games; }
         return games;
     }
@@ -826,8 +1459,8 @@ public static class PcGames {
         return null;
     }
 
-    static void Open(string uri) {
-        ProcessStartInfo info = new ProcessStartInfo(uri);
+    static void Open(string target) {
+        ProcessStartInfo info = new ProcessStartInfo(target);
         info.UseShellExecute = true;
         Process.Start(info);
     }
@@ -840,7 +1473,7 @@ public static class PcGames {
         try {
             if (g.Source == "steam") {
                 Open("steam://rungameid/" + g.Id);
-            } else if (g.Source == "epic") {
+            } else if (g.Source == "epic" || g.Source == "nonsteam") {
                 Open(g.Uri);
             } else {
                 ProcessStartInfo info = new ProcessStartInfo(g.Exe);
@@ -910,163 +1543,445 @@ public static class PcGames {
         }, IntPtr.Zero);
         return found;
     }
+
+    /** Hooks this into the PC helper (found by name, so the two compile separately). */
+    public static string Install() {
+        try {
+            Type companion = null;
+            foreach (System.Reflection.Assembly a in AppDomain.CurrentDomain.GetAssemblies()) {
+                Type t = a.GetType("PocketCompanion", false);
+                if (t != null) { companion = t; }
+            }
+            if (companion == null) { return "the PC helper isn't loaded"; }
+            System.Reflection.MethodInfo log = companion.GetMethod("Log", new Type[] { typeof(string) });
+            if (log != null) { Logger = (Action<string>)Delegate.CreateDelegate(typeof(Action<string>), log); }
+            System.Reflection.FieldInfo extra = companion.GetField("Extra");
+            if (extra == null) { return "the PC helper is too old for the library"; }
+            extra.SetValue(null, Delegate.CreateDelegate(extra.FieldType, typeof(PcGames).GetMethod("Handle")));
+            return "";
+        } catch (Exception e) {
+            return e.Message;
+        }
+    }
 }
 '@
-    } catch {
-        Say ("PC library unavailable: " + $_.Exception.Message) "Yellow"
+        } catch {
+            $script:pcLibraryError = ("" + $_.Exception.Message) -replace "\s+", " "
+            $script:pcLibraryErrors = @($Error | Select-Object -First 15 | ForEach-Object { "" + $_ })
+            foreach ($er in $script:pcLibraryErrors) { Write-Log ("PC library: " + $er) }
+        }
     }
+    if ("PcGames" -as [type]) {
+        [PcGames]::DataDir = $DataDir
+        $err = [PcGames]::Install()
+        if ($err) { $script:pcLibraryError = $err }
+    } elseif (-not $script:pcLibraryError) {
+        $script:pcLibraryError = "not compiled"
+    }
+    if ($script:pcLibraryError) { [PocketCompanion]::ExtraError = $script:pcLibraryError }
 }
-if ("PcGames" -as [type]) {
-    try {
-        [PcGames]::Logger = [Delegate]::CreateDelegate([Action[string]], [PocketCompanion].GetMethod("Log"))
-        [PocketCompanion]::Extra = [Delegate]::CreateDelegate([Func[string, string[], System.Net.Sockets.NetworkStream, bool]], [PcGames].GetMethod("Handle"))
-        $pcLibraryOk = $true
-    } catch {
-        Say ("PC library unavailable: " + $_.Exception.Message) "Yellow"
+
+# ---- Servers ---------------------------------------------------------------------------------
+function Start-Servers {
+    $script:bridgeOk = $true
+    try { [PocketBridge]::Start($TunnelPort) }
+    catch { $script:bridgeOk = $false; Say "USB-C relay: port $TunnelPort is busy (another program uses it)" "Yellow" }
+
+    # Secret for Wi-Fi control (kept between runs) and a fresh PIN for linking each run
+    $tokenFile = "$DataDir\companion-token.txt"
+    $token = ""
+    if (Test-Path $tokenFile) { $token = ((Get-Content $tokenFile -Raw) + "").Trim() }
+    if ($token.Length -lt 32) {
+        $bytes = New-Object byte[] 16
+        [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+        $token = ($bytes | ForEach-Object { $_.ToString("x2") }) -join ""
+        Set-Content -Path $tokenFile -Value $token -NoNewline
+    }
+    $pinBytes = New-Object byte[] 4
+    [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($pinBytes)
+    $script:pin = ([BitConverter]::ToUInt32($pinBytes, 0) % 1000000).ToString().PadLeft(6, "0")
+
+    $script:companionOk = $true
+    try { [PocketCompanion]::Start($CompanionPort, $token, $script:pin) }
+    catch { $script:companionOk = $false; Say "PC helper: port $CompanionPort is busy (another program uses it)" "Yellow" }
+}
+
+function Write-Status {
+    $lines = @(
+        ("started=" + [DateTime]::UtcNow.Ticks),
+        ("pin=" + $script:pin),
+        ("companion=" + $(if ($script:companionOk) { "ok" } else { "busy" })),
+        ("usb=" + $(if (-not $script:bridgeOk) { "port $TunnelPort busy" } elseif (-not $script:adb) { "ADB missing" } else { "ok" })),
+        ("pclib=" + $(if ($script:pcLibraryError) { $script:pcLibraryError } else { "ok" }))
+    )
+    try { Set-Content -Path $StatusFile -Value $lines -Encoding UTF8 } catch { }
+}
+
+# ---- The cable ------------------------------------------------------------------------------
+function Set-Reverse {
+    & $script:adb reverse --remove-all 2>$null | Out-Null
+    foreach ($p in $TcpPorts) { & $script:adb reverse "tcp:$p" "tcp:$p" 2>$null | Out-Null }
+    & $script:adb reverse "tcp:$TunnelPort" "tcp:$TunnelPort" 2>$null | Out-Null
+    & $script:adb reverse "tcp:$CompanionPort" "tcp:$CompanionPort" 2>$null | Out-Null
+}
+
+function Reset-UsbMode {
+    # Undo the RNDIS/NCM attempt from the tethering script, if it was run
+    $cfg = (& $script:adb shell getprop sys.usb.config 2>$null) -join ""
+    if ($cfg -match "rndis|ncm") {
+        & $script:adb shell svc usb setFunctions 2>$null | Out-Null
+        Start-Sleep -Seconds 3
+        & $script:adb wait-for-device 2>$null | Out-Null
     }
 }
 
-# Secret for Wi-Fi control (kept between runs) and a fresh PIN for linking each run
-$tokenFile = "$DataDir\companion-token.txt"
-$token = ""
-if (Test-Path $tokenFile) { $token = ((Get-Content $tokenFile -Raw) + "").Trim() }
-if ($token.Length -lt 32) {
-    $bytes = New-Object byte[] 16
-    [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-    $token = ($bytes | ForEach-Object { $_.ToString("x2") }) -join ""
-    Set-Content -Path $tokenFile -Value $token -NoNewline
+# Every couple of seconds: the handheld on the cable, and what the helpers have to say
+function Invoke-Tick {
+    if ($script:adb) {
+        $state = ((& $script:adb get-state 2>&1) -join "").Trim()
+        if ($state -ne $script:lastState) {
+            if ($state -eq "device") {
+                Reset-UsbMode
+                Set-Reverse
+                $model = ((& $script:adb shell getprop ro.product.model 2>$null) -join "").Trim()
+                Stamp "Connected: $model - open Pocket Nexus" "Green"
+            } elseif ($state -match "unauthorized") {
+                Stamp "Press 'Allow' on the handheld (tick 'Always allow from this computer')" "Yellow"
+            } else {
+                if ($script:lastState -eq "device") { Stamp "Handheld unplugged" "DarkGray" }
+            }
+            $script:lastState = $state
+        } elseif ($state -eq "device") {
+            # Keep the port rules alive (they vanish if adb restarts)
+            $rules = ((& $script:adb reverse --list 2>$null) -join " ")
+            if ($rules -notmatch "tcp:$CompanionPort") { Set-Reverse }
+        }
+    }
+    $sessions = [PocketBridge]::Sessions
+    if ($sessions -ne $script:lastSessions) {
+        Write-Log "Pocket Nexus linked through the cable"
+        $script:lastSessions = $sessions
+    }
+    if ($script:companionOk) {
+        $evt = $null
+        while ([PocketCompanion]::Events.TryDequeue([ref]$evt)) { Stamp $evt "Cyan" }
+    }
 }
-$pinBytes = New-Object byte[] 4
-[Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($pinBytes)
-$pin = ([BitConverter]::ToUInt32($pinBytes, 0) % 1000000).ToString().PadLeft(6, "0")
 
-$companionOk = $true
+# ---- Starting hidden, with Windows ------------------------------------------------------------
+function Write-Launcher {
+    # wscript starts PowerShell with no window at all (not even a flash)
+    $cmd = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File ""' + $ScriptPath + '"" -Background'
+    Set-Content -Path $Launcher -Value ('CreateObject("WScript.Shell").Run "' + $cmd + '", 0, False') -Encoding Unicode
+}
+
+function New-StartupLink {
+    Write-Launcher
+    $shell = New-Object -ComObject WScript.Shell
+    $lnk = $shell.CreateShortcut($StartupLink)
+    $lnk.TargetPath = "$env:WINDIR\System32\wscript.exe"
+    $lnk.Arguments = "`"$Launcher`""
+    $lnk.WorkingDirectory = $here
+    $lnk.Description = "Pocket Nexus PC (runs in the background)"
+    $lnk.Save()
+}
+
+# ---- The icon next to the clock -------------------------------------------------------------
+function New-TrayImage {
+    $bmp = New-Object System.Drawing.Bitmap 32, 32
+    $g = [System.Drawing.Graphics]::FromImage($bmp)
+    $g.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+    $g.Clear([System.Drawing.Color]::Transparent)
+    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $x = 1; $y = 8; $w = 30; $h = 17; $r = 7
+    $path.AddArc($x, $y, $r * 2, $r * 2, 180, 90)
+    $path.AddArc($x + $w - $r * 2, $y, $r * 2, $r * 2, 270, 90)
+    $path.AddArc($x + $w - $r * 2, $y + $h - $r * 2, $r * 2, $r * 2, 0, 90)
+    $path.AddArc($x, $y + $h - $r * 2, $r * 2, $r * 2, 90, 90)
+    $path.CloseFigure()
+    $g.FillPath((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::White)), $path)
+    $g.FillRectangle((New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(255, 24, 24, 30))), 10, 11, 12, 11)
+    $g.Dispose()
+    return [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
+}
+
+function Get-StatusText {
+    $lines = @()
+    $lines += "Wi-Fi link PIN: " + $script:pin
+    $lines += "PC helper: " + $(if ($script:companionOk) { "ready" } else { "port $CompanionPort busy" })
+    $lines += "PC library: " + $(if ($script:pcLibraryError) { "unavailable - " + $script:pcLibraryError } else { "ready" })
+    $lines += "USB-C: " + $(if (-not $script:adb) { "ADB missing" } elseif ($script:lastState -eq "device") { "handheld connected" } else { "no handheld on the cable" })
+    $apollo = Get-NetTCPConnection -LocalPort 47989 -State Listen -ErrorAction SilentlyContinue
+    $lines += "Apollo: " + $(if ($apollo) { "running" } else { "not running" })
+    return ($lines -join "`r`n")
+}
+
+function Stop-Tray {
+    try { $script:timer.Stop() } catch { }
+    if ($script:tray) { $script:tray.Visible = $false; $script:tray.Dispose() }
+    [System.Windows.Forms.Application]::Exit()
+}
+
+function Start-Tray {
+    $script:tray = New-Object System.Windows.Forms.NotifyIcon
+    $script:tray.Icon = New-TrayImage
+    $script:tray.Text = "Pocket Nexus PC"
+    $menu = New-Object System.Windows.Forms.ContextMenuStrip
+    $title = $menu.Items.Add("Pocket Nexus PC")
+    $title.Enabled = $false
+    $pinItem = $menu.Items.Add("Wi-Fi link PIN: " + $script:pin + "   (click to copy)")
+    $pinItem.add_Click({ try { [System.Windows.Forms.Clipboard]::SetText($script:pin) } catch { } })
+    [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
+    $statusItem = $menu.Items.Add("Status")
+    $statusItem.add_Click({ [void][System.Windows.Forms.MessageBox]::Show((Get-StatusText), "Pocket Nexus PC") })
+    $logItem = $menu.Items.Add("Open the log")
+    $logItem.add_Click({ Start-Process notepad.exe -ArgumentList "`"$LogFile`"" })
+    $startItem = New-Object System.Windows.Forms.ToolStripMenuItem "Start with Windows"
+    $startItem.Checked = (Test-Path $StartupLink)
+    $startItem.add_Click({
+        if (Test-Path $StartupLink) {
+            Remove-Item $StartupLink -Force -ErrorAction SilentlyContinue
+            New-Item -ItemType File -Force -Path "$DataDir\no-startup" | Out-Null
+        } else {
+            Remove-Item "$DataDir\no-startup" -ErrorAction SilentlyContinue
+            New-StartupLink
+        }
+        $this.Checked = (Test-Path $StartupLink)
+    })
+    [void]$menu.Items.Add($startItem)
+    $restartItem = $menu.Items.Add("Restart")
+    $restartItem.add_Click({ Write-Launcher; Start-Process wscript.exe -ArgumentList "`"$Launcher`""; Stop-Tray })
+    $quitItem = $menu.Items.Add("Quit")
+    $quitItem.add_Click({ Write-Log "Quit from the tray"; Stop-Tray })
+    $script:tray.ContextMenuStrip = $menu
+    $script:tray.add_DoubleClick({ [void][System.Windows.Forms.MessageBox]::Show((Get-StatusText), "Pocket Nexus PC") })
+    $script:tray.Visible = $true
+
+    $script:timer = New-Object System.Windows.Forms.Timer
+    $script:timer.Interval = 2000
+    $script:timer.add_Tick({ try { Invoke-Tick } catch { Write-Log ("Tick: " + $_.Exception.Message) } })
+    $script:timer.Start()
+
+    if (Test-Path "$DataDir\hello") {
+        Remove-Item "$DataDir\hello" -ErrorAction SilentlyContinue
+        $script:tray.ShowBalloonTip(6000, "Pocket Nexus PC", "Running in the background. Wi-Fi link PIN: " + $script:pin, [System.Windows.Forms.ToolTipIcon]::Info)
+    }
+    [System.Windows.Forms.Application]::Run()
+}
+
+# ---- Self-test (CI on a real Windows: everything compiles and answers) ------------------------
+function Invoke-SelfTest {
+    $failed = New-Object System.Collections.Generic.List[string]
+    function Check($ok, $what) {
+        if ($ok) { Write-Host ("  ok    " + $what) } else { Write-Host ("  FAIL  " + $what); $failed.Add($what) }
+    }
+    Check ($script:pcLibraryError -eq "") ("PC library compiled and hooked in " + $script:pcLibraryError)
+    foreach ($er in $script:pcLibraryErrors) { Write-Host ("        " + $er) }
+
+    # The protocol, over the loopback (trusted like the cable)
+    [PocketCompanion]::Start($CompanionPort, ("ab" * 16), "123456")
+    $client = New-Object System.Net.Sockets.TcpClient
+    $client.Connect("127.0.0.1", $CompanionPort)
+    $stream = $client.GetStream()
+    $stream.ReadTimeout = 20000
+    $writer = New-Object System.IO.StreamWriter($stream)
+    $writer.NewLine = "`n"
+    $writer.AutoFlush = $true
+    $reader = New-Object System.IO.StreamReader($stream)
+    $writer.WriteLine("APC1 -")
+    $hello = $reader.ReadLine()
+    Check ($hello -like "OK 1 *") ("hello: " + $hello)
+    $writer.WriteLine("PING"); Check ($reader.ReadLine() -eq "PONG") "PING"
+    $writer.WriteLine("VERSION"); $v = $reader.ReadLine(); Check ($v -like "VERSION * games") ("VERSION: " + $v)
+    $writer.WriteLine("GAMES")
+    $n = 0
+    while ($true) { $line = $reader.ReadLine(); if ($line -eq $null -or $line.StartsWith("END") -or $line.StartsWith("ERR")) { break }; $n++ }
+    Check ($line -like "END *") ("GAMES answered (" + $n + " games): " + $line)
+    $writer.WriteLine("PROGRAMS")
+    $n = 0
+    while ($true) { $line = $reader.ReadLine(); if ($line -eq $null -or $line.StartsWith("END") -or $line.StartsWith("ERR")) { break }; $n++ }
+    Check ($line -like "END *") ("PROGRAMS answered (" + $n + " programs): " + $line)
+    $writer.WriteLine("ADDAPP 00000000"); Check ($reader.ReadLine() -eq "ERR unknown") "ADDAPP of something unknown"
+    $writer.WriteLine("LAUNCH steam 1"); Check ($reader.ReadLine() -like "ERR *") "LAUNCH of something not found"
+    $writer.WriteLine("STEAM INSTALL abc"); Check ($reader.ReadLine() -eq "ERR id") "STEAM INSTALL checks the id"
+    $writer.WriteLine("PCLIB"); $pl = $reader.ReadLine(); Check ($pl -like "PCLIB*") ("PCLIB: " + $pl)
+    $writer.WriteLine("QUIT")
+    $client.Close()
+
+    # The Steam files, from a made-up Steam folder (tests\make_fixtures.py)
+    $fx = Join-Path $here "tests\fixtures"
+    if (Test-Path "$fx\steam") {
+        [PcGames]::SteamRootOverride = "$fx\steam"
+        $games = [PcGames]::Scan()
+        Write-Host ("  scan: " + [PcGames]::LastNote)
+        $by = @{}
+        foreach ($g in $games) { $by[$g.Source + ":" + $g.Id] = $g }
+        $a = $by["steam:100"]
+        Check ($a -ne $null -and $a.State -eq "installed" -and $a.Name -eq "Test Installed Game" -and $a.Playtime -eq 125 -and $a.SizeMb -eq 2048) "installed game, its size and playtime"
+        $b = $by["steam:101"]
+        Check ($b -ne $null -and $b.State -eq "installing" -and $b.Progress -eq 40) "a game installing in a second library folder (40%)"
+        Check (-not $by.ContainsKey("steam:228980")) "redistributables left out"
+        $c = $by["steam:200"]
+        Check ($c -ne $null -and $c.State -eq "notinstalled" -and $c.Name -eq "Owned Not Installed" -and $c.Kind -eq "game") "owned, not installed (library art)"
+        $d = $by["steam:400"]
+        Check ($d -ne $null -and $d.State -eq "notinstalled" -and $d.Kind -eq "tool" -and $d.Playtime -eq 30) "a tool played before (localconfig)"
+        Check (-not $by.ContainsKey("steam:300")) "DLC left out"
+        Check (-not $by.ContainsKey("steam:500")) "unknown apps left out"
+        $e = $by["nonsteam:3000000001"]
+        Check ($e -ne $null -and $e.Name -eq "My Emulator" -and $e.Uri -eq "steam://rungameid/12884901892328521728") ("non-Steam game and its launch link " + $(if ($e) { $e.Uri } else { "" }))
+        Check (-not $by.ContainsKey("nonsteam:5")) "hidden non-Steam game left out"
+        $info = [PcGames]::ReadAppInfo([IO.File]::ReadAllBytes("$fx\appinfo_v28.vdf"), $null)
+        Check ($info.Count -eq 5 -and $info[[uint32]400][0] -eq "Some SDK" -and $info[[uint32]400][1] -eq "tool") "appinfo.vdf v28"
+        $info27 = [PcGames]::ReadAppInfo([IO.File]::ReadAllBytes("$fx\appinfo_v27.vdf"), $null)
+        Check ($info27.Count -eq 5 -and $info27[[uint32]200][0] -eq "Owned Not Installed") "appinfo.vdf v27"
+        [PcGames]::SteamRootOverride = $null
+    } else {
+        Check $false "test fixtures missing (run tests\make_fixtures.py)"
+    }
+
+    # PC apps: add one from the Start menu list and find it in GAMES
+    [PcGames]::DataDir = (Join-Path $env:TEMP ("pn-test-" + [Guid]::NewGuid().ToString("N")))
+    New-Item -ItemType Directory -Force -Path ([PcGames]::DataDir) | Out-Null
+    $programs = [PcGames]::ScanPrograms()
+    if ($programs.Count -gt 0) {
+        $first = $programs[0]
+        Check ([PcGames]::AddApp($first.Id) -eq "OK") ("ADDAPP " + $first.Name)
+        $found = $false
+        foreach ($g in [PcGames]::Scan()) { if ($g.Source -eq "pc" -and $g.Id -eq $first.Id) { $found = $true } }
+        Check $found "the PC app shows in GAMES"
+        Check ([PcGames]::RemoveApp($first.Id) -eq "OK") "REMOVEAPP"
+    } else {
+        Write-Host "  (no Start menu programs on this machine to test PC apps with)"
+    }
+
+    if ($failed.Count -gt 0) { Write-Host ("SELFTEST FAILED: " + $failed.Count); exit 1 }
+    Write-Host "SELFTEST PASSED"
+    exit 0
+}
+
+# ==== Setup (double-clicked): close older helpers, set things up, start it in the background ====
+if (-not $Background -and -not $Console -and -not $SelfTest) {
+    Write-Host ""
+    Write-Host "  POCKET NEXUS PC" -ForegroundColor White
+    Write-Host ""
+    $closed = Stop-OtherHelpers $false
+    if ($closed -gt 0) { Say "Closed the helper that was already running (it's started again below)" "DarkGray" }
+    $script:adb = Get-Adb
+    if ($script:adb) { Say "ADB: $script:adb" "DarkGray" }
+
+    # Wi-Fi control needs the port open in Windows Firewall (asked once, needs admin once)
+    $fwFlag = "$DataDir\firewall-asked"
+    if (-not (Test-Path $fwFlag)) {
+        New-Item -ItemType File -Force -Path $fwFlag | Out-Null
+        $rule = Get-NetFirewallRule -DisplayName "Pocket Nexus PC" -ErrorAction SilentlyContinue
+        if (-not $rule) { $rule = Get-NetFirewallRule -DisplayName "Artemis Pocket PC" -ErrorAction SilentlyContinue }
+        if (-not $rule) {
+            $answer = Read-Host "  Let the handheld use the PC helper and PC library over Wi-Fi too (adds a firewall rule, asks for admin)? (Y/N)"
+            if ($answer -match "^[Yy]") {
+                $cmd = "New-NetFirewallRule -DisplayName 'Pocket Nexus PC' -Direction Inbound -Protocol TCP -LocalPort $CompanionPort -Action Allow -Profile Private,Domain"
+                try {
+                    Start-Process powershell.exe -Verb RunAs -Wait -ArgumentList "-NoProfile -Command $cmd"
+                    Say "Firewall rule added (private networks only)" "Green"
+                } catch {
+                    Say "Firewall rule not added - Wi-Fi control will only work if Windows asks and you allow it" "Yellow"
+                }
+            }
+        }
+    }
+
+    # Starts with Windows, hidden (the old Artemis Pocket shortcuts are replaced)
+    $startupDir = [Environment]::GetFolderPath("Startup")
+    foreach ($oldLink in @("$startupDir\Artemis Pocket USB bridge.lnk", "$startupDir\Artemis Pocket PC.lnk")) {
+        if (Test-Path $oldLink) { Remove-Item $oldLink -ErrorAction SilentlyContinue }
+    }
+    if (Test-Path "$DataDir\no-startup") {
+        Write-Launcher
+        Say "Not started with Windows (turn it on from its icon: Start with Windows)" "DarkGray"
+    } else {
+        New-StartupLink
+        Say "Starts with Windows, hidden" "Green"
+    }
+
+    # Start it in the background and wait for it to report
+    Remove-Item $StatusFile -ErrorAction SilentlyContinue
+    New-Item -ItemType File -Force -Path "$DataDir\hello" | Out-Null
+    Start-Process wscript.exe -ArgumentList "`"$Launcher`""
+    Say "Starting it in the background..." "DarkGray"
+    $status = $null
+    for ($i = 0; $i -lt 60; $i++) {
+        Start-Sleep -Milliseconds 500
+        if (Test-Path $StatusFile) {
+            $status = Get-Content $StatusFile -ErrorAction SilentlyContinue
+            if ($status) { break }
+        }
+    }
+    Write-Host ""
+    if (-not $status) {
+        Say "It didn't report back. Run 'PocketNexus-PC.bat -Console' to see what goes wrong." "Red"
+    } else {
+        $map = @{}
+        foreach ($l in $status) { $kv = $l -split "=", 2; if ($kv.Count -eq 2) { $map[$kv[0]] = $kv[1] } }
+        Say ("Wi-Fi link PIN: " + $map["pin"]) "Green"
+        if ($map["companion"] -eq "ok") { Say "PC helper ready (power, status, microphone)" "Green" }
+        else { Say "PC helper: port $CompanionPort is busy - another program uses it" "Red" }
+        if ($map["pclib"] -eq "ok") { Say "PC library ready (Steam, non-Steam, Epic, GOG, PC apps)" "Green" }
+        else { Say ("PC library unavailable: " + $map["pclib"]) "Yellow" }
+        if ($map["usb"] -ne "ok") { Say ("USB-C: " + $map["usb"]) "Yellow" }
+    }
+    if (Get-NetTCPConnection -LocalPort 47989 -State Listen -ErrorAction SilentlyContinue) { Say "Apollo is running" "Green" }
+    else { Say "Apollo isn't running yet - start it before streaming" "Yellow" }
+    Write-Host ""
+    Say "Pocket Nexus PC now runs in the background: its icon sits next to the clock" "White"
+    Say "(right-click it for the PIN, the status, Start with Windows and Quit). You can close this window." "White"
+    Write-Host ""
+    Read-Host "  Press Enter to close" | Out-Null
+    exit 0
+}
+
+# ==== The helper itself (hidden in the background, or in this window with -Console) ============
+if (-not $SelfTest) {
+    [void](Stop-OtherHelpers $true)
+    if ($Console) {
+        Write-Host ""
+        Write-Host "  POCKET NEXUS PC" -ForegroundColor White
+        Write-Host ""
+    }
+}
+Write-Log ("Starting (" + $(if ($SelfTest) { "self-test" } elseif ($Console) { "console" } else { "background" }) + ")")
 try {
-    [PocketCompanion]::Start($CompanionPort, $token, $pin)
+    Load-Types
 } catch {
-    $companionOk = $false
-    Say "PC helper: port $CompanionPort is busy (another copy of this window, or the old Artemis Pocket PC, is open? Close it and start this again)" "Yellow"
+    Say ("Couldn't start: " + $_.Exception.Message) "Red"
+    if ($SelfTest) { Write-Host "SELFTEST FAILED: compile"; exit 1 }
+    if ($Console) { Read-Host "  Press Enter to close" | Out-Null }
+    exit 1
 }
-if ($companionOk) {
-    Say "PC helper ready  -  Wi-Fi link PIN: $pin" "Green"
-    if ($pcLibraryOk) { Say "PC library ready: Steam, Epic and GOG games show on the handheld" "Green" }
+if ($SelfTest) { Invoke-SelfTest }
+
+$script:adb = Get-Adb
+Start-Servers
+Write-Status
+if ($script:companionOk) {
+    Say ("PC helper ready  -  Wi-Fi link PIN: " + $script:pin) "Green"
+    if ($script:pcLibraryError) { Say ("PC library unavailable: " + $script:pcLibraryError) "Yellow" }
+    else { Say "PC library ready" "Green" }
     $cableId = 0
     $cable = [MicPlayer]::FindCable([ref]$cableId)
     if ($cable) { Say "Microphone: VB-Cable found ($cable)" "Green" }
     else { Say "Microphone: install VB-Audio Virtual Cable (free) from vb-audio.com/Cable to use the handheld's mic" "DarkGray" }
 }
 
-# Wi-Fi control needs the port open in Windows Firewall (asked once, needs admin once)
-$fwFlag = "$DataDir\firewall-asked"
-if ($companionOk -and -not $Autostart -and -not (Test-Path $fwFlag)) {
-    New-Item -ItemType File -Force -Path $fwFlag | Out-Null
-    $rule = Get-NetFirewallRule -DisplayName "Pocket Nexus PC" -ErrorAction SilentlyContinue
-    if (-not $rule) { $rule = Get-NetFirewallRule -DisplayName "Artemis Pocket PC" -ErrorAction SilentlyContinue }
-    if (-not $rule) {
-        $answer = Read-Host "  Let the handheld use these PC controls over Wi-Fi too (adds a firewall rule, asks for admin)? (Y/N)"
-        if ($answer -match "^[Yy]") {
-            $cmd = "New-NetFirewallRule -DisplayName 'Pocket Nexus PC' -Direction Inbound -Protocol TCP -LocalPort $CompanionPort -Action Allow -Profile Private,Domain"
-            try {
-                Start-Process powershell.exe -Verb RunAs -Wait -ArgumentList "-NoProfile -Command $cmd"
-                Say "Firewall rule added (private networks only)" "Green"
-            } catch {
-                Say "Firewall rule not added - Wi-Fi control will only work if Windows asks and you allow it" "Yellow"
-            }
-        }
+if ($Console) {
+    Write-Host ""
+    Say "Plug the Retroid in (USB debugging on), or play over Wi-Fi. Leave this window open." "White"
+    Write-Host ""
+    while ($true) {
+        try { Invoke-Tick } catch { Write-Log ("Tick: " + $_.Exception.Message) }
+        Start-Sleep -Seconds 2
     }
 }
 
-# ---- Apollo check ---------------------------------------------------------------------------
-if (Get-NetTCPConnection -LocalPort 47989 -State Listen -ErrorAction SilentlyContinue) {
-    Say "Apollo/Sunshine is running" "Green"
-} else {
-    Say "Apollo/Sunshine is not running yet - start it before streaming" "Yellow"
-}
-
-# ---- Start with Windows (asked once) --------------------------------------------------------
-$startup = [Environment]::GetFolderPath("Startup")
-$oldLinks = @("$startup\Artemis Pocket USB bridge.lnk", "$startup\Artemis Pocket PC.lnk")
-$newLink = "$startup\Pocket Nexus PC.lnk"
-function New-StartupLink {
-    $shell = New-Object -ComObject WScript.Shell
-    $lnk = $shell.CreateShortcut($newLink)
-    $lnk.TargetPath = "powershell.exe"
-    $lnk.Arguments = "-NoProfile -ExecutionPolicy Bypass -WindowStyle Minimized -File `"$ScriptPath`" -Autostart"
-    $lnk.WindowStyle = 7
-    $lnk.Save()
-}
-$hadOldLink = $false
-foreach ($oldLink in $oldLinks) {
-    # The old helper (Artemis Pocket) started with Windows: this window replaces it
-    if (Test-Path $oldLink) { Remove-Item $oldLink -ErrorAction SilentlyContinue; $hadOldLink = $true }
-}
-if ($hadOldLink) {
-    New-StartupLink
-    Say "Startup shortcut updated to Pocket Nexus PC" "Green"
-}
-$flag = "$DataDir\autostart-asked-v2"
-if (-not $Autostart -and -not (Test-Path $flag) -and -not (Test-Path $newLink)) {
-    New-Item -ItemType File -Force -Path $flag | Out-Null
-    $answer = Read-Host "  Start Pocket Nexus PC automatically when Windows starts? (Y/N)"
-    if ($answer -match "^[Yy]") {
-        New-StartupLink
-        Say "Added to Windows startup (delete it from shell:startup to undo)" "Green"
-    }
-}
-
-# ---- Device loop ----------------------------------------------------------------------------
-function Set-Reverse {
-    & $adb reverse --remove-all 2>$null | Out-Null
-    foreach ($p in $TcpPorts) { & $adb reverse "tcp:$p" "tcp:$p" 2>$null | Out-Null }
-    & $adb reverse "tcp:$TunnelPort" "tcp:$TunnelPort" 2>$null | Out-Null
-    & $adb reverse "tcp:$CompanionPort" "tcp:$CompanionPort" 2>$null | Out-Null
-}
-
-function Reset-UsbMode {
-    # Undo the RNDIS/NCM attempt from the tethering script, if it was run
-    $cfg = (& $adb shell getprop sys.usb.config 2>$null) -join ""
-    if ($cfg -match "rndis|ncm") {
-        & $adb shell svc usb setFunctions 2>$null | Out-Null
-        Start-Sleep -Seconds 3
-        & $adb wait-for-device 2>$null | Out-Null
-    }
-}
-
-Write-Host ""
-Say "Plug the Retroid in (USB debugging on), or just play over Wi-Fi. Leave this window open." "White"
-Write-Host ""
-
-$lastState = ""
-$lastSessions = 0
-while ($true) {
-    $state = ((& $adb get-state 2>&1) -join "").Trim()
-    if ($state -ne $lastState) {
-        if ($state -eq "device") {
-            Reset-UsbMode
-            Set-Reverse
-            $model = ((& $adb shell getprop ro.product.model 2>$null) -join "").Trim()
-            Stamp "Connected: $model - open Pocket Nexus" "Green"
-        } elseif ($state -match "unauthorized") {
-            Stamp "Press 'Allow' on the handheld (tick 'Always allow from this computer')" "Yellow"
-        } else {
-            if ($lastState -eq "device") { Stamp "Handheld unplugged - waiting..." "DarkGray" }
-            elseif ($lastState -eq "") { Stamp "Waiting for the handheld..." "DarkGray" }
-        }
-        $lastState = $state
-    } elseif ($state -eq "device") {
-        # Keep the port rules alive (they vanish if adb restarts)
-        $rules = ((& $adb reverse --list 2>$null) -join " ")
-        if ($rules -notmatch "tcp:$CompanionPort") { Set-Reverse }
-    }
-
-    $sessions = [PocketBridge]::Sessions
-    if ($sessions -ne $lastSessions) {
-        Stamp "Pocket Nexus linked through the cable" "Cyan"
-        $lastSessions = $sessions
-    }
-    if ($companionOk) {
-        $evt = $null
-        while ([PocketCompanion]::Events.TryDequeue([ref]$evt)) { Stamp $evt "Cyan" }
-    }
-    Start-Sleep -Seconds 2
-}
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+Start-Tray
+Write-Log "Stopped"

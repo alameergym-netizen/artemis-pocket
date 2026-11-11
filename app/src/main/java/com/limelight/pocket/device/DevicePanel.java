@@ -118,6 +118,8 @@ public final class DevicePanel {
                 () -> open(a, new Intent(Intent.ACTION_POWER_USAGE_SUMMARY))).withValue(batteryLine(a)));
         items.add(StreamMenuView.Item.action(a.getString(R.string.pocket_apps_set_storage),
                 () -> open(a, new Intent(Settings.ACTION_INTERNAL_STORAGE_SETTINGS))).withValue(storageText(a)));
+        items.add(StreamMenuView.Item.action(a.getString(R.string.pocket_info_title),
+                () -> DeviceInfoPanel.show(a)).withValue(DeviceInfoPanel.chipLabel()));
         items.add(StreamMenuView.Item.action(a.getString(R.string.pocket_apps_set_display),
                 () -> open(a, new Intent(Settings.ACTION_DISPLAY_SETTINGS))));
         items.add(StreamMenuView.Item.action(a.getString(R.string.pocket_apps_set_all),

@@ -109,4 +109,15 @@ public class ExtraParsersTest {
         assertEquals("https://play-lh.googleusercontent.com/abc=w640",
                 ExtraParsers.playSized("https://play-lh.googleusercontent.com/abc=w526-h296-rw", 640));
     }
+
+    @Test
+    public void youtube_firstVideoOfResults() {
+        String html = "var ytInitialData = {\"contents\":[{\"videoRenderer\":{\"videoId\":\"dQw4w9WgXcQ\","
+                + "\"title\":{}}},{\"videoRenderer\":{\"videoId\":\"aaaaaaaaaaa\"}}]}";
+        assertEquals("dQw4w9WgXcQ", ExtraParsers.youtubeFirst(html));
+        assertNull(ExtraParsers.youtubeFirst("<html>no results</html>"));
+        assertNull(ExtraParsers.youtubeFirst(null));
+        // Not an 11-character id
+        assertNull(ExtraParsers.youtubeFirst("\"videoId\":\"short\""));
+    }
 }

@@ -789,7 +789,12 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
 
         // Check if the user has enabled performance stats overlay
-        if (prefConfig.enablePerfOverlay) {
+        if (prefConfig.enablePerfOverlay && com.limelight.pocket.PocketPrefs.modernHud(this)) {
+            // Pocket Nexus: the modern HUD (numbers, what they are, a dot for how they're doing)
+            performanceOverlayView.setVisibility(View.VISIBLE);
+            pocketShowHud();
+        }
+        else if (prefConfig.enablePerfOverlay) {
             performanceOverlayView.setVisibility(View.VISIBLE);
             if (prefConfig.enablePerfOverlayLite) {
                 performanceOverlayLite.setVisibility(View.VISIBLE);
@@ -3033,6 +3038,135 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         return "\n\n" + getString(UsbLink.isUsbAddress(host) ? R.string.pocket_error_hint_usb : R.string.pocket_error_hint_wifi);
     }
 
+    // ---- The modern performance HUD ----------------------------------------------------------
+
+    private com.limelight.pocket.ui.StreamHud pocketHud;
+    private long pocketHudBytes;
+    private long pocketHudBytesAt;
+    private final Runnable pocketHudTick = new Runnable() {
+        @Override
+        public void run() {
+            if (pocketHud == null || isFinishing()) {
+                return;
+            }
+            pocketUpdateHud();
+            pocketStatsHandler.postDelayed(this, 1000);
+        }
+    };
+
+    private void pocketSustained(boolean on) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) {
+            return;
+        }
+        if (on && !com.limelight.pocket.PocketPrefs.sustainedPerformance(this)) {
+            return;
+        }
+        runOnUiThread(() -> {
+            try {
+                android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+                if (pm != null && pm.isSustainedPerformanceModeSupported()) {
+                    getWindow().setSustainedPerformanceMode(on);
+                }
+            } catch (RuntimeException ignored) {
+            }
+        });
+    }
+
+    private void pocketShowHud() {
+        if (performanceOverlayLite != null) {
+            performanceOverlayLite.setVisibility(View.GONE);
+        }
+        if (performanceOverlayBig != null) {
+            performanceOverlayBig.setVisibility(View.GONE);
+        }
+        if (pocketHud == null && performanceOverlayView instanceof android.widget.LinearLayout) {
+            pocketHud = new com.limelight.pocket.ui.StreamHud(this);
+            pocketHud.setDetailed(!prefConfig.enablePerfOverlayLite);
+            android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            float d = getResources().getDisplayMetrics().density;
+            lp.setMargins(Math.round(14 * d), Math.round(12 * d), Math.round(14 * d), Math.round(12 * d));
+            lp.gravity = prefConfig.enablePerfOverlayBottom ? Gravity.CENTER_HORIZONTAL : Gravity.START;
+            ((android.widget.LinearLayout) performanceOverlayView).addView(pocketHud, lp);
+            if (prefConfig.enablePerfOverlayLiteDialog) {
+                pocketHud.setOnClickListener(v -> showGameMenu(null));
+            }
+        }
+        pocketStatsHandler.removeCallbacks(pocketHudTick);
+        pocketStatsHandler.post(pocketHudTick);
+    }
+
+    private void pocketUpdateHud() {
+        float target = prefConfig.fps > 0 ? prefConfig.fps : 60;
+        float fps = 0;
+        float decode = 0;
+        float loss = 0;
+        if (decoderRenderer != null && android.os.SystemClock.uptimeMillis() - decoderRenderer.pocketStatsAt < 3000) {
+            fps = decoderRenderer.pocketFps;
+            decode = decoderRenderer.pocketDecodeMs;
+            loss = decoderRenderer.pocketLossPct;
+        }
+        float ping = 0;
+        try {
+            long rtt = MoonBridge.getEstimatedRttInfo();
+            if (rtt != -1) {
+                ping = (int) (rtt >> 32);
+            }
+        } catch (RuntimeException | UnsatisfiedLinkError ignored) {
+        }
+        java.util.List<com.limelight.pocket.ui.StreamHud.Metric> top = new java.util.ArrayList<>();
+        top.add(new com.limelight.pocket.ui.StreamHud.Metric("FPS", fps > 0 ? String.valueOf(Math.round(fps)) : "–", "",
+                com.limelight.pocket.ui.StreamHud.fpsState(fps, target)));
+        top.add(new com.limelight.pocket.ui.StreamHud.Metric(getString(R.string.pocket_hud_ping), ping > 0 ? String.valueOf(Math.round(ping)) : "–",
+                "ms", com.limelight.pocket.ui.StreamHud.pingState(ping)));
+        top.add(new com.limelight.pocket.ui.StreamHud.Metric(getString(R.string.pocket_hud_decode),
+                decode > 0 ? String.format(java.util.Locale.US, "%.1f", decode) : "–", "ms",
+                com.limelight.pocket.ui.StreamHud.decodeState(decode, target)));
+        top.add(new com.limelight.pocket.ui.StreamHud.Metric(getString(R.string.pocket_hud_loss),
+                String.format(java.util.Locale.US, "%.1f", loss), "%", com.limelight.pocket.ui.StreamHud.lossState(loss)));
+        java.util.List<com.limelight.pocket.ui.StreamHud.Metric> bottom = new java.util.ArrayList<>();
+        if (!prefConfig.enablePerfOverlayLite) {
+            String res = prefConfig.height >= 2160 ? "4K" : prefConfig.height + "p";
+            bottom.add(new com.limelight.pocket.ui.StreamHud.Metric(getString(R.string.pocket_hud_stream), res,
+                    Math.round(target) + " Hz", com.limelight.pocket.ui.StreamHud.NONE));
+            bottom.add(new com.limelight.pocket.ui.StreamHud.Metric(getString(R.string.pocket_hud_bitrate),
+                    String.valueOf(Math.round(prefConfig.bitrate / 1000f)), "Mbps", com.limelight.pocket.ui.StreamHud.NONE));
+            long bytes = android.net.TrafficStats.getUidRxBytes(android.os.Process.myUid());
+            long now = android.os.SystemClock.uptimeMillis();
+            if (bytes != android.net.TrafficStats.UNSUPPORTED && pocketHudBytesAt > 0 && now > pocketHudBytesAt) {
+                float mbps = (bytes - pocketHudBytes) * 8f / 1000f / (now - pocketHudBytesAt);
+                bottom.add(new com.limelight.pocket.ui.StreamHud.Metric(getString(R.string.pocket_hud_network),
+                        String.format(java.util.Locale.US, "%.1f", mbps), "Mbps", com.limelight.pocket.ui.StreamHud.NONE));
+            }
+            pocketHudBytes = bytes;
+            pocketHudBytesAt = now;
+            android.content.Intent battery = registerReceiver(null, new android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED));
+            if (battery != null) {
+                int level = battery.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1);
+                int scale = battery.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100);
+                int temp = battery.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, 0);
+                int status = battery.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1);
+                boolean charging = status == android.os.BatteryManager.BATTERY_STATUS_CHARGING;
+                if (level >= 0) {
+                    int pct = Math.round(level * 100f / Math.max(1, scale));
+                    bottom.add(new com.limelight.pocket.ui.StreamHud.Metric(getString(R.string.pocket_hud_battery),
+                            (charging ? "⚡" : "") + pct, "%", pct <= 15 && !charging
+                            ? com.limelight.pocket.ui.StreamHud.BAD : com.limelight.pocket.ui.StreamHud.NONE));
+                }
+                if (temp > 0) {
+                    float c = temp / 10f;
+                    bottom.add(new com.limelight.pocket.ui.StreamHud.Metric(getString(R.string.pocket_hud_temp),
+                            String.valueOf(Math.round(c)), "°C", c < 40 ? com.limelight.pocket.ui.StreamHud.GOOD
+                            : (c < 46 ? com.limelight.pocket.ui.StreamHud.WARN : com.limelight.pocket.ui.StreamHud.BAD)));
+                }
+            }
+            bottom.add(new com.limelight.pocket.ui.StreamHud.Metric(getString(R.string.pocket_hud_time),
+                    android.text.format.DateFormat.getTimeFormat(this).format(new java.util.Date()), "",
+                    com.limelight.pocket.ui.StreamHud.NONE));
+        }
+        pocketHud.update(top, bottom, fps, target);
+    }
+
     // Live graphs in the stream menu: one sample a second while streaming
     private com.limelight.pocket.ui.PerfGraphView pocketGraph;
     private final android.os.Handler pocketStatsHandler = new android.os.Handler(android.os.Looper.getMainLooper());
@@ -5220,6 +5354,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
             // Update GameManager state to indicate we're no longer in game
             UiHelper.notifyStreamEnded(this);
+            pocketSustained(false);
 
             // Stop may take a few hundred ms to do some network I/O to tell
             // the server we're going away and clean up. Let it run in a separate
@@ -5496,6 +5631,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
                 // Update GameManager state to indicate we're in game
                 UiHelper.notifyStreamConnected(Game.this);
+
+                // Pocket Nexus: steady clocks while streaming, if the user asked and the device can
+                pocketSustained(true);
 
                 // Sync local clipboard to host
                 handleFocusChange(true);
@@ -6005,6 +6143,13 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     public void toggleHUD() {
         prefConfig.enablePerfOverlay = !prefConfig.enablePerfOverlay;
+        if (com.limelight.pocket.PocketPrefs.modernHud(this)) {
+            performanceOverlayView.setVisibility(prefConfig.enablePerfOverlay ? View.VISIBLE : View.GONE);
+            if (prefConfig.enablePerfOverlay) {
+                pocketShowHud();
+            }
+            return;
+        }
         if (prefConfig.enablePerfOverlay) {
             performanceOverlayView.setVisibility(View.VISIBLE);
             if(prefConfig.enablePerfOverlayLite){

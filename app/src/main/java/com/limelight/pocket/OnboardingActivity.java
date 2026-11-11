@@ -754,7 +754,8 @@ public class OnboardingActivity extends ConsoleActivity {
 
         String[] styleLabels = {getString(R.string.pocket_sound_glass), getString(R.string.pocket_sound_soft),
                 getString(R.string.pocket_sound_crisp), getString(R.string.pocket_sound_retro),
-                getString(R.string.pocket_sound_pop)};
+                getString(R.string.pocket_sound_pop), getString(R.string.pocket_sound_aurora),
+                getString(R.string.pocket_sound_crystal), getString(R.string.pocket_sound_tactile)};
         addChoice(getString(R.string.pocket_set_sound_style), null, new Option(styleLabels,
                 () -> PocketPrefs.soundStyleIndex(this),
                 index -> {

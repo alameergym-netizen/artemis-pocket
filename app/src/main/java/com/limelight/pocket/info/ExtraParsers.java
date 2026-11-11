@@ -395,4 +395,17 @@ public final class ExtraParsers {
             return false;
         }
     }
+
+    // ---- YouTube (a trailer for any game, when no store has one) -------------------------------
+
+    private static final java.util.regex.Pattern YT_VIDEO = java.util.regex.Pattern.compile("\"videoId\":\"([A-Za-z0-9_-]{11})\"");
+
+    /** The first video of a YouTube results page, or null. */
+    public static String youtubeFirst(String html) {
+        if (html == null) {
+            return null;
+        }
+        java.util.regex.Matcher m = YT_VIDEO.matcher(html);
+        return m.find() ? m.group(1) : null;
+    }
 }

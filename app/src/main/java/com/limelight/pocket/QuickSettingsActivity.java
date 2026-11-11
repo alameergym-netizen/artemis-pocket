@@ -427,6 +427,19 @@ public class QuickSettingsActivity extends ConsoleActivity {
                         .putBoolean("checkbox_enable_perf_overlay_lite", index == 1)
                         .apply(), null);
 
+        addToggle(getString(R.string.pocket_set_modern_hud), getString(R.string.pocket_set_modern_hud_sub),
+                () -> PocketPrefs.modernHud(this),
+                value -> prefs().edit().putBoolean(PocketPrefs.KEY_MODERN_HUD, value).apply());
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+            if (pm != null && pm.isSustainedPerformanceModeSupported()) {
+                addToggle(getString(R.string.pocket_set_sustained), getString(R.string.pocket_set_sustained_sub),
+                        () -> PocketPrefs.sustainedPerformance(this),
+                        value -> prefs().edit().putBoolean(PocketPrefs.KEY_SUSTAINED, value).apply());
+            }
+        }
+
         addToggle(getString(R.string.pocket_set_vdisplay), getString(R.string.pocket_set_vdisplay_sub),
                 () -> prefs().getBoolean("checkbox_use_virtual_display", false),
                 value -> prefs().edit().putBoolean("checkbox_use_virtual_display", value).apply());
@@ -585,6 +598,32 @@ public class QuickSettingsActivity extends ConsoleActivity {
                         })
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    private static final int REQUEST_MUSIC = 7501;
+
+    private void pickMusic() {
+        try {
+            Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("audio/*");
+            startActivityForResult(pick, REQUEST_MUSIC);
+        } catch (RuntimeException e) {
+            Toast.makeText(this, R.string.pocket_set_music_cant_pick, Toast.LENGTH_LONG).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_MUSIC && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            android.net.Uri uri = data.getData();
+            try {
+                getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            } catch (RuntimeException ignored) {
+            }
+            prefs().edit().putString(PocketMusic.KEY_MODE, PocketMusic.MODE_FILE).apply();
+            PocketMusic.setTrack(this, uri);
+            refreshRows();
+        }
     }
 
     private void recordMacro(int slot) {
@@ -775,6 +814,21 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     rowsContainer.postDelayed(this::recreate, 350);
                 }, null);
 
+        final com.limelight.pocket.ui.PocketTheme.Preset[] themes = com.limelight.pocket.ui.PocketTheme.THEMES;
+        final String[] themeLabels = new String[themes.length];
+        for (int i = 0; i < themes.length; i++) {
+            themeLabels[i] = getString(themes[i].name);
+        }
+        addChoice(getString(R.string.pocket_set_theme), getString(R.string.pocket_set_theme_sub), themeLabels,
+                () -> com.limelight.pocket.ui.PocketTheme.themeIndex(this),
+                index -> {
+                    com.limelight.pocket.ui.PocketTheme.applyTheme(this, index);
+                    PocketSounds.reload(this);
+                    rowsContainer.postDelayed(() -> PocketSounds.preview(this, PocketSounds.CATEGORY_MENU), 260);
+                    getIntent().putExtra("tab", TAB_SYSTEM);
+                    rowsContainer.postDelayed(this::recreate, 420);
+                }, getString(R.string.pocket_value_custom));
+
         final String[] focusValues = {PocketPrefs.FOCUS_RING_ZOOM, PocketPrefs.FOCUS_RING, PocketPrefs.FOCUS_ZOOM};
         final String[] focusLabels = {getString(R.string.pocket_focus_ring_zoom), getString(R.string.pocket_focus_ring),
                 getString(R.string.pocket_focus_zoom)};
@@ -853,9 +907,9 @@ public class QuickSettingsActivity extends ConsoleActivity {
         addChoice(getString(R.string.pocket_view_mode), getString(R.string.pocket_view_mode_sub), modeLabels,
                 () -> java.util.Arrays.asList(com.limelight.pocket.ui.LibraryLayout.MODES).indexOf(PocketPrefs.viewMode(this)),
                 index -> PocketPrefs.setViewMode(this, com.limelight.pocket.ui.LibraryLayout.MODES[index]), null);
-        final String[] styleLabels = {getString(R.string.pocket_cards_cover), getString(R.string.pocket_cards_wide),
+        final String[] cardLabels = {getString(R.string.pocket_cards_cover), getString(R.string.pocket_cards_wide),
                 getString(R.string.pocket_cards_icon)};
-        addChoice(getString(R.string.pocket_cards_style), getString(R.string.pocket_cards_style_sub), styleLabels,
+        addChoice(getString(R.string.pocket_cards_style), getString(R.string.pocket_cards_style_sub), cardLabels,
                 () -> java.util.Arrays.asList(com.limelight.pocket.ui.LibraryLayout.STYLES).indexOf(PocketPrefs.cardStyle(this)),
                 index -> PocketPrefs.setCardStyle(this, com.limelight.pocket.ui.LibraryLayout.STYLES[index]), null);
 
@@ -885,7 +939,8 @@ public class QuickSettingsActivity extends ConsoleActivity {
 
         final String[] styleLabels = {getString(R.string.pocket_sound_glass), getString(R.string.pocket_sound_soft),
                 getString(R.string.pocket_sound_crisp), getString(R.string.pocket_sound_retro),
-                getString(R.string.pocket_sound_pop)};
+                getString(R.string.pocket_sound_pop), getString(R.string.pocket_sound_aurora),
+                getString(R.string.pocket_sound_crystal), getString(R.string.pocket_sound_tactile)};
         addChoice(getString(R.string.pocket_set_sound_style), getString(R.string.pocket_set_sound_style_sub), styleLabels,
                 () -> PocketPrefs.soundStyleIndex(this),
                 index -> {
@@ -903,6 +958,28 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 PocketPrefs.KEY_VOL_MENU, PocketSounds.CATEGORY_MENU);
         addSlider(getString(R.string.pocket_set_vol_boot), getString(R.string.pocket_set_vol_boot_sub),
                 PocketPrefs.KEY_VOL_BOOT, PocketSounds.CATEGORY_BOOT);
+
+        // Music behind the console's screens
+        final String[] musicLabels = {getString(R.string.pocket_off), getString(R.string.pocket_music_ambient),
+                getString(R.string.pocket_music_file)};
+        addChoice(getString(R.string.pocket_set_music), getString(R.string.pocket_set_music_sub), musicLabels,
+                () -> java.util.Arrays.asList(PocketMusic.MODES).indexOf(PocketMusic.mode(this)),
+                index -> {
+                    PocketMusic.setMode(this, PocketMusic.MODES[index]);
+                    if (PocketMusic.MODE_FILE.equals(PocketMusic.MODES[index])
+                            && !prefs().contains(PocketMusic.KEY_URI)) {
+                        pickMusic();
+                    }
+                }, null);
+        final String[] volumeLabels = new String[11];
+        for (int i = 0; i <= 10; i++) {
+            volumeLabels[i] = (i * 10) + "%";
+        }
+        addChoice(getString(R.string.pocket_set_music_volume), getString(R.string.pocket_set_music_volume_sub), volumeLabels,
+                () -> Math.round(PocketMusic.volume(this) / 10f),
+                index -> PocketMusic.setVolume(this, index * 10), null);
+        addAction(getString(R.string.pocket_set_music_pick), getString(R.string.pocket_set_music_pick_sub), null,
+                this::pickMusic);
 
         addHeader(R.string.pocket_header_extras);
 
@@ -990,6 +1067,10 @@ public class QuickSettingsActivity extends ConsoleActivity {
 
         addAction(getString(R.string.pocket_device_title), getString(R.string.pocket_set_device_sub), null,
                 () -> com.limelight.pocket.device.DevicePanel.show(this));
+
+        addAction(getString(R.string.pocket_info_title), getString(R.string.pocket_set_handheld_sub),
+                () -> com.limelight.pocket.device.DeviceInfoPanel.chipLabel(),
+                () -> com.limelight.pocket.device.DeviceInfoPanel.show(this));
 
         addAction(getString(R.string.pocket_set_notif_access), getString(R.string.pocket_set_notif_access_sub),
                 () -> getString(com.limelight.pocket.device.PocketNotifications.allowed(this) ? R.string.pocket_on : R.string.pocket_off),

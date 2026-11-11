@@ -698,7 +698,9 @@ public static class PcGames {
             return true;
         }
         if (cmd == "STEAM" && p.Length > 2 && p[1].ToUpperInvariant() == "INSTALL") {
-            Send(s, SteamInstall(p[2]));
+            // "PICK": the handheld streams the PC's screen and the drive is chosen there
+            bool pick = p.Length > 3 && p[3].ToUpperInvariant() == "PICK";
+            Send(s, SteamInstall(p[2], !pick));
             return true;
         }
         if (cmd == "PROGRAMS") {
@@ -1539,14 +1541,34 @@ public static class PcGames {
     }
 
     public static string SteamInstall(string id) {
+        return SteamInstall(id, true);
+    }
+
+    public static string SteamInstall(string id, bool confirm) {
         if (!IsDigits(id)) { return "ERR id"; }
         if (SteamPath() == null) { return "ERR nosteam"; }
         try { Open("steam://install/" + id); } catch (Exception e) { return "ERR " + Clean(e.Message); }
-        Log("Steam: install requested (app " + id + ")");
-        Thread t = new Thread(ConfirmInstallDialog);
+        Log("Steam: install requested (app " + id + (confirm ? ")" : ", the drive is picked on the stream)"));
+        Thread t = new Thread(confirm ? (ThreadStart)ConfirmInstallDialog : (ThreadStart)FrontInstallDialog);
         t.IsBackground = true;
         t.Start();
         return "OK";
+    }
+
+    // The drive is chosen on the handheld's stream: just bring Steam's window to the front
+    static void FrontInstallDialog() {
+        for (int i = 0; i < 40; i++) {
+            Thread.Sleep(500);
+            IntPtr w = FindSteamWindow("Install");
+            if (w == IntPtr.Zero) { continue; }
+            Thread.Sleep(600);
+            keybd_event(0x12, 0, 0, UIntPtr.Zero);
+            keybd_event(0x12, 0, 2, UIntPtr.Zero);
+            ShowWindow(w, 9);
+            SetForegroundWindow(w);
+            Log("Steam: install window up, waiting for the drive to be picked");
+            return;
+        }
     }
 
     // Steam asks where to install: when its dialog comes up, press its default button (Install)
@@ -1854,6 +1876,7 @@ function Invoke-SelfTest {
     $writer.WriteLine("ADDAPP 00000000"); Check ($reader.ReadLine() -eq "ERR unknown") "ADDAPP of something unknown"
     $writer.WriteLine("LAUNCH steam 1"); Check ($reader.ReadLine() -like "ERR *") "LAUNCH of something not found"
     $writer.WriteLine("STEAM INSTALL abc"); Check ($reader.ReadLine() -eq "ERR id") "STEAM INSTALL checks the id"
+    $writer.WriteLine("STEAM INSTALL abc PICK"); Check ($reader.ReadLine() -eq "ERR id") "STEAM INSTALL PICK checks the id"
     $writer.WriteLine("PCLIB"); $pl = $reader.ReadLine(); Check ($pl -like "PCLIB*") ("PCLIB: " + $pl)
     $writer.WriteLine("APOLLOLOG")
     $n = 0

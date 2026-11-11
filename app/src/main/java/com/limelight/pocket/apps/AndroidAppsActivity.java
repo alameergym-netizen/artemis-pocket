@@ -225,7 +225,8 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
                 if (!library.contains(a.packageName)) {
                     continue;
                 }
-                Entry e = new Entry("app:" + a.packageName, a.label, a.type, a.packageName, null, 0);
+                Entry e = new Entry("app:" + a.packageName, PocketPrefs.customName(this, AndroidLibrary.UUID,
+                        AndroidLibrary.idFor(a.packageName), a.label), a.type, a.packageName, null, 0);
                 e.used = PocketPrefs.prefs(this).getLong(KEY_USED + a.packageName, 0);
                 apps.add(e);
             }
@@ -672,6 +673,26 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_art_find_again), () -> {
             Toast.makeText(this, R.string.pocket_art_finding, Toast.LENGTH_SHORT).show();
             scrape(e, true);
+        }));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_rename), () -> {
+            hideConsolePanel();
+            final android.widget.EditText field = new android.widget.EditText(this);
+            field.setSingleLine(true);
+            field.setText(e.label);
+            field.setSelectAllOnFocus(true);
+            new android.app.AlertDialog.Builder(this, R.style.PocketDialog)
+                    .setTitle(R.string.pocket_rename)
+                    .setView(field)
+                    .setPositiveButton(android.R.string.ok, (d, w) -> {
+                        PocketPrefs.setCustomName(this, AndroidLibrary.UUID, e.id(), field.getText().toString());
+                        load();
+                    })
+                    .setNeutralButton(R.string.pocket_rename_reset, (d, w) -> {
+                        PocketPrefs.setCustomName(this, AndroidLibrary.UUID, e.id(), null);
+                        load();
+                    })
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show();
         }));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_apps_add), () -> {
             hideConsolePanel();

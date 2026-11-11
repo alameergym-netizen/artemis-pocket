@@ -72,6 +72,7 @@
         android:banner="@drawable/atv_banner"
         android:icon="@mipmap/ic_launcher"
         android:installLocation="auto"
+        android:appCategory="game"
         android:gwpAsanMode="always"
         android:localeConfig="@xml/locales_config"
         android:enableOnBackInvokedCallback="false"
@@ -408,6 +409,18 @@
                 android:resource="@xml/keyboard_accessibility_service" />
         </service>
 
+
+        <!-- Pocket Nexus: a Quick Settings tile that opens Home -->
+        <service
+            android:name=".pocket.device.PocketTile"
+            android:label="@string/pocket_tile_label"
+            android:icon="@drawable/ic_pocket_tile"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
 
         <!-- Pocket Nexus: notification access (the quick panel's notifications) -->
         <service

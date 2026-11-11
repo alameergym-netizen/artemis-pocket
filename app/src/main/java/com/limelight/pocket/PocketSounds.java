@@ -12,7 +12,7 @@ import android.os.SystemClock;
 import com.limelight.R;
 
 /**
- * The console's interface sounds, in five styles (Glass, Soft, Crisp, Retro, Pop), all 48 kHz and designed
+ * The console's interface sounds, in eight styles (Glass, Soft, Crisp, Retro, Pop, Aurora, Crystal, Tactile), all 48 kHz and designed
  * as sets. They play on the media volume (the volume the handheld's buttons change) and are
  * scaled by the sliders in Settings > System: master, navigation, menus and boot.
  * The long boot sound plays through a MediaPlayer so it can be any length.
@@ -60,6 +60,18 @@ public final class PocketSounds {
                     R.raw.pocket_pop_close, R.raw.pocket_pop_radial_open, R.raw.pocket_pop_radial_tick,
                     R.raw.pocket_pop_radial_select, R.raw.pocket_pop_toggle_on, R.raw.pocket_pop_toggle_off,
                     R.raw.pocket_pop_error},
+            {R.raw.pocket_aurora_nav, R.raw.pocket_aurora_select, R.raw.pocket_aurora_back, R.raw.pocket_aurora_open,
+                    R.raw.pocket_aurora_close, R.raw.pocket_aurora_radial_open, R.raw.pocket_aurora_radial_tick,
+                    R.raw.pocket_aurora_radial_select, R.raw.pocket_aurora_toggle_on, R.raw.pocket_aurora_toggle_off,
+                    R.raw.pocket_aurora_error},
+            {R.raw.pocket_crystal_nav, R.raw.pocket_crystal_select, R.raw.pocket_crystal_back, R.raw.pocket_crystal_open,
+                    R.raw.pocket_crystal_close, R.raw.pocket_crystal_radial_open, R.raw.pocket_crystal_radial_tick,
+                    R.raw.pocket_crystal_radial_select, R.raw.pocket_crystal_toggle_on, R.raw.pocket_crystal_toggle_off,
+                    R.raw.pocket_crystal_error},
+            {R.raw.pocket_tactile_nav, R.raw.pocket_tactile_select, R.raw.pocket_tactile_back, R.raw.pocket_tactile_open,
+                    R.raw.pocket_tactile_close, R.raw.pocket_tactile_radial_open, R.raw.pocket_tactile_radial_tick,
+                    R.raw.pocket_tactile_radial_select, R.raw.pocket_tactile_toggle_on, R.raw.pocket_tactile_toggle_off,
+                    R.raw.pocket_tactile_error},
     };
     // The files are balanced against each other; these only trim the busiest ones
     private static final float[] TRIM = {0.8f, 0.95f, 0.9f, 0.9f, 0.85f, 0.95f, 0.8f, 0.95f, 0.85f, 0.85f, 0.9f, 1f, 0.9f};

@@ -97,7 +97,8 @@ public final class GameInfoService {
     }
 
     private static String key(String name) {
-        return InfoParsers.normalize(name) + "|" + languages()[0];
+        // v2: trailers from YouTube and SteamGridDB pictures for every game (looked up again once)
+        return InfoParsers.normalize(name) + "|" + languages()[0] + "|v2";
     }
 
     /** Already known (in memory), or null. Never touches the disk or the network. */
@@ -291,6 +292,43 @@ public final class GameInfoService {
                 info.shortDescription = wiki.shortDescription;
             }
         }
+        // No trailer anywhere: the first YouTube result for its trailer (any game, any store)
+        if (info != null && info.movies.isEmpty()) {
+            try {
+                String id = ExtraParsers.youtubeFirst(httpHtml("https://www.youtube.com/results?search_query="
+                        + enc(name + " official trailer")));
+                if (id != null) {
+                    GameInfo.Movie m = new GameInfo.Movie();
+                    m.name = "Trailer";
+                    m.youtube = id;
+                    m.thumb = "https://i.ytimg.com/vi/" + id + "/hqdefault.jpg";
+                    m.highlight = true;
+                    info.movies.add(m);
+                }
+            } catch (IOException | RuntimeException ignored) {
+            }
+        }
+        // No screenshots: SteamGridDB's backgrounds of the game (with the user's key)
+        if (info != null && info.screenshots.isEmpty() && com.limelight.pocket.PocketArt.hasKey(context)) {
+            try {
+                String key = com.limelight.pocket.PocketArt.apiKey(context);
+                for (com.limelight.pocket.SteamGridDb.Game g : com.limelight.pocket.SteamGridDb.search(key, name)) {
+                    if (!com.limelight.pocket.SteamGridDb.sameGame(name, g.name)) {
+                        continue;
+                    }
+                    int n = 0;
+                    for (com.limelight.pocket.SteamGridDb.Image img : com.limelight.pocket.SteamGridDb.images(key, g.id,
+                            com.limelight.pocket.PocketArt.HERO, 0)) {
+                        info.screenshots.add(new GameInfo.Shot(img.thumb, img.url));
+                        if (++n >= 8) {
+                            break;
+                        }
+                    }
+                    break;
+                }
+            } catch (IOException | RuntimeException ignored) {
+            }
+        }
         if (info != null) {
             info.fetchedAt = System.currentTimeMillis();
         }
@@ -337,6 +375,8 @@ public final class GameInfoService {
                         + "Chrome/124.0 Safari/537.36")
                 .header("Accept", "text/html")
                 .header("Accept-Language", "en-US,en;q=0.8")
+                // YouTube's cookie wall: already answered
+                .header("Cookie", url.contains("youtube.com") ? "CONSENT=YES+cb; SOCS=CAI" : "")
                 .build();
         try (Response response = CLIENT.newCall(request).execute()) {
             ResponseBody body = response.body();

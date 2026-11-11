@@ -411,10 +411,12 @@ public final class PocketPrefs {
     public static final String KEY_AUTO_RECOVER = "pocket_auto_recover";
     public static final String KEY_STREAM_MODE = "pocket_stream_mode";
 
-    public static final String[] SOUND_STYLES = {"glass", "soft", "crisp", "retro", "pop"};
+    public static final String[] SOUND_STYLES = {"glass", "soft", "crisp", "retro", "pop", "aurora", "crystal", "tactile"};
+    /** The style for anyone who hasn't picked one (the newest, most refined set). */
+    public static final String DEFAULT_SOUND_STYLE = "aurora";
 
     public static int soundStyleIndex(Context context) {
-        String style = prefs(context).getString(KEY_SOUND_STYLE, SOUND_STYLES[0]);
+        String style = prefs(context).getString(KEY_SOUND_STYLE, DEFAULT_SOUND_STYLE);
         for (int i = 0; i < SOUND_STYLES.length; i++) {
             if (SOUND_STYLES[i].equals(style)) {
                 return i;
@@ -438,7 +440,19 @@ public final class PocketPrefs {
         prefs(context).edit().putBoolean("pocket_trailer_autoplay", on).apply();
     }
 
-    /** Real frosted glass (live blur) on the console screens. */
+    /** The stream's performance overlay drawn as the modern HUD (on) or the classic text (off). */
+    public static final String KEY_MODERN_HUD = "pocket_modern_hud";
+    /** Ask Android for sustained performance while streaming (steady clocks, less throttling). */
+    public static final String KEY_SUSTAINED = "pocket_sustained_perf";
+
+    public static boolean modernHud(Context context) {
+        return prefs(context).getBoolean(KEY_MODERN_HUD, true);
+    }
+
+    public static boolean sustainedPerformance(Context context) {
+        return prefs(context).getBoolean(KEY_SUSTAINED, false);
+    }
+
     /** The app opens on Home (pinned and recent games from everywhere, widgets). */
     public static final String KEY_CONSOLE_HOME = "pocket_console_home";
 

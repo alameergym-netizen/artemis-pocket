@@ -284,6 +284,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        PocketMusic.screenShown(this);
         // A notification that comes in while a console screen is up: a short note about it
         com.limelight.pocket.device.PocketNotifications.setListener(note -> {
             if (!isFinishing() && PocketPrefs.prefs(this).getBoolean("pocket_announce_notifications", true)) {
@@ -350,6 +351,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     protected void onPause() {
         super.onPause();
         com.limelight.pocket.device.PocketNotifications.setListener(null);
+        PocketMusic.screenHidden();
         pausedSinceLaunch = true;
         abandonBoot();
         if (coachMark != null) {

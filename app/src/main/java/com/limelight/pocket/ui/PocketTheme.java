@@ -6,6 +6,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.StateListDrawable;
 
+import com.limelight.R;
 import com.limelight.pocket.PocketPrefs;
 
 /**
@@ -18,6 +19,59 @@ public final class PocketTheme {
     /** Accent presets: white, ice, mint, lilac, rose, amber. */
     public static final int[] ACCENTS = {0xFFFFFFFF, 0xFF9FD8FF, 0xFF86F0C8, 0xFFC3B2FF, 0xFFFF9EBE, 0xFFFFC978,
             0xFFFF8F7A, 0xFFC8F27A, 0xFF6FE6F0, 0xFF9E8CFF, 0xFF4CFF8F};
+
+    /** A whole look in one choice: accent, background, material and sound set. */
+    public static final class Preset {
+        public final int name;
+        public final int accent;
+        public final String backdrop;
+        public final boolean frost;
+        public final String sounds;
+
+        Preset(int name, int accent, String backdrop, boolean frost, String sounds) {
+            this.name = name;
+            this.accent = accent;
+            this.backdrop = backdrop;
+            this.frost = frost;
+            this.sounds = sounds;
+        }
+    }
+
+    public static final Preset[] THEMES = {
+            new Preset(R.string.pocket_theme_nexus, 0xFFFFFFFF, PocketPrefs.BACKDROP_AMBIENT, true, "aurora"),
+            new Preset(R.string.pocket_theme_midnight, 0xFF9FD8FF, PocketPrefs.BACKDROP_BLACK, true, "crystal"),
+            new Preset(R.string.pocket_theme_aurora, 0xFF86F0C8, PocketPrefs.BACKDROP_GLOW, true, "aurora"),
+            new Preset(R.string.pocket_theme_sakura, 0xFFFF9EBE, PocketPrefs.BACKDROP_AMBIENT, true, "soft"),
+            new Preset(R.string.pocket_theme_ember, 0xFFFFC978, PocketPrefs.BACKDROP_GLOW, true, "glass"),
+            new Preset(R.string.pocket_theme_neon, 0xFF4CFF8F, PocketPrefs.BACKDROP_BLACK, false, "tactile"),
+            new Preset(R.string.pocket_theme_arcade, 0xFF9E8CFF, PocketPrefs.BACKDROP_ART, false, "retro"),
+            new Preset(R.string.pocket_theme_ocean, 0xFF6FE6F0, PocketPrefs.BACKDROP_ART, true, "crystal"),
+            new Preset(R.string.pocket_theme_mono, 0xFFFFFFFF, PocketPrefs.BACKDROP_BLACK, false, "crisp"),
+    };
+
+    /** Which theme the current settings match, or -1 when they've been mixed by hand. */
+    public static int themeIndex(Context context) {
+        int accent = PocketPrefs.accentColor(context);
+        String backdrop = PocketPrefs.backdrop(context);
+        boolean frost = PocketPrefs.frost(context);
+        for (int i = 0; i < THEMES.length; i++) {
+            Preset t = THEMES[i];
+            if (t.accent == accent && t.backdrop.equals(backdrop) && t.frost == frost) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    public static void applyTheme(Context context, int index) {
+        Preset t = THEMES[index];
+        PocketPrefs.prefs(context).edit()
+                .putInt(PocketPrefs.KEY_ACCENT, t.accent)
+                .putString(PocketPrefs.KEY_BACKDROP, t.backdrop)
+                .putString(PocketPrefs.KEY_SOUND_STYLE, t.sounds)
+                .apply();
+        PocketPrefs.setFrost(context, t.frost);
+    }
 
     public static int accent(Context context) {
         return PocketPrefs.accentColor(context);

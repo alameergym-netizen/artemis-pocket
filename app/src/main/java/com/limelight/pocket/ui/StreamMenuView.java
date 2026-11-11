@@ -90,6 +90,16 @@ public class StreamMenuView extends FrameLayout {
             return new Item(title, current, null, stepper, false, false, false, true);
         }
 
+        /** A row that only shows a value (device info, test results). */
+        public static Item info(String title, String value) {
+            return new Item(title, value, null, null, false, false, false, true);
+        }
+
+        /** A dim note that wraps (tips, explanations). */
+        public static Item note(String text) {
+            return new Item(text, null, null, null, false, false, false, true);
+        }
+
         public static Item header(String title) {
             return new Item(title, null, null, null, true, false, false, true);
         }

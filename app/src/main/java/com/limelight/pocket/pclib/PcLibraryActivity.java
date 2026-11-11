@@ -448,7 +448,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         if (title != null) {
             title.setMaxLines(1);
             if (newGame) {
-                PocketMotion.swapText(title, g.name, dir);
+                PocketMotion.swapText(title, shownName(g), dir);
             }
         }
         showLogo(g, newGame);
@@ -671,6 +671,8 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         }
         else if (!g.isBusy() && g.installCommand() != null) {
             items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_pclib_install_on, pcName), () -> install(g)));
+            // Steam asks where: answer it on the PC's screen, streamed here
+            items.add(StreamMenuView.Item.action(getString(R.string.pocket_pclib_install_pick), () -> installPicking(g)));
         }
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_hint_details), () -> openPage(g)));
         if (g.isInstalled()) {
@@ -679,7 +681,11 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         }
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_art_change), () -> {
             hideConsolePanel();
-            com.limelight.pocket.ArtPickerActivity.open(this, uuid, pageId(g), g.name);
+            com.limelight.pocket.ArtPickerActivity.open(this, uuid, pageId(g), shownName(g));
+        }));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_rename), () -> {
+            hideConsolePanel();
+            rename(g);
         }));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_art_find_again), () -> {
             showToast(R.string.pocket_art_finding);
@@ -705,7 +711,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         }
         com.limelight.pocket.ui.LibraryLayout.addSettings(this, items);
         PocketSounds.play(this, PocketSounds.OPEN);
-        showConsolePanel(g.name, g.storeLabel(), null, items);
+        showConsolePanel(shownName(g), g.storeLabel(), null, items);
     }
 
     @Override
@@ -847,6 +853,39 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         });
     }
 
+    /**
+     * Opens Steam's install window on the PC (without answering it) and streams the PC's screen,
+     * so you pick the drive and press Install yourself.
+     */
+    private void installPicking(final PcGame g) {
+        if (status != PcLibrary.OK) {
+            explainHelper();
+            return;
+        }
+        String command = g.installCommand();
+        final NvApp desktop = PcLibrary.desktopApp(this, uuid);
+        if (command == null) {
+            return;
+        }
+        if (desktop == null) {
+            Toast.makeText(this, R.string.pocket_pclib_no_desktop, Toast.LENGTH_LONG).show();
+            return;
+        }
+        hideConsolePanel();
+        PcLibrary.send(this, host, uuid, command + " PICK", reply -> {
+            if (reply != null && reply.startsWith("OK")) {
+                Toast.makeText(this, R.string.pocket_pclib_install_pick_sent, Toast.LENGTH_LONG).show();
+                finishWithStart(desktop.getAppId());
+            }
+            else if (reply != null && reply.startsWith("ERR nosteam")) {
+                Toast.makeText(this, R.string.pocket_pclib_no_steam, Toast.LENGTH_LONG).show();
+            }
+            else {
+                failed(reply);
+            }
+        });
+    }
+
     private void failed(String reply) {
         if (reply == null) {
             Toast.makeText(this, R.string.pocket_pclib_no_helper_short, Toast.LENGTH_LONG).show();
@@ -908,7 +947,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
 
     /** Art from SteamGridDB, Steam and IGDB for a game that has none (in the background). */
     private void scrape(final PcGame g, boolean force) {
-        com.limelight.pocket.ArtScraper.Item item = new com.limelight.pocket.ArtScraper.Item(uuid, pageId(g), g.name);
+        com.limelight.pocket.ArtScraper.Item item = new com.limelight.pocket.ArtScraper.Item(uuid, pageId(g), shownName(g));
         try {
             item.steamAppId = g.artSteamId.isEmpty() ? 0 : Integer.parseInt(g.artSteamId);
         } catch (NumberFormatException ignored) {
@@ -1015,6 +1054,36 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
     // ---- The game's page ----------------------------------------------------------------------
 
     /** Library games have no Apollo id: a stable negative one stands in (art, favourites, info). */
+    /** The game's name here (a name given on the handheld wins: its details are looked up by it). */
+    private String shownName(PcGame g) {
+        return com.limelight.pocket.PocketPrefs.customName(this, uuid, pageId(g), g.name);
+    }
+
+    private void rename(final PcGame g) {
+        final android.widget.EditText field = new android.widget.EditText(this);
+        field.setSingleLine(true);
+        field.setText(shownName(g));
+        field.setSelectAllOnFocus(true);
+        new android.app.AlertDialog.Builder(this, R.style.PocketDialog)
+                .setTitle(R.string.pocket_rename)
+                .setView(field)
+                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                    String name = field.getText().toString().trim();
+                    com.limelight.pocket.PocketPrefs.setCustomName(this, uuid, pageId(g), name.equals(g.name) ? null : name);
+                    adapter.notifyDataSetChanged();
+                    int at = carouselAdapter != null ? carouselAdapter.getFocusedPosition() : -1;
+                    if (at >= 0) {
+                        updateHero(at, false);
+                    }
+                })
+                .setNeutralButton(R.string.pocket_rename_reset, (d, w) -> {
+                    com.limelight.pocket.PocketPrefs.setCustomName(this, uuid, pageId(g), null);
+                    adapter.notifyDataSetChanged();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
     private static int pageId(PcGame g) {
         return -1 - (g.key().hashCode() & 0x3FFFFFFF);
     }
@@ -1044,7 +1113,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
                 card = image;
             }
         }
-        GamePageActivity.open(this, card, uuid, pageId(g), g.name, pcName, false, false, cover);
+        GamePageActivity.open(this, card, uuid, pageId(g), shownName(g), pcName, false, false, cover);
     }
 
     @Override
@@ -1168,8 +1237,8 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
             if (overlay != null) {
                 overlay.setVisibility(View.GONE);
             }
-            text.setText(g.name);
-            card.setContentDescription(g.name);
+            text.setText(shownName(g));
+            card.setContentDescription(shownName(g));
             badge(card, g);
             // Not on the PC: the cover is dimmed and grey
             boolean onPc = g.isInstalled() || g.isBusy();

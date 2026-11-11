@@ -101,8 +101,9 @@ public final class PocketMotion {
         final float shift = dp(view, 18) * direction;
         if (rapid(view)) {
             // Moving quickly (holding the D-pad): no time for the old name to leave; the new one
-            // just slides in, so the names stay readable instead of blinking out at every step
-            view.animate().cancel();
+            // just slides in, so the names stay readable instead of blinking out at every step.
+            // (No cancel(): it would freeze the screen's entrance halfway, leaving the name
+            // stuck below its line. Taking over alpha and X drops the pending swap all the same.)
             view.setText(text);
             arriveQuick(view, shift);
             return;
@@ -135,13 +136,11 @@ public final class PocketMotion {
         }
         final float shift = dp(view, 18) * (direction == 0 ? 1 : direction);
         if (direction != 0 && view.getDrawable() != null && rapid(view)) {
-            view.animate().cancel();
             view.setImageBitmap(bitmap);
             arriveQuick(view, shift);
             return;
         }
         if (direction == 0 || view.getDrawable() == null || view.getAlpha() < 0.05f) {
-            view.animate().cancel();
             view.setImageBitmap(bitmap);
             view.setAlpha(0f);
             view.setTranslationX(shift * 0.67f);
@@ -172,7 +171,11 @@ public final class PocketMotion {
         return last != null && now - last < RAPID_MS;
     }
 
-    /** The quick arrival used while moving fast: from where it is, a short slide, never hidden. */
+    /**
+     * The quick arrival used while moving fast: from where it is, a short slide, never hidden.
+     * It animates alpha and X only, which takes them over from any swap in progress (and drops
+     * that swap's pending change) while an entrance still moving the view up carries on.
+     */
     private static void arriveQuick(View view, float shift) {
         view.setAlpha(Math.max(view.getAlpha(), 0.45f));
         view.setTranslationX(shift * 0.45f);

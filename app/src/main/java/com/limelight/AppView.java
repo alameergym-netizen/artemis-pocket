@@ -1419,25 +1419,26 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         }
         logoShown = logo;
         if (logo == null) {
-            view.animate().cancel();
+            // Takes over alpha and X (drops a logo swap in progress) without freezing an entrance
+            view.animate().alpha(1f).translationX(0f).setStartDelay(0).setDuration(0).withEndAction(null).start();
             view.setVisibility(View.GONE);
             view.setImageDrawable(null);
             if (title.getVisibility() != View.VISIBLE) {
                 // The name was hidden behind a logo: it comes in as this game's name straight away
                 // (not as the previous game's name leaving first)
-                title.animate().cancel();
                 if (heroTitleForLaunch != null) {
                     title.setText(heroTitleForLaunch);
                 }
-                title.setTranslationX(0f);
                 title.setVisibility(View.VISIBLE);
+                // Alpha and X only (taking over a name swap in progress): an entrance still lifting
+                // the name into place carries on
                 if (PocketPrefs.animationsEnabled(this)) {
                     title.setAlpha(0f);
-                    title.animate().alpha(1f).setStartDelay(0).setDuration(260)
+                    title.animate().alpha(1f).translationX(0f).setStartDelay(0).setDuration(260)
                             .setInterpolator(com.limelight.pocket.ui.PocketMotion.DECELERATE).withEndAction(null).start();
                 }
                 else {
-                    title.setAlpha(1f);
+                    title.animate().alpha(1f).translationX(0f).setStartDelay(0).setDuration(0).withEndAction(null).start();
                 }
             }
             return;

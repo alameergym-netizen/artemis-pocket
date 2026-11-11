@@ -16,15 +16,30 @@ public final class PcLaunchTicket {
     private static int appId;
     private static String command;
     private static String name;
+    private static int profile;
     private static long at;
 
     /** viaAppId: the Apollo app the stream starts with (Desktop); only that stream picks it up. */
-    public static synchronized void arm(String pcUuid, int viaAppId, String launchCommand, String gameName) {
+    public static synchronized void arm(String pcUuid, int viaAppId, String launchCommand, String gameName,
+                                        int profileId) {
         uuid = pcUuid;
         appId = viaAppId;
+        profile = profileId;
         command = launchCommand;
         name = gameName;
         at = SystemClock.elapsedRealtime();
+    }
+
+    /**
+     * The game's own settings for a stream of this PC and app, if a game is waiting to start
+     * through it (0: none). Doesn't use the ticket up.
+     */
+    public static synchronized int profileFor(String pcUuid, int streamAppId) {
+        if (command == null || pcUuid == null || !pcUuid.equals(uuid) || streamAppId != appId
+                || SystemClock.elapsedRealtime() - at > VALID_MS) {
+            return 0;
+        }
+        return profile;
     }
 
     /** {command, game name} for a stream of this PC and app, if one is waiting (it's used up). */

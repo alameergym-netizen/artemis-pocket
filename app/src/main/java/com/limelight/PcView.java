@@ -268,6 +268,10 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
                 startActivity(new Intent(PcView.this, ProfilesActivity.class));
             }
         });
+        View appsButton = findViewById(R.id.pocketAppsButton);
+        if (appsButton != null) {
+            appsButton.setOnClickListener(v -> com.limelight.pocket.apps.AndroidAppsActivity.open(PcView.this));
+        }
 
         // Amazon review didn't like the help button because the wiki was not entirely
         // navigable via the Fire TV remote (though the relevant parts were). Let's hide
@@ -1503,11 +1507,8 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
 
         @Override
         public void onItemOptions(int position, View itemView) {
-            // Y: the whole library of that PC
-            ComputerDetails pc = pocketRecentPc();
-            if (pc != null && pc.state == ComputerDetails.State.ONLINE && pc.pairState == PairState.PAIRED) {
-                doAppList(pc, false, false);
-            }
+            // Y: the game's own settings, its page, the whole library of that PC
+            pocketRecentOptions(position);
         }
 
         @Override
@@ -1515,6 +1516,39 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
             pocketShowRecentHero(position);
         }
     };
+
+    private void pocketRecentOptions(int position) {
+        final ComputerDetails pc = pocketRecentPc();
+        if (pocketRecentAdapter == null || position < 0 || position >= pocketRecentAdapter.getCount() || pc == null) {
+            return;
+        }
+        final NvApp app = pocketRecentAdapter.getItem(position).app;
+        final String title = getString(R.string.pocket_gs_title);
+        java.util.List<com.limelight.pocket.ui.StreamMenuView.Item> items = new ArrayList<>();
+        items.add(com.limelight.pocket.ui.StreamMenuView.Item.action(getString(R.string.pocket_hero_play),
+                () -> pocketPlayRecent(position)));
+        String custom = com.limelight.pocket.GameProfile.summary(this, pc.uuid, app.getAppId());
+        items.add(com.limelight.pocket.ui.StreamMenuView.Item.submenu(title, () -> pushConsolePage(title,
+                com.limelight.pocket.GameSettingsPage.build(this, pc.uuid, app.getAppId(), app.getAppName(), null)))
+                .withValue(custom.isEmpty() ? null : getString(R.string.pocket_gs_custom)));
+        items.add(com.limelight.pocket.ui.StreamMenuView.Item.action(getString(R.string.pocket_hint_details), () -> {
+            hideConsolePanel();
+            pocketOpenRecentPage();
+        }));
+        if (pc.state == ComputerDetails.State.ONLINE && pc.pairState == PairState.PAIRED) {
+            items.add(com.limelight.pocket.ui.StreamMenuView.Item.action(getString(R.string.pocket_hint_library),
+                    () -> doAppList(pc, false, false)));
+            items.add(com.limelight.pocket.ui.StreamMenuView.Item.action(getString(R.string.pocket_pclib_button), () -> {
+                String host = pocketCompanionHost(pc);
+                if (host != null) {
+                    pocketPcLibraryPc = pc;
+                    com.limelight.pocket.pclib.PcLibraryActivity.open(this, pc.uuid, pc.name, host);
+                }
+            }));
+        }
+        com.limelight.pocket.PocketSounds.play(this, com.limelight.pocket.PocketSounds.OPEN);
+        showConsolePanel(app.getAppName(), pc.name, null, items);
+    }
 
     /** The PC whose games the row shows. */
     private ComputerDetails pocketRecentPc() {
@@ -1535,13 +1569,22 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
         if (pocketRecentAdapter == null || pocketRecentCarousel == null) {
             return;
         }
-        boolean known = pc != null && pc.pairState == PairState.PAIRED;
-        java.util.List<com.limelight.pocket.RecentGames.Game> games = known
+        // Pocket Nexus: the PC's games only show while that PC is there to stream them
+        boolean online = pc != null && pc.pairState == PairState.PAIRED && pc.state == ComputerDetails.State.ONLINE;
+        java.util.List<com.limelight.pocket.RecentGames.Game> games = online
                 ? com.limelight.pocket.RecentGames.forPc(this, pc.uuid, 10)
                 : new ArrayList<com.limelight.pocket.RecentGames.Game>();
         if (games.isEmpty() && pocketRecentCarousel.hasFocus()) {
-            // Don't pull the row away from under the focus
-            return;
+            if (online) {
+                // A refresh with nothing in it: don't pull the row away from under the focus
+                return;
+            }
+            // The PC went away: the focus goes back to its card, then the row goes
+            RecyclerView.ViewHolder holder = pcCarousel != null
+                    ? pcCarousel.findViewHolderForAdapterPosition(Math.max(0, pocketHeroPos)) : null;
+            if (holder != null) {
+                holder.itemView.requestFocus();
+            }
         }
         pocketRecentAdapter.set(pc != null ? pc.uuid : null, games, pc != null ? pc.runningGameId : 0);
         int visibility = games.isEmpty() ? View.GONE : View.VISIBLE;
@@ -1703,16 +1746,25 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
             doPair(pc, null, null);
             return;
         }
+        final Runnable start = () -> {
+            if (managerBinder != null) {
+                com.limelight.pocket.RecentGames.invalidate(pc.uuid);
+                ServerHelper.doStart(this, app, pc, managerBinder,
+                        PreferenceConfiguration.readPreferences(this).useVirtualDisplay);
+            }
+        };
         if (pc.runningGameId != 0 && pc.runningGameId != app.getAppId()) {
-            // Another game is running: the library asks what to do with it
-            doAppList(pc, false, false);
+            // Another game is running: one question (quit it and play this one?), right here
+            String running = null;
+            for (com.limelight.pocket.RecentGames.Game g : com.limelight.pocket.RecentGames.forPc(this, pc.uuid, 100000)) {
+                if (g.app.getAppId() == pc.runningGameId) {
+                    running = g.app.getAppName();
+                }
+            }
+            askSwitchGame(running, app.getAppName(), start);
             return;
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && managerBinder != null) {
-            com.limelight.pocket.RecentGames.invalidate(pc.uuid);
-            ServerHelper.doStart(this, app, pc, managerBinder,
-                    PreferenceConfiguration.readPreferences(this).useVirtualDisplay);
-        }
+        start.run();
     }
 
     // ---- Quick Resume ---------------------------------------------------------------------------
@@ -1936,6 +1988,15 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
                 }
             }
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        // Pocket Nexus as the device's home screen: Back has nowhere to go from here
+        if (com.limelight.pocket.apps.HomeScreen.isDefault(this) && isTaskRoot()) {
+            return;
+        }
+        super.onBackPressed();
     }
 
     @Override

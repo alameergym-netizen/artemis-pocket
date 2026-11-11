@@ -88,6 +88,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
     private List<PcGame> all = new ArrayList<>();
     private int filter = PcGame.FILTER_ALL;
     private int status = -1;
+    private String statusDetail = "";
     private boolean loaded;
     private boolean loading;
     private boolean resumed;
@@ -137,9 +138,13 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
             title.setText(pcName.isEmpty() ? getString(R.string.pocket_pclib_button)
                     : getString(R.string.pocket_pclib_title, pcName));
         }
-        // The library's own buttons don't belong here
+        // The library's own buttons don't belong here; its PC games button adds a PC app here
         hide(R.id.profilesButton);
-        hide(R.id.pocketPcLibraryButton);
+        TextView addApp = findViewById(R.id.pocketPcLibraryButton);
+        if (addApp != null) {
+            addApp.setText(R.string.pocket_pclib_add_app_short);
+            addApp.setOnClickListener(v -> addPcApp());
+        }
 
         carousel = findViewById(R.id.pocketAppCarousel);
         carousel.setLayoutManager(new AnchoredLayoutManager(this));
@@ -219,6 +224,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
             boolean first = !loaded;
             loaded = true;
             status = result.status;
+            statusDetail = result.detail != null ? result.detail : "";
             show(result.games);
             if (first && result.status != PcLibrary.OK && result.games.isEmpty()) {
                 explainHelper();
@@ -280,6 +286,13 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
     private String emptyMessage() {
         if (status == PcLibrary.OK || all.size() > 0) {
             return getString(filter == PcGame.FILTER_ALL ? R.string.pocket_pclib_empty : R.string.pocket_pclib_empty_filter);
+        }
+        return statusText();
+    }
+
+    private String statusText() {
+        if (status == PcLibrary.ADDON_FAILED) {
+            return getString(R.string.pocket_pclib_addon_failed, statusDetail);
         }
         return getString(statusMessage());
     }
@@ -409,7 +422,8 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         TextView subtitle = findViewById(R.id.pocketHeroSubtitle);
         if (subtitle != null) {
             String size = PcGame.sizeLabel(g.sizeMb);
-            String sub = g.storeLabel() + (size.isEmpty() ? "" : "  ·  " + size);
+            String kind = kindLabel(g);
+            String sub = g.storeLabel() + (kind.isEmpty() ? "" : "  ·  " + kind) + (size.isEmpty() ? "" : "  ·  " + size);
             subtitle.setVisibility(View.VISIBLE);
             if (!sub.contentEquals(subtitle.getText())) {
                 subtitle.setText(sub);
@@ -600,6 +614,13 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
             items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_pclib_install_on, pcName), () -> install(g)));
         }
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_hint_details), () -> openPage(g)));
+        items.add(StreamMenuView.Item.submenu(getString(R.string.pocket_gs_title),
+                () -> pushConsolePage(getString(R.string.pocket_gs_title), com.limelight.pocket.GameSettingsPage.build(this,
+                        uuid, profileId(g), g.name, null))));
+        if (g.isPcApp()) {
+            items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_pclib_remove_app), () -> removeApp(g)));
+        }
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_pclib_add_app), this::addPcApp));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_pclib_refresh), () -> {
             showToast(R.string.pocket_pclib_refreshing);
             load(true);
@@ -696,7 +717,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
             showConsolePanel(g.name, getString(R.string.pocket_pclib_no_desktop), null, items);
             return;
         }
-        PcLaunchTicket.arm(uuid, desktop.getAppId(), g.launchCommand(), g.name);
+        PcLaunchTicket.arm(uuid, desktop.getAppId(), g.launchCommand(), g.name, pageId(g));
         finishWithStart(desktop.getAppId());
     }
 
@@ -782,7 +803,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
             items.add(StreamMenuView.Item.action(getString(R.string.pocket_companion_pin_menu), this::askPin));
         }
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_pclib_try_again), () -> load(false)));
-        showConsolePanel(getString(R.string.pocket_pclib_helper_title), getString(statusMessage()), null, items);
+        showConsolePanel(getString(R.string.pocket_pclib_helper_title), statusText(), null, items);
     }
 
     private void askPin() {
@@ -811,6 +832,82 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
                         }))
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    /** "Tool", "App", "Demo" (nothing for games). */
+    private String kindLabel(PcGame g) {
+        if (PcGame.KIND_TOOL.equals(g.kind)) {
+            return getString(R.string.pocket_pclib_kind_tool);
+        }
+        if (PcGame.KIND_APP.equals(g.kind)) {
+            return getString(R.string.pocket_pclib_kind_app);
+        }
+        if (PcGame.KIND_DEMO.equals(g.kind)) {
+            return getString(R.string.pocket_pclib_kind_demo);
+        }
+        return "";
+    }
+
+    // ---- PC apps ----------------------------------------------------------------------------
+
+    /** Lists the PC's programs (Start menu, desktop): the one picked opens from here from now on. */
+    private void addPcApp() {
+        if (status != PcLibrary.OK) {
+            explainHelper();
+            return;
+        }
+        showToast(R.string.pocket_pclib_looking);
+        PcLibrary.programs(this, host, uuid, (programs, error) -> {
+            if (isFinishing()) {
+                return;
+            }
+            if (programs == null) {
+                failed(error == null || "unreachable".equals(error) ? null
+                        : ("auth".equals(error) ? "ERR auth" : error));
+                return;
+            }
+            if (programs.isEmpty()) {
+                showToast(R.string.pocket_pclib_no_programs);
+                return;
+            }
+            List<StreamMenuView.Item> items = new ArrayList<>();
+            for (final PcLibrary.Program p : programs) {
+                items.add(StreamMenuView.Item.action(p.name, () -> PcLibrary.send(this, host, uuid, "ADDAPP " + p.id, reply -> {
+                    if (reply != null && reply.startsWith("OK")) {
+                        PocketSounds.play(this, PocketSounds.TOGGLE_ON);
+                        Toast.makeText(this, getString(R.string.pocket_pclib_app_added, p.name), Toast.LENGTH_SHORT).show();
+                        focusKey = PcGame.PC_APP + ":" + p.id;
+                        load(false);
+                    }
+                    else {
+                        failed(reply);
+                    }
+                })).withValue(p.where.isEmpty() ? null : p.where));
+            }
+            PocketSounds.play(this, PocketSounds.OPEN);
+            showConsolePanel(getString(R.string.pocket_pclib_add_app), getString(R.string.pocket_pclib_add_app_sub), null, items);
+        });
+    }
+
+    private void removeApp(PcGame g) {
+        PcLibrary.send(this, host, uuid, "REMOVEAPP " + g.id, reply -> {
+            if (reply != null && reply.startsWith("OK")) {
+                PocketSounds.play(this, PocketSounds.TOGGLE_OFF);
+                load(false);
+            }
+            else {
+                failed(reply);
+            }
+        });
+    }
+
+    /**
+     * Whose settings a game streams with: Apollo's entry when it has one (the same settings as in
+     * the library), else the game's own (it streams through Desktop).
+     */
+    private int profileId(PcGame g) {
+        NvApp app = PcLibrary.apolloAppFor(this, uuid, g);
+        return app != null ? app.getAppId() : pageId(g);
     }
 
     // ---- The game's page ----------------------------------------------------------------------

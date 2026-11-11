@@ -33,6 +33,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import android.widget.Toast;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
@@ -203,6 +204,9 @@ public abstract class ConsoleActivity extends AppCompatActivity {
                 break;
             case ButtonActions.LAUNCHER_RESUME_LAST:
                 resumeLastGame();
+                break;
+            case ButtonActions.LAUNCHER_APPS:
+                com.limelight.pocket.apps.AndroidAppsActivity.open(this);
                 break;
             case ButtonActions.LAUNCHER_NONE:
                 break;
@@ -889,6 +893,48 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
         blockingCancel = null;
         blockingConfirm = null;
+        blockingAlways = null;
+    }
+
+    /** Y on the switch question: switch, and never ask again. */
+    private Runnable blockingAlways;
+
+    /**
+     * Another game is running on the PC: one question, quit it and play this one? A switches,
+     * B cancels, Y switches and stops asking. With "Switch games without asking" on, it just
+     * switches (the PC closes the running game and starts the new one).
+     */
+    public void askSwitchGame(String running, String next, final Runnable switchNow) {
+        if (PocketPrefs.switchWithoutAsking(this)) {
+            switchNow.run();
+            return;
+        }
+        hideBlockingCard();
+        blockingCard = new com.limelight.pocket.ui.ResumeOverlay(this);
+        String runningName = running != null && !running.isEmpty() ? running : getString(R.string.pocket_switch_other);
+        blockingCard.bind(getString(R.string.pocket_switch_caption, runningName),
+                getString(R.string.pocket_switch_title, next),
+                getString(R.string.pocket_switch_sub, runningName),
+                new Hint("A", ContextCompat.getColor(this, R.color.pocket_btn_a), getString(R.string.pocket_switch_yes)),
+                hintY(this, R.string.pocket_switch_always),
+                hintB(this, R.string.pocket_hint_cancel));
+        blockingCard.hideProgress();
+        ViewGroup content = findViewById(android.R.id.content);
+        content.addView(blockingCard, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        blockingCard.start(1);
+        PocketSounds.play(this, PocketSounds.OPEN);
+        blockingCancel = null;
+        blockingConfirm = () -> {
+            hideBlockingCard();
+            switchNow.run();
+        };
+        blockingAlways = () -> {
+            hideBlockingCard();
+            PocketPrefs.setSwitchWithoutAsking(this, true);
+            Toast.makeText(this, R.string.pocket_switch_always_on, Toast.LENGTH_LONG).show();
+            switchNow.run();
+        };
     }
 
     private Runnable blockingConfirm;
@@ -962,6 +1008,14 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
         if (blockingCard != null) {
             int k = event.getKeyCode();
+            if (blockingAlways != null && event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0
+                    && k == KeyEvent.KEYCODE_BUTTON_Y) {
+                Runnable always = blockingAlways;
+                swallowKeyUp = k;
+                PocketSounds.play(this, PocketSounds.SELECT);
+                always.run();
+                return true;
+            }
             if (blockingConfirm != null && event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0
                     && (k == KeyEvent.KEYCODE_BUTTON_A || k == KeyEvent.KEYCODE_DPAD_CENTER || k == KeyEvent.KEYCODE_ENTER)) {
                 Runnable confirm = blockingConfirm;

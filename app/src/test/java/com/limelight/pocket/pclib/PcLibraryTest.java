@@ -51,6 +51,26 @@ public class PcLibraryTest {
     }
 
     @Test
+    public void parse_playtimeKindAndNewSources() {
+        PcGame tool = PcGame.parse("G\tsteam\t400\tSome SDK\tnotinstalled\t-1\t0\t1690000000\t400\t30\ttool");
+        assertEquals(30, tool.playtimeMin);
+        assertEquals(PcGame.KIND_TOOL, tool.kind);
+        assertEquals("STEAM INSTALL 400", tool.installCommand());
+        PcGame emu = PcGame.parse("G\tnonsteam\t3000000001\tMy Emulator\tinstalled\t-1\t0\t0\t\t0\tgame");
+        assertEquals("Non-Steam", emu.storeLabel());
+        assertNull(emu.installCommand());
+        assertTrue(emu.matches(PcGame.FILTER_STEAM));
+        assertFalse(emu.matches(PcGame.FILTER_OTHER_STORES));
+        assertEquals("LAUNCH nonsteam 3000000001", emu.launchCommand());
+        PcGame app = PcGame.parse("G\tpc\t1a2b3c4d\tOBS Studio\tinstalled\t-1\t0\t0\t\t0\tgame");
+        assertTrue(app.isPcApp());
+        assertEquals(PcGame.KIND_APP, app.kind);
+        assertTrue(app.matches(PcGame.FILTER_OTHER_STORES));
+        // Unknown kinds stay games
+        assertEquals(PcGame.KIND_GAME, PcGame.parse("G\tsteam\t1\tX\tinstalled\t-1\t0\t0\t1\t0\tvideo").kind);
+    }
+
+    @Test
     public void parse_rejectsGarbage() {
         assertNull(PcGame.parse(null));
         assertNull(PcGame.parse("END 3"));

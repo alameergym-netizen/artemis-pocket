@@ -894,6 +894,10 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 index -> prefs().edit().putString(PocketPrefs.KEY_SORT_MODE, PocketPrefs.SORT_MODES[index]).apply(),
                 null);
 
+        addToggle(getString(R.string.pocket_set_switch_no_ask), getString(R.string.pocket_set_switch_no_ask_sub),
+                () -> PocketPrefs.switchWithoutAsking(this),
+                value -> PocketPrefs.setSwitchWithoutAsking(this, value));
+
         addToggle(getString(R.string.pocket_set_open_last), getString(R.string.pocket_set_open_last_sub),
                 () -> PocketPrefs.openLastPc(this),
                 value -> prefs().edit().putBoolean(PocketPrefs.KEY_OPEN_LAST_PC, value).apply());
@@ -946,6 +950,13 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 }
             });
         }
+
+        addAction(getString(R.string.pocket_set_home), getString(R.string.pocket_set_home_sub),
+                () -> getString(com.limelight.pocket.apps.HomeScreen.isDefault(this) ? R.string.pocket_on : R.string.pocket_off),
+                () -> com.limelight.pocket.apps.HomeScreen.openChooser(this));
+
+        addAction(getString(R.string.pocket_apps_title), getString(R.string.pocket_set_apps_sub), null,
+                () -> com.limelight.pocket.apps.AndroidAppsActivity.open(this));
 
         addAction(getString(R.string.pocket_set_profiles), getString(R.string.pocket_set_profiles_sub), null,
                 () -> startActivity(new Intent(this, ProfilesActivity.class)));

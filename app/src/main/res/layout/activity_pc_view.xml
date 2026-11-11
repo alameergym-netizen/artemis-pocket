@@ -405,6 +405,19 @@
                 android:src="@drawable/ic_help"
                 android:tint="@color/pocket_icon_tint" />
 
+            <!-- Pocket Nexus: the handheld's own apps, games and emulators -->
+            <ImageButton
+                android:id="@+id/pocketAppsButton"
+                android:layout_width="34dp"
+                android:layout_height="34dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/pocket_icon_button_bg"
+                android:contentDescription="@string/pocket_apps_title"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_pocket_apps"
+                android:tint="@color/pocket_icon_tint" />
+
             <TextView
                 android:id="@+id/profilesButton"
                 android:layout_width="wrap_content"

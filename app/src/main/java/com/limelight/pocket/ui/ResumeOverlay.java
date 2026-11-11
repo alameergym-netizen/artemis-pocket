@@ -102,6 +102,13 @@ public class ResumeOverlay extends FrameLayout {
         ConsoleActivity.fillHintBar(getContext(), hints, hintItems);
     }
 
+    /** A question, not a wait: no progress bar. */
+    public void hideProgress() {
+        if (fill.getParent() instanceof View) {
+            ((View) fill.getParent()).setVisibility(GONE);
+        }
+    }
+
     /** Fades in and fills the bar over durationMs. */
     public void start(long durationMs) {
         boolean animate = PocketPrefs.animationsEnabled(getContext());

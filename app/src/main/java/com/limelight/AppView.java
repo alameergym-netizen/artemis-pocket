@@ -941,14 +941,33 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         }
         AppObject app = (AppObject) appGridAdapter.getItem(pos);
 
-        // Only open the context menu if something is running, otherwise start it
+        // Pocket Nexus: the running game resumes straight away; another game asks one question
+        // (quit it and play this one?), or just switches when that's how it's set
         if (lastRunningAppId != 0) {
-            if (prefConfig.resumeWithoutConfirm && lastRunningAppId == app.app.getAppId()) {
+            if (lastRunningAppId == app.app.getAppId()) {
                 ServerHelper.doStart(AppView.this, app.app, computer, managerBinder, prefConfig.useVirtualDisplay);
             } else {
-                onItemOptions(pos, itemView);
+                askSwitchGame(pocketAppName(lastRunningAppId), app.app.getAppName(), () -> pocketStartApp(app));
             }
         } else {
+            pocketStartApp(app);
+        }
+    }
+
+    private String pocketAppName(int appId) {
+        if (appGridAdapter != null) {
+            for (int i = 0; i < appGridAdapter.getCount(); i++) {
+                AppObject o = (AppObject) appGridAdapter.getItem(i);
+                if (o.app.getAppId() == appId) {
+                    return o.app.getAppName();
+                }
+            }
+        }
+        return null;
+    }
+
+    private void pocketStartApp(final AppObject app) {
+        {
             if (prefConfig.useVirtualDisplay && !(computer.vDisplaySupported && computer.vDisplayDriverReady)) {
                 UiHelper.displayVdisplayConfirmationDialog(
                         AppView.this,
@@ -1061,81 +1080,8 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
     }
 
     private List<com.limelight.pocket.ui.StreamMenuView.Item> pocketGameSettings(final int appId, final String gameName) {
-        final String uuid = computer.uuid;
-        final android.content.Context ctx = this;
-        List<com.limelight.pocket.ui.StreamMenuView.Item> page = new ArrayList<>();
-
-        page.add(com.limelight.pocket.ui.StreamMenuView.Item.value(getString(R.string.pocket_sm_bitrate),
-                pocketBitrateLabel(com.limelight.pocket.GameProfile.bitrateKbps(ctx, uuid, appId)), direction -> {
-                    int[] values = com.limelight.pocket.GameProfile.BITRATES_MBPS;
-                    int i = com.limelight.pocket.GameProfile.indexOf(values,
-                            com.limelight.pocket.GameProfile.bitrateKbps(ctx, uuid, appId) / 1000);
-                    i = Math.max(0, Math.min(values.length - 1, i + direction));
-                    com.limelight.pocket.GameProfile.setBitrateKbps(ctx, uuid, appId, values[i] * 1000);
-                    return pocketBitrateLabel(values[i] * 1000);
-                }));
-
-        page.add(com.limelight.pocket.ui.StreamMenuView.Item.value(getString(R.string.pocket_sm_fps),
-                pocketFpsLabel(com.limelight.pocket.GameProfile.fps(ctx, uuid, appId)), direction -> {
-                    int[] values = com.limelight.pocket.GameProfile.FPS;
-                    int i = com.limelight.pocket.GameProfile.indexOf(values, com.limelight.pocket.GameProfile.fps(ctx, uuid, appId));
-                    i = Math.max(0, Math.min(values.length - 1, i + direction));
-                    com.limelight.pocket.GameProfile.setFps(ctx, uuid, appId, values[i]);
-                    return pocketFpsLabel(values[i]);
-                }));
-
-        page.add(com.limelight.pocket.ui.StreamMenuView.Item.value(getString(R.string.pocket_gs_resolution),
-                pocketResLabel(com.limelight.pocket.GameProfile.resolution(ctx, uuid, appId)), direction -> {
-                    String[] values = com.limelight.pocket.GameProfile.RESOLUTIONS;
-                    int i = com.limelight.pocket.GameProfile.indexOf(values,
-                            com.limelight.pocket.GameProfile.resolution(ctx, uuid, appId));
-                    i = Math.max(0, Math.min(values.length - 1, i + direction));
-                    com.limelight.pocket.GameProfile.setResolution(ctx, uuid, appId, values[i]);
-                    return pocketResLabel(values[i]);
-                }));
-
-        page.add(com.limelight.pocket.ui.StreamMenuView.Item.value(getString(R.string.pocket_sm_framegen),
-                pocketFgLabel(com.limelight.pocket.GameProfile.frameGen(ctx, uuid, appId)), direction -> {
-                    int mode = com.limelight.pocket.GameProfile.frameGen(ctx, uuid, appId);
-                    int n = com.limelight.pocket.GameProfile.FRAME_GEN_MODES;
-                    mode = (mode + (direction > 0 ? 1 : n - 1)) % n;
-                    com.limelight.pocket.GameProfile.setFrameGen(ctx, uuid, appId, mode);
-                    return pocketFgLabel(mode);
-                }));
-
-        page.add(com.limelight.pocket.ui.StreamMenuView.Item.action(getString(R.string.pocket_gs_reset), () -> {
-            com.limelight.pocket.GameProfile.clear(ctx, uuid, appId);
-            Toast.makeText(ctx, R.string.pocket_gs_reset_done, Toast.LENGTH_SHORT).show();
-            updateHero(carouselAdapter != null ? carouselAdapter.getFocusedPosition() : -1, null);
-        }));
-        page.add(com.limelight.pocket.ui.StreamMenuView.Item.repeatable(getString(R.string.pocket_gs_note, gameName), null));
-        return page;
-    }
-
-    private String pocketBitrateLabel(int kbps) {
-        return kbps <= 0 ? pocketDefaultLabel() : (kbps / 1000) + " Mbps";
-    }
-
-    private String pocketFpsLabel(int fps) {
-        return fps <= 0 ? pocketDefaultLabel() : fps + " FPS";
-    }
-
-    private String pocketResLabel(String res) {
-        int[] wh = com.limelight.pocket.GameProfile.parseResolution(res);
-        return wh == null ? pocketDefaultLabel() : wh[0] + "\u00d7" + wh[1];
-    }
-
-    private String pocketFgLabel(int mode) {
-        if (mode == com.limelight.pocket.GameProfile.FRAME_GEN_ON) {
-            return getString(R.string.pocket_on);
-        }
-        if (mode == com.limelight.pocket.GameProfile.FRAME_GEN_OFF) {
-            return getString(R.string.pocket_off);
-        }
-        if (mode == com.limelight.pocket.GameProfile.FRAME_GEN_LSFG) {
-            return getString(R.string.pocket_framegen_lsfg_short);
-        }
-        return pocketDefaultLabel();
+        return com.limelight.pocket.GameSettingsPage.build(this, computer.uuid, appId, gameName,
+                () -> updateHero(carouselAdapter != null ? carouselAdapter.getFocusedPosition() : -1, null));
     }
 
     @Override

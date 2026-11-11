@@ -14,12 +14,22 @@ import java.util.Map;
  *
  * Wire format (one line per game, from the PC helper's GAMES command):
  *   G \t source \t id \t name \t state \t progress \t sizeMb \t lastPlayed \t steamArtId
+ *     \t playtimeMinutes \t kind (game, tool, app, demo)
  */
 public final class PcGame {
 
     public static final String STEAM = "steam";
     public static final String EPIC = "epic";
     public static final String GOG = "gog";
+    /** A non-Steam game added to Steam (started through Steam). */
+    public static final String NON_STEAM = "nonsteam";
+    /** A program picked from the PC's Start menu or desktop. */
+    public static final String PC_APP = "pc";
+
+    public static final String KIND_GAME = "game";
+    public static final String KIND_TOOL = "tool";
+    public static final String KIND_APP = "app";
+    public static final String KIND_DEMO = "demo";
 
     public static final String INSTALLED = "installed";
     public static final String INSTALLING = "installing";
@@ -49,6 +59,8 @@ public final class PcGame {
     public int playtimeMin;
     /** On the linked Steam account. */
     public boolean owned;
+    /** game, tool, app or demo. */
+    public String kind = KIND_GAME;
 
     public PcGame(String source, String id, String name, String state) {
         this.source = source;
@@ -82,6 +94,16 @@ public final class PcGame {
         g.sizeMb = p.length > 6 ? Math.max(0, parseLong(p[6], 0)) : 0;
         g.lastPlayed = p.length > 7 ? Math.max(0, parseLong(p[7], 0)) : 0;
         g.artSteamId = STEAM.equals(source) ? id : (p.length > 8 && isDigits(p[8].trim()) ? p[8].trim() : "");
+        g.playtimeMin = p.length > 9 ? (int) Math.max(0, Math.min(Integer.MAX_VALUE, parseLong(p[9], 0))) : 0;
+        if (p.length > 10) {
+            String kind = p[10].trim().toLowerCase(Locale.ROOT);
+            if (KIND_TOOL.equals(kind) || KIND_APP.equals(kind) || KIND_DEMO.equals(kind)) {
+                g.kind = kind;
+            }
+        }
+        if (PC_APP.equals(source)) {
+            g.kind = KIND_APP;
+        }
         return g;
     }
 
@@ -162,15 +184,15 @@ public final class PcGame {
             case FILTER_NOT_INSTALLED:
                 return NOT_INSTALLED.equals(state);
             case FILTER_STEAM:
-                return isSteam();
+                return isSteam() || NON_STEAM.equals(source);
             case FILTER_OTHER_STORES:
-                return !isSteam();
+                return !isSteam() && !NON_STEAM.equals(source);
             default:
                 return true;
         }
     }
 
-    /** "Steam", "Epic Games", "GOG" (store names are the same in every language). */
+    /** "Steam", "Epic Games", "GOG", "Non-Steam" (store names, the same in every language). */
     public String storeLabel() {
         if (EPIC.equals(source)) {
             return "Epic Games";
@@ -178,7 +200,17 @@ public final class PcGame {
         if (GOG.equals(source)) {
             return "GOG";
         }
+        if (NON_STEAM.equals(source)) {
+            return "Non-Steam";
+        }
+        if (PC_APP.equals(source)) {
+            return "PC";
+        }
         return "Steam";
+    }
+
+    public boolean isPcApp() {
+        return PC_APP.equals(source);
     }
 
     /** "45.2 GB" / "830 MB", or "" when unknown. */

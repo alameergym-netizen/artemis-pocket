@@ -260,6 +260,17 @@ public final class PocketPrefs {
         return prefs(context).getBoolean(KEY_AUTO_BATTERY, true);
     }
 
+    /** Another game running: switch to the new one straight away, without asking. */
+    public static final String KEY_SWITCH_NO_ASK = "pocket_switch_without_asking";
+
+    public static boolean switchWithoutAsking(Context context) {
+        return prefs(context).getBoolean(KEY_SWITCH_NO_ASK, false);
+    }
+
+    public static void setSwitchWithoutAsking(Context context, boolean value) {
+        prefs(context).edit().putBoolean(KEY_SWITCH_NO_ASK, value).apply();
+    }
+
     public static boolean openLastPc(Context context) {
         return prefs(context).getBoolean(KEY_OPEN_LAST_PC, false);
     }

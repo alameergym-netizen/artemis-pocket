@@ -63,7 +63,7 @@ jobs:
           APK=$(find app/build/outputs/apk -name "*release*.apk" | head -n 1)
           cp "$APK" "out/PocketNexus-${GITHUB_SHA::7}.apk"
           # The PC helper goes with every build (the app and the helper speak the same protocol)
-          (cd pc-setup && zip -qr "../out/PocketNexus-PC.zip" . -x "*.md")
+          (cd pc-setup && zip -qr "../out/PocketNexus-PC.zip" . -x "*.md" "tests/*")
           ls -la out
 
       - name: Upload artifact

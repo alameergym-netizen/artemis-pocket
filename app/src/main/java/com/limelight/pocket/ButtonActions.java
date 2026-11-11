@@ -99,8 +99,9 @@ public final class ButtonActions {
     public static final String LAUNCHER_GAME_PAGE = "page";
     public static final String LAUNCHER_RESUME_LAST = "last";
     public static final String LAUNCHER_NONE = "none";
+    public static final String LAUNCHER_APPS = "apps";
     public static final String[] LAUNCHER_ACTIONS = {LAUNCHER_SETTINGS, LAUNCHER_QUICK_RESUME,
-            LAUNCHER_GAME_PAGE, LAUNCHER_RESUME_LAST, LAUNCHER_NONE};
+            LAUNCHER_GAME_PAGE, LAUNCHER_RESUME_LAST, LAUNCHER_APPS, LAUNCHER_NONE};
 
     public static int launcherLabel(String action) {
         switch (action) {
@@ -108,6 +109,7 @@ public final class ButtonActions {
             case LAUNCHER_GAME_PAGE: return R.string.pocket_launcher_page;
             case LAUNCHER_RESUME_LAST: return R.string.pocket_launcher_last;
             case LAUNCHER_NONE: return R.string.pocket_act_none;
+            case LAUNCHER_APPS: return R.string.pocket_apps_title;
             default: return R.string.pocket_launcher_settings;
         }
     }

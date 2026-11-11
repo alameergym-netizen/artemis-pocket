@@ -29,15 +29,38 @@ public final class PcLibrary {
     public static final int NOT_LINKED = 2;
     /** It's an older version without the library. */
     public static final int OLD_HELPER = 3;
+    /** It's new, but its library part couldn't load on the PC (the reason is in detail). */
+    public static final int ADDON_FAILED = 4;
 
     public static final class Result {
         public final int status;
         public final List<PcGame> games;
+        /** Why, for ADDON_FAILED. */
+        public final String detail;
 
-        Result(int status, List<PcGame> games) {
+        Result(int status, List<PcGame> games, String detail) {
             this.status = status;
             this.games = games;
+            this.detail = detail;
         }
+    }
+
+    /** A program of the PC that can be added to the PC games. */
+    public static final class Program {
+        public final String id;
+        public final String name;
+        public final String where;
+
+        Program(String id, String name, String where) {
+            this.id = id;
+            this.name = name;
+            this.where = where;
+        }
+    }
+
+    public interface ProgramsCallback {
+        /** On the main thread; null when the PC couldn't be asked. */
+        void onPrograms(List<Program> programs, String error);
     }
 
     public interface Callback {
@@ -73,6 +96,7 @@ public final class PcLibrary {
     private static Result loadNow(Context context, String host, String uuid, boolean refreshAccount) {
         List<String> lines = new ArrayList<>();
         int status = OK;
+        String detail = "";
         PcCompanion.Session session = PcCompanion.open(context, host, uuid);
         if (session == null) {
             status = NO_HELPER;
@@ -93,7 +117,16 @@ public final class PcLibrary {
                             break;
                         }
                         if (line.startsWith("ERR")) {
-                            status = line.startsWith("ERR auth") ? NOT_LINKED : OLD_HELPER;
+                            if (line.startsWith("ERR auth")) {
+                                status = NOT_LINKED;
+                            }
+                            else if (line.startsWith("ERR pclib")) {
+                                status = ADDON_FAILED;
+                                detail = line.substring(9).trim();
+                            }
+                            else {
+                                status = OLD_HELPER;
+                            }
                             break;
                         }
                         lines.add(line);
@@ -110,7 +143,55 @@ public final class PcLibrary {
         List<PcGame> all = PcGame.merge(onPc, owned);
         PcGame.sort(all);
         // Without the helper, the account's games still show (they just can't start or install)
-        return new Result(status, all);
+        return new Result(status, all, detail);
+    }
+
+    /** The programs on the PC's Start menu and desktop (to add one to the PC games). */
+    public static void programs(Context context, final String host, final String uuid, final ProgramsCallback callback) {
+        final Context app = context.getApplicationContext();
+        new Thread(() -> {
+            List<Program> out = null;
+            String error = null;
+            PcCompanion.Session session = PcCompanion.open(app, host, uuid);
+            if (session == null) {
+                error = "unreachable";
+            }
+            else {
+                try {
+                    if (!session.authed) {
+                        error = "auth";
+                    }
+                    else {
+                        session.setReadTimeout(25000);
+                        session.send("PROGRAMS");
+                        out = new ArrayList<>();
+                        for (int i = 0; i < 5000; i++) {
+                            String line = session.readLine();
+                            if (line == null || line.startsWith("END")) {
+                                break;
+                            }
+                            if (line.startsWith("ERR")) {
+                                error = line;
+                                out = null;
+                                break;
+                            }
+                            String[] p = line.split("\t", -1);
+                            if (p.length >= 3 && "P".equals(p[0]) && !p[1].isEmpty()) {
+                                out.add(new Program(p[1], p[2], p.length > 3 ? p[3] : ""));
+                            }
+                        }
+                    }
+                } catch (IOException e) {
+                    error = "unreachable";
+                    out = null;
+                } finally {
+                    session.close();
+                }
+            }
+            final List<Program> result = out;
+            final String why = error;
+            MAIN.post(() -> callback.onPrograms(result, why));
+        }, "PocketPcPrograms").start();
     }
 
     /** Sends one command to Pocket Nexus PC (reply on the main thread, null if unreachable). */

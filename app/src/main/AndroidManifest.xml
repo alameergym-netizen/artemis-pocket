@@ -188,6 +188,27 @@
             android:theme="@style/PocketPageTheme"
             android:enableOnBackInvokedCallback="false"
             android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
+        <!-- Pocket Nexus as the device's home screen (Android asks which home app to use) -->
+        <activity
+            android:name=".pocket.apps.HomeScreen"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:stateNotNeeded="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+        <activity
+            android:name=".pocket.apps.AndroidAppsActivity"
+            android:resizeableActivity="true"
+            android:screenOrientation="sensorLandscape"
+            android:enableOnBackInvokedCallback="false"
+            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
         <activity
             android:name=".pocket.pclib.PcLibraryActivity"
             android:resizeableActivity="true"

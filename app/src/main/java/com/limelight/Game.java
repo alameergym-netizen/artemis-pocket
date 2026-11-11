@@ -438,12 +438,20 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         // We don't want a title bar
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
+        // Pocket Nexus as the home screen: Home brings the stream back instead of closing it
+        com.limelight.pocket.apps.HomeScreen.streaming = true;
+
         // Read the stream preferences
         prefConfig = PreferenceConfiguration.readPreferences(this);
         applyPocketBatterySaver();
         // Artemis Pocket: this game's own settings win over the normal ones
         String pocketProfileUuid = getIntent().getStringExtra(EXTRA_PC_UUID);
         int pocketProfileApp = getIntent().getIntExtra(EXTRA_APP_ID, 0);
+        // A game from the PC games streamed through Desktop: its own settings, not Desktop's
+        int pocketTicketProfile = com.limelight.pocket.pclib.PcLaunchTicket.profileFor(pocketProfileUuid, pocketProfileApp);
+        if (pocketTicketProfile != 0) {
+            pocketProfileApp = pocketTicketProfile;
+        }
         if (pocketProfileUuid != null && pocketProfileApp != 0) {
             int profileFps = com.limelight.pocket.GameProfile.fps(this, pocketProfileUuid, pocketProfileApp);
             if (profileFps > 0) {
@@ -1854,6 +1862,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        com.limelight.pocket.apps.HomeScreen.streaming = false;
 
         instance = null;
         timerHandler.removeCallbacksAndMessages(null);

@@ -140,7 +140,60 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         if (source != null && com.limelight.pocket.ui.LiveGlass.supported() && PocketPrefs.liveGlass(this)) {
             backdrop = new com.limelight.pocket.ui.LiveGlass.Backdrop(source, 22f);
         }
+        liveGlassBackdrop = backdrop;
         com.limelight.pocket.ui.LiveGlass.attachTagged(main, backdrop);
+    }
+
+    private com.limelight.pocket.ui.LiveGlass.Backdrop liveGlassBackdrop;
+
+    /** Makes a view added later (a panel) real glass over this screen's backdrop. */
+    public void makeGlass(View view) {
+        if (liveGlassBackdrop != null && view != null) {
+            com.limelight.pocket.ui.LiveGlass.attach(view, liveGlassBackdrop, com.limelight.pocket.ui.LiveGlass.STYLE_PANEL);
+        }
+    }
+
+    // ---- Quick Resume -------------------------------------------------------------------------
+
+    private com.limelight.pocket.ui.QuickResumePanel quickPanel;
+    private View focusBeforeQuick;
+
+    /** True while Quick Resume is open. */
+    public boolean isQuickResumeShowing() {
+        return quickPanel != null;
+    }
+
+    /** Opens Quick Resume (screens that know games: the home screen and the library). */
+    public void openQuickResume() {
+        if (quickPanel != null || !(this instanceof com.limelight.pocket.ui.QuickResumePanel.Source)) {
+            return;
+        }
+        View rootView = findViewById(R.id.pocketRoot);
+        if (!(rootView instanceof ViewGroup)) {
+            return;
+        }
+        final ViewGroup main = findViewById(R.id.pocketMain);
+        focusBeforeQuick = getCurrentFocus();
+        if (main != null) {
+            main.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        }
+        quickPanel = new com.limelight.pocket.ui.QuickResumePanel(this,
+                (com.limelight.pocket.ui.QuickResumePanel.Source) this, this::makeGlass, () -> {
+            quickPanel = null;
+            if (main != null) {
+                main.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+            }
+            if (focusBeforeQuick != null && focusBeforeQuick.isAttachedToWindow()) {
+                focusBeforeQuick.requestFocus();
+            }
+            focusBeforeQuick = null;
+        });
+        quickPanel.show((ViewGroup) rootView);
+    }
+
+    /** SELECT (the "view" button): Quick Resume. Screens can override. */
+    protected void onSelectButton() {
+        openQuickResume();
     }
 
     /** Edge-to-edge, behind the camera cutout, no system bars: the whole 1080p panel is ours. */
@@ -824,6 +877,9 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         if (launchLayer != null) {
             return true; // a game is launching: buttons wait
         }
+        if (quickPanel != null) {
+            return quickPanel.onKey(event);
+        }
         if (coachMark != null) {
             int k = event.getKeyCode();
             if (k != KeyEvent.KEYCODE_VOLUME_UP && k != KeyEvent.KEYCODE_VOLUME_DOWN) {
@@ -931,6 +987,11 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_BUTTON_X:
                 if (up) {
                     onButtonX();
+                }
+                return true;
+            case KeyEvent.KEYCODE_BUTTON_SELECT:
+                if (up) {
+                    onSelectButton();
                 }
                 return true;
             case KeyEvent.KEYCODE_BUTTON_L1:
@@ -1065,6 +1126,10 @@ public abstract class ConsoleActivity extends AppCompatActivity {
 
     public static Hint hintStart(Context c, int label) {
         return new Hint("☰", 0xFFFFFFFF, c.getString(label));
+    }
+
+    public static Hint hintSelect(Context c, int label) {
+        return new Hint("\u29C9", 0xFFFFFFFF, c.getString(label));
     }
 
     public static Hint hintShoulders(Context c, int label) {

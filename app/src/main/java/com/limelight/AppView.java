@@ -72,7 +72,8 @@ import androidx.core.content.ContextCompat;
 
 import org.xmlpull.v1.XmlPullParserException;
 
-public class AppView extends ConsoleActivity implements CarouselAdapter.Listener {
+public class AppView extends ConsoleActivity implements CarouselAdapter.Listener,
+        com.limelight.pocket.ui.QuickResumePanel.Source {
     private AppGridAdapter appGridAdapter;
     private RecyclerView appCarousel;
     private CarouselAdapter carouselAdapter;
@@ -1082,7 +1083,7 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         setHints(hintA(this, R.string.pocket_hint_play),
                 hintX(this, R.string.pocket_hint_details),
                 hintY(this, R.string.pocket_hint_options),
-                hintB(this, R.string.pocket_hint_back),
+                hintSelect(this, R.string.pocket_quick_hint),
                 hintStart(this, R.string.pocket_hint_settings));
     }
 
@@ -1461,6 +1462,39 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         com.limelight.pocket.GamePageActivity.open(this, image != null ? image : card, computer.uuid,
                 obj.app.getAppId(), obj.app.getAppName(), computer.name, running, running, cover);
         return true;
+    }
+
+    // ---- Quick Resume (this PC's running game and what was played last) ------------------------
+
+    @Override
+    public java.util.List<com.limelight.pocket.ui.QuickResumePanel.Entry> quickResumeEntries() {
+        java.util.List<com.limelight.pocket.ui.QuickResumePanel.Entry> out = new java.util.ArrayList<>();
+        if (computer == null || computer.uuid == null) {
+            return out;
+        }
+        for (com.limelight.pocket.RecentGames.Game g : com.limelight.pocket.RecentGames.forPc(this, computer.uuid, 200)) {
+            boolean running = lastRunningAppId != 0 && lastRunningAppId == g.app.getAppId();
+            if (running || g.lastPlayed > 0) {
+                out.add(new com.limelight.pocket.ui.QuickResumePanel.Entry(computer.uuid, computer.name, g.app, running, g.lastPlayed));
+            }
+        }
+        return out;
+    }
+
+    @Override
+    public void quickLaunch(com.limelight.pocket.ui.QuickResumePanel.Entry entry) {
+        if (appGridAdapter != null) {
+            for (int i = 0; i < appGridAdapter.getCount(); i++) {
+                if (((AppObject) appGridAdapter.getItem(i)).app.getAppId() == entry.app.getAppId()) {
+                    pocketFocusApp(entry.app.getAppId());
+                    onItemClicked(i, pocketCardAt(i));
+                    return;
+                }
+            }
+        }
+        if (computer != null && managerBinder != null) {
+            ServerHelper.doStart(this, entry.app, computer, managerBinder, prefConfig.useVirtualDisplay);
+        }
     }
 
     /** Closes the game running on the PC (asks first). */

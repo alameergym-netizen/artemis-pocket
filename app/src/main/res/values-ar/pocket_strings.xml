@@ -653,4 +653,11 @@
     <string name="pocket_page_about">عن اللعبة</string>
     <string name="pocket_page_details">التفاصيل</string>
     <string name="pocket_page_media">تريلرات وصور</string>
+    <string name="pocket_quick_title">استكمال سريع</string>
+    <string name="pocket_quick_subtitle">ارجع للعب فوراً</string>
+    <string name="pocket_quick_hints">A  العب    ·    B  سكّر</string>
+    <string name="pocket_quick_running">شغّالة هلأ</string>
+    <string name="pocket_quick_recent">لعبتها مؤخراً</string>
+    <string name="pocket_quick_empty">الألعاب اللي بتلعبها بتطلع هون، جاهزة ترجعلها.</string>
+    <string name="pocket_quick_hint">استكمال سريع</string>
 </resources>

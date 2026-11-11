@@ -660,4 +660,11 @@
     <string name="pocket_page_about">About</string>
     <string name="pocket_page_details">Details</string>
     <string name="pocket_page_media">Trailers and screenshots</string>
+    <string name="pocket_quick_title">Quick Resume</string>
+    <string name="pocket_quick_subtitle">Jump right in</string>
+    <string name="pocket_quick_hints">A  Play    ·    B  Close</string>
+    <string name="pocket_quick_running">Running now</string>
+    <string name="pocket_quick_recent">Played recently</string>
+    <string name="pocket_quick_empty">Games you play show up here, ready to pick up again.</string>
+    <string name="pocket_quick_hint">Quick Resume</string>
 </resources>

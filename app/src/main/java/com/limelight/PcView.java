@@ -85,7 +85,8 @@ import org.xmlpull.v1.XmlPullParserException;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-public class PcView extends ConsoleActivity implements CarouselAdapter.Listener {
+public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
+        com.limelight.pocket.ui.QuickResumePanel.Source {
     private View noPcFoundLayout;
     private RecyclerView pcCarousel;
     private CarouselAdapter carouselAdapter;
@@ -1537,12 +1538,14 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             setHints(hintA(this, R.string.pocket_hint_play),
                     hintX(this, R.string.pocket_hint_details),
                     hintY(this, R.string.pocket_hint_library),
+                    hintSelect(this, R.string.pocket_quick_hint),
                     hintStart(this, R.string.pocket_hint_settings));
         }
         else {
             setHints(hintA(this, R.string.pocket_hint_open),
                     hintY(this, R.string.pocket_hint_options),
                     hintX(this, R.string.pocket_hint_add_pc),
+                    hintSelect(this, R.string.pocket_quick_hint),
                     hintStart(this, R.string.pocket_hint_settings));
         }
     }
@@ -1639,8 +1642,12 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             return;
         }
         com.limelight.pocket.RecentGames.Game game = pocketRecentAdapter.getItem(position);
-        ComputerDetails pc = pocketRecentPc();
-        if (pc == null) {
+        pocketLaunch(pocketRecentPc(), game.app);
+    }
+
+    /** Starts (or resumes) a game on a PC: wakes it, pairs it, or lets the library ask first. */
+    private void pocketLaunch(ComputerDetails pc, NvApp app) {
+        if (pc == null || app == null) {
             return;
         }
         if (pc.state == ComputerDetails.State.OFFLINE && pc.pairState == PairState.PAIRED && pc.macAddress != null) {
@@ -1655,15 +1662,53 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             doPair(pc, null, null);
             return;
         }
-        if (pc.runningGameId != 0 && pc.runningGameId != game.app.getAppId()) {
+        if (pc.runningGameId != 0 && pc.runningGameId != app.getAppId()) {
             // Another game is running: the library asks what to do with it
             doAppList(pc, false, false);
             return;
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && managerBinder != null) {
             com.limelight.pocket.RecentGames.invalidate(pc.uuid);
-            ServerHelper.doStart(this, game.app, pc, managerBinder,
+            ServerHelper.doStart(this, app, pc, managerBinder,
                     PreferenceConfiguration.readPreferences(this).useVirtualDisplay);
+        }
+    }
+
+    // ---- Quick Resume ---------------------------------------------------------------------------
+
+    @Override
+    public java.util.List<com.limelight.pocket.ui.QuickResumePanel.Entry> quickResumeEntries() {
+        java.util.List<com.limelight.pocket.ui.QuickResumePanel.Entry> out = new java.util.ArrayList<>();
+        if (pcGridAdapter == null) {
+            return out;
+        }
+        for (int i = 0; i < pcGridAdapter.getCount(); i++) {
+            ComputerDetails pc = ((ComputerObject) pcGridAdapter.getItem(i)).details;
+            if (pc == null || pc.uuid == null || pc.pairState != PairState.PAIRED) {
+                continue;
+            }
+            for (com.limelight.pocket.RecentGames.Game g : com.limelight.pocket.RecentGames.forPc(this, pc.uuid, 200)) {
+                boolean running = pc.state == ComputerDetails.State.ONLINE && pc.runningGameId != 0
+                        && pc.runningGameId == g.app.getAppId();
+                if (running || g.lastPlayed > 0) {
+                    out.add(new com.limelight.pocket.ui.QuickResumePanel.Entry(pc.uuid, pc.name, g.app, running, g.lastPlayed));
+                }
+            }
+        }
+        return out;
+    }
+
+    @Override
+    public void quickLaunch(com.limelight.pocket.ui.QuickResumePanel.Entry entry) {
+        if (pcGridAdapter == null) {
+            return;
+        }
+        for (int i = 0; i < pcGridAdapter.getCount(); i++) {
+            ComputerDetails pc = ((ComputerObject) pcGridAdapter.getItem(i)).details;
+            if (pc != null && entry.uuid.equals(pc.uuid)) {
+                pocketLaunch(pc, entry.app);
+                return;
+            }
         }
     }
 

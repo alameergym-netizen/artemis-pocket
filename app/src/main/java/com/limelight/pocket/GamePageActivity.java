@@ -95,18 +95,11 @@ public class GamePageActivity extends ConsoleActivity {
         intent.putExtra(EXTRA_RUNNING, running);
         intent.putExtra(EXTRA_CAN_QUIT, canQuit);
         if (card != null && card.isAttachedToWindow()) {
-            int[] at = new int[2];
-            card.getLocationInWindow(at);
-            float sx = card.getScaleX();
-            float sy = card.getScaleY();
-            View parent = card.getParent() instanceof View ? (View) card.getParent() : null;
-            if (parent != null) {
-                sx *= parent.getScaleX();
-                sy *= parent.getScaleY();
+            // Where the card really is on screen (its zoom when focused included)
+            Rect onScreen = new Rect();
+            if (card.getGlobalVisibleRect(onScreen) && onScreen.width() > 0 && onScreen.height() > 0) {
+                intent.putExtra(EXTRA_RECT, onScreen);
             }
-            int w = Math.round(card.getWidth() * sx);
-            int h = Math.round(card.getHeight() * sy);
-            intent.putExtra(EXTRA_RECT, new Rect(at[0], at[1], at[0] + w, at[1] + h));
         }
         sharedCover = cover != null ? new WeakReference<>(cover) : null;
         PocketSounds.play(from, PocketSounds.OPEN);

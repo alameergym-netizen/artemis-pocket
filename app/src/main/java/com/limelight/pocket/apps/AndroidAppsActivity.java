@@ -77,6 +77,7 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
     static final int TYPE_GAME = 1;
     static final int TYPE_EMULATOR = 2;
     static final int TYPE_SETTING = 3;
+    private static final String PANEL = "pocket:device_panel";
 
     public static void open(Activity from) {
         PocketSounds.play(from, PocketSounds.OPEN);
@@ -296,6 +297,9 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
     /** The device's settings, reachable with the controller. */
     private List<Entry> settingsEntries() {
         List<Entry> s = new ArrayList<>();
+        // Pocket Nexus's own quick panel first (volume, brightness, notifications ...)
+        s.add(new Entry("set:panel", getString(R.string.pocket_device_title), TYPE_SETTING, null,
+                PANEL, android.R.drawable.ic_menu_manage));
         s.add(new Entry("set:wifi", getString(R.string.pocket_apps_set_wifi), TYPE_SETTING, null,
                 Settings.ACTION_WIFI_SETTINGS, android.R.drawable.ic_menu_share));
         s.add(new Entry("set:bt", getString(R.string.pocket_apps_set_bluetooth), TYPE_SETTING, null,
@@ -606,6 +610,10 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
     private void open(Entry e) {
         try {
             if (e.type == TYPE_SETTING) {
+                if (PANEL.equals(e.settingsAction)) {
+                    com.limelight.pocket.device.DevicePanel.show(this);
+                    return;
+                }
                 startActivity(new Intent(e.settingsAction));
                 return;
             }

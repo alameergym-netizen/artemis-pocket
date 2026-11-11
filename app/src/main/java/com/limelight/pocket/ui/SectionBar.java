@@ -17,15 +17,20 @@ import com.limelight.pocket.PocketSounds;
 
 /**
  * The sections at the top of the main screens, console style: Streaming (the PCs and their
- * games) and Android (the handheld's own games and apps). L1 / R1 go from one to the other; the
- * one you're in is lit, so it's always clear where the Android games and the streamed ones are.
+ * games), Cloud (Xbox Cloud Gaming, GeForce NOW ...), Android (the handheld's own games and
+ * apps) and Retro (the emulated systems, like ES-DE). L1 / R1 go from one to the next; the one
+ * you're in is lit, so it's always clear where each kind of game is.
  */
 public final class SectionBar {
     private SectionBar() {}
 
     public static final int STREAMING = 0;
-    public static final int ANDROID = 1;
-    private static final int COUNT = 2;
+    public static final int CLOUD = 1;
+    public static final int ANDROID = 2;
+    public static final int RETRO = 3;
+    private static final int COUNT = 4;
+    private static final int[] LABELS = {R.string.pocket_section_streaming, R.string.pocket_section_cloud,
+            R.string.pocket_section_android, R.string.pocket_section_retro};
 
     /** Puts the bar in the screen's status bar, right after its title. */
     public static void attach(final Activity activity, final int active) {
@@ -61,10 +66,10 @@ public final class SectionBar {
         for (int s = 0; s < COUNT; s++) {
             final int section = s;
             TextView tab = new TextView(activity);
-            tab.setText(s == STREAMING ? R.string.pocket_section_streaming : R.string.pocket_section_android);
+            tab.setText(LABELS[s]);
             tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
             tab.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-            tab.setPadding(Math.round(14 * d), Math.round(5 * d), Math.round(14 * d), Math.round(5 * d));
+            tab.setPadding(Math.round(12 * d), Math.round(5 * d), Math.round(12 * d), Math.round(5 * d));
             boolean on = s == active;
             if (on) {
                 GradientDrawable bg = new GradientDrawable();
@@ -130,15 +135,31 @@ public final class SectionBar {
             return;
         }
         PocketSounds.play(activity, PocketSounds.NAV);
-        if (to == ANDROID) {
-            activity.startActivity(new Intent(activity, com.limelight.pocket.apps.AndroidAppsActivity.class));
+        Class<?> target;
+        switch (to) {
+            case CLOUD:
+                target = com.limelight.pocket.cloud.CloudActivity.class;
+                break;
+            case ANDROID:
+                target = com.limelight.pocket.apps.AndroidAppsActivity.class;
+                break;
+            case RETRO:
+                target = com.limelight.pocket.retro.RetroActivity.class;
+                break;
+            default:
+                target = null;
+                break;
+        }
+        if (target != null) {
+            activity.startActivity(new Intent(activity, target));
         }
         else {
             activity.startActivity(new Intent(activity, PcView.class)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
-            if (from == ANDROID) {
-                activity.finish();
-            }
+        }
+        // Only the home screen stays under a section (B from any section goes home)
+        if (from != STREAMING) {
+            activity.finish();
         }
         activity.overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
     }

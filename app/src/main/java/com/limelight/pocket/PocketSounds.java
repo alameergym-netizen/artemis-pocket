@@ -12,7 +12,7 @@ import android.os.SystemClock;
 import com.limelight.R;
 
 /**
- * The console's interface sounds, in three styles (Glass, Soft, Crisp), all 48 kHz and designed
+ * The console's interface sounds, in five styles (Glass, Soft, Crisp, Retro, Pop), all 48 kHz and designed
  * as sets. They play on the media volume (the volume the handheld's buttons change) and are
  * scaled by the sliders in Settings > System: master, navigation, menus and boot.
  * The long boot sound plays through a MediaPlayer so it can be any length.
@@ -52,6 +52,14 @@ public final class PocketSounds {
                     R.raw.pocket_crisp_close, R.raw.pocket_crisp_radial_open, R.raw.pocket_crisp_radial_tick,
                     R.raw.pocket_crisp_radial_select, R.raw.pocket_crisp_toggle_on, R.raw.pocket_crisp_toggle_off,
                     R.raw.pocket_crisp_error},
+            {R.raw.pocket_retro_nav, R.raw.pocket_retro_select, R.raw.pocket_retro_back, R.raw.pocket_retro_open,
+                    R.raw.pocket_retro_close, R.raw.pocket_retro_radial_open, R.raw.pocket_retro_radial_tick,
+                    R.raw.pocket_retro_radial_select, R.raw.pocket_retro_toggle_on, R.raw.pocket_retro_toggle_off,
+                    R.raw.pocket_retro_error},
+            {R.raw.pocket_pop_nav, R.raw.pocket_pop_select, R.raw.pocket_pop_back, R.raw.pocket_pop_open,
+                    R.raw.pocket_pop_close, R.raw.pocket_pop_radial_open, R.raw.pocket_pop_radial_tick,
+                    R.raw.pocket_pop_radial_select, R.raw.pocket_pop_toggle_on, R.raw.pocket_pop_toggle_off,
+                    R.raw.pocket_pop_error},
     };
     // The files are balanced against each other; these only trim the busiest ones
     private static final float[] TRIM = {0.8f, 0.95f, 0.9f, 0.9f, 0.85f, 0.95f, 0.8f, 0.95f, 0.85f, 0.85f, 0.9f, 1f, 0.9f};

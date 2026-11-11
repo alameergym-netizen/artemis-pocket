@@ -16,7 +16,8 @@ public final class PocketTheme {
     private PocketTheme() {}
 
     /** Accent presets: white, ice, mint, lilac, rose, amber. */
-    public static final int[] ACCENTS = {0xFFFFFFFF, 0xFF9FD8FF, 0xFF86F0C8, 0xFFC3B2FF, 0xFFFF9EBE, 0xFFFFC978};
+    public static final int[] ACCENTS = {0xFFFFFFFF, 0xFF9FD8FF, 0xFF86F0C8, 0xFFC3B2FF, 0xFFFF9EBE, 0xFFFFC978,
+            0xFFFF8F7A, 0xFFC8F27A, 0xFF6FE6F0, 0xFF9E8CFF, 0xFF4CFF8F};
 
     public static int accent(Context context) {
         return PocketPrefs.accentColor(context);

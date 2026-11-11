@@ -709,7 +709,10 @@ public class OnboardingActivity extends ConsoleActivity {
         final int[] accents = PocketTheme.ACCENTS;
         String[] accentLabels = {getString(R.string.pocket_accent_white), getString(R.string.pocket_accent_ice),
                 getString(R.string.pocket_accent_mint), getString(R.string.pocket_accent_lilac),
-                getString(R.string.pocket_accent_rose), getString(R.string.pocket_accent_amber)};
+                getString(R.string.pocket_accent_rose), getString(R.string.pocket_accent_amber),
+                getString(R.string.pocket_accent_coral), getString(R.string.pocket_accent_lime),
+                getString(R.string.pocket_accent_cyan), getString(R.string.pocket_accent_violet),
+                getString(R.string.pocket_accent_neon)};
         Option accent = new Option(accentLabels, () -> {
             int current = PocketPrefs.accentColor(this);
             for (int i = 0; i < accents.length; i++) {
@@ -750,7 +753,8 @@ public class OnboardingActivity extends ConsoleActivity {
                 index -> prefs().edit().putString(PocketPrefs.KEY_BACKDROP, backdropValues[index]).apply(), false));
 
         String[] styleLabels = {getString(R.string.pocket_sound_glass), getString(R.string.pocket_sound_soft),
-                getString(R.string.pocket_sound_crisp)};
+                getString(R.string.pocket_sound_crisp), getString(R.string.pocket_sound_retro),
+                getString(R.string.pocket_sound_pop)};
         addChoice(getString(R.string.pocket_set_sound_style), null, new Option(styleLabels,
                 () -> PocketPrefs.soundStyleIndex(this),
                 index -> {

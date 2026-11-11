@@ -411,7 +411,7 @@ public final class PocketPrefs {
     public static final String KEY_AUTO_RECOVER = "pocket_auto_recover";
     public static final String KEY_STREAM_MODE = "pocket_stream_mode";
 
-    public static final String[] SOUND_STYLES = {"glass", "soft", "crisp"};
+    public static final String[] SOUND_STYLES = {"glass", "soft", "crisp", "retro", "pop"};
 
     public static int soundStyleIndex(Context context) {
         String style = prefs(context).getString(KEY_SOUND_STYLE, SOUND_STYLES[0]);

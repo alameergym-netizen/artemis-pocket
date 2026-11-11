@@ -208,6 +208,20 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             case ButtonActions.LAUNCHER_APPS:
                 com.limelight.pocket.apps.AndroidAppsActivity.open(this);
                 break;
+            case ButtonActions.LAUNCHER_RETRO:
+                if (!(this instanceof com.limelight.pocket.retro.RetroActivity)) {
+                    com.limelight.pocket.retro.RetroActivity.open(this);
+                }
+                break;
+            case ButtonActions.LAUNCHER_CLOUD:
+                if (!(this instanceof com.limelight.pocket.cloud.CloudActivity)) {
+                    PocketSounds.play(this, PocketSounds.OPEN);
+                    startActivity(new Intent(this, com.limelight.pocket.cloud.CloudActivity.class));
+                }
+                break;
+            case ButtonActions.LAUNCHER_DEVICE:
+                com.limelight.pocket.device.DevicePanel.show(this);
+                break;
             case ButtonActions.LAUNCHER_NONE:
                 break;
             default:
@@ -269,6 +283,13 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        // A notification that comes in while a console screen is up: a short note about it
+        com.limelight.pocket.device.PocketNotifications.setListener(note -> {
+            if (!isFinishing() && PocketPrefs.prefs(this).getBoolean("pocket_announce_notifications", true)) {
+                String line = note.app + ": " + (note.title.isEmpty() ? note.text : note.title);
+                android.widget.Toast.makeText(this, line, android.widget.Toast.LENGTH_SHORT).show();
+            }
+        });
         if ((createdWithScale != 0 && createdWithScale != PocketPrefs.uiScalePercent(this))
                 || (createdWithLook != null && !createdWithLook.equals(lookSignature()))) {
             // Interface size or look changed (settings, first boot setup): rebuild this screen
@@ -327,6 +348,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        com.limelight.pocket.device.PocketNotifications.setListener(null);
         pausedSinceLaunch = true;
         abandonBoot();
         if (coachMark != null) {

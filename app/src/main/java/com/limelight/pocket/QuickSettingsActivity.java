@@ -784,7 +784,10 @@ public class QuickSettingsActivity extends ConsoleActivity {
 
         final String[] accentLabels = {getString(R.string.pocket_accent_white), getString(R.string.pocket_accent_ice),
                 getString(R.string.pocket_accent_mint), getString(R.string.pocket_accent_lilac),
-                getString(R.string.pocket_accent_rose), getString(R.string.pocket_accent_amber)};
+                getString(R.string.pocket_accent_rose), getString(R.string.pocket_accent_amber),
+                getString(R.string.pocket_accent_coral), getString(R.string.pocket_accent_lime),
+                getString(R.string.pocket_accent_cyan), getString(R.string.pocket_accent_violet),
+                getString(R.string.pocket_accent_neon)};
         addChoice(getString(R.string.pocket_set_accent), getString(R.string.pocket_set_accent_sub), accentLabels,
                 () -> {
                     int current = PocketPrefs.accentColor(this);
@@ -856,7 +859,8 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 });
 
         final String[] styleLabels = {getString(R.string.pocket_sound_glass), getString(R.string.pocket_sound_soft),
-                getString(R.string.pocket_sound_crisp)};
+                getString(R.string.pocket_sound_crisp), getString(R.string.pocket_sound_retro),
+                getString(R.string.pocket_sound_pop)};
         addChoice(getString(R.string.pocket_set_sound_style), getString(R.string.pocket_set_sound_style_sub), styleLabels,
                 () -> PocketPrefs.soundStyleIndex(this),
                 index -> {
@@ -959,8 +963,29 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 () -> getString(com.limelight.pocket.apps.HomeScreen.isDefault(this) ? R.string.pocket_on : R.string.pocket_off),
                 () -> com.limelight.pocket.apps.HomeScreen.openChooser(this));
 
+        addAction(getString(R.string.pocket_device_title), getString(R.string.pocket_set_device_sub), null,
+                () -> com.limelight.pocket.device.DevicePanel.show(this));
+
+        addAction(getString(R.string.pocket_set_notif_access), getString(R.string.pocket_set_notif_access_sub),
+                () -> getString(com.limelight.pocket.device.PocketNotifications.allowed(this) ? R.string.pocket_on : R.string.pocket_off),
+                () -> com.limelight.pocket.device.PocketNotifications.askForAccess(this));
+
+        addToggle(getString(R.string.pocket_set_announce), getString(R.string.pocket_set_announce_sub),
+                () -> PocketPrefs.prefs(this).getBoolean("pocket_announce_notifications", true),
+                value -> PocketPrefs.prefs(this).edit().putBoolean("pocket_announce_notifications", value).apply());
+
         addAction(getString(R.string.pocket_apps_title), getString(R.string.pocket_set_apps_sub), null,
                 () -> com.limelight.pocket.apps.AndroidAppsActivity.open(this));
+
+        addAction(getString(R.string.pocket_retro_title), getString(R.string.pocket_set_retro_sub),
+                () -> {
+                    java.io.File root = com.limelight.pocket.retro.RetroLibrary.romRoot(this);
+                    return root != null ? root.getAbsolutePath() : getString(R.string.pocket_retro_no_folder);
+                },
+                () -> com.limelight.pocket.retro.RetroActivity.open(this));
+
+        addAction(getString(R.string.pocket_cloud_title), getString(R.string.pocket_set_cloud_sub), null,
+                () -> startActivity(new Intent(this, com.limelight.pocket.cloud.CloudActivity.class)));
 
         addAction(getString(R.string.pocket_set_profiles), getString(R.string.pocket_set_profiles_sub), null,
                 () -> startActivity(new Intent(this, ProfilesActivity.class)));

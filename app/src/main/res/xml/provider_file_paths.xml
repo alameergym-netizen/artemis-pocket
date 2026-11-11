@@ -15,4 +15,8 @@
     <files-path
         name="files"
         path="." />
+    <!-- Pocket Nexus: games on an SD card, shared with an emulator for one launch -->
+    <root-path
+        name="root"
+        path="." />
 </paths>

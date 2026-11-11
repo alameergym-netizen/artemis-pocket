@@ -215,9 +215,9 @@
                 android:layout_marginBottom="3dp"
                 android:adjustViewBounds="true"
                 android:importantForAccessibility="no"
-                android:maxWidth="320dp"
-                android:maxHeight="58dp"
-                android:scaleType="fitCenter"
+                android:maxWidth="340dp"
+                android:maxHeight="66dp"
+                android:scaleType="fitStart"
                 android:visibility="gone" />
 
             <TextView
@@ -225,34 +225,41 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
-                android:fontFamily="sans-serif"
-                android:letterSpacing="-0.02"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="-0.025"
                 android:maxWidth="520dp"
                 android:maxLines="1"
+                android:shadowColor="#66000000"
+                android:shadowDy="1"
+                android:shadowRadius="12"
                 android:textColor="@color/pocket_text"
-                android:textSize="26sp" />
+                android:textSize="28sp" />
 
             <!-- Play, status and playtime on one line (console style) -->
             <LinearLayout
                 android:id="@+id/pocketHeroMeta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="5dp"
+                android:layout_marginTop="7dp"
+                android:clipChildren="false"
+                android:clipToPadding="false"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
+                <!-- Play / Resume: frosted glass tinted with the accent (styled in code) -->
                 <TextView
                     android:id="@+id/pocketHeroPlay"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="8dp"
+                    android:layout_marginEnd="10dp"
                     android:fontFamily="sans-serif-medium"
-                    android:paddingStart="11dp"
-                    android:paddingTop="3dp"
-                    android:paddingEnd="13dp"
-                    android:paddingBottom="3dp"
+                    android:paddingStart="14dp"
+                    android:paddingTop="5dp"
+                    android:paddingEnd="18dp"
+                    android:paddingBottom="5dp"
+                    android:tag="glass"
                     android:textColor="#FF000000"
-                    android:textSize="11sp" />
+                    android:textSize="12.5sp" />
 
                 <TextView
                     android:id="@+id/pocketHeroSubtitle"

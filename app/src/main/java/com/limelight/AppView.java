@@ -1146,12 +1146,8 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         // The Play button of the hero (A), in the accent colour
         TextView play = findViewById(R.id.pocketHeroPlay);
         if (play != null) {
-            if (play.getBackground() == null) {
-                android.graphics.drawable.GradientDrawable pill = new android.graphics.drawable.GradientDrawable();
-                pill.setCornerRadius(100 * getResources().getDisplayMetrics().density);
-                pill.setColor(com.limelight.pocket.ui.PocketTheme.accent(this));
-                play.setBackground(pill);
-            }
+            // Frosted glass tinted with the accent, glowing softly
+            com.limelight.pocket.ui.PocketUi.stylePlayPill(play);
             String label = "\u25B6  " + getString(obj.isRunning ? R.string.pocket_hero_resume : R.string.pocket_hero_play);
             if (!label.contentEquals(play.getText())) {
                 play.setText(label);

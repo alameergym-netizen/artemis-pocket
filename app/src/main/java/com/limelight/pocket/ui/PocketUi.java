@@ -28,6 +28,45 @@ public final class PocketUi {
      * Applies the user's interface size by scaling the screen density for this context.
      * Every dp/sp in the console screens grows or shrinks with it.
      */
+    /**
+     * The hero's Play / Resume button: frosted glass (when the screen has live glass) tinted with
+     * the accent, a light rim, and a soft glow of the accent under it.
+     */
+    public static void stylePlayPill(android.widget.TextView play) {
+        if (play == null || Boolean.TRUE.equals(play.getTag(com.limelight.R.id.pocketHeroPlay))) {
+            return;
+        }
+        play.setTag(com.limelight.R.id.pocketHeroPlay, Boolean.TRUE);
+        Context c = play.getContext();
+        float d = c.getResources().getDisplayMetrics().density;
+        int accent = PocketTheme.accent(c);
+        float lum = (0.299f * android.graphics.Color.red(accent) + 0.587f * android.graphics.Color.green(accent)
+                + 0.114f * android.graphics.Color.blue(accent)) / 255f;
+        if (play.getBackground() == null) {
+            android.graphics.drawable.GradientDrawable base = new android.graphics.drawable.GradientDrawable();
+            base.setCornerRadius(100 * d);
+            base.setColor(0x33FFFFFF);
+            play.setBackground(base);
+        }
+        android.graphics.drawable.GradientDrawable face = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{PocketTheme.withAlpha(accent, 0xE0), PocketTheme.withAlpha(accent, 0xA6)});
+        face.setCornerRadius(100 * d);
+        face.setStroke(Math.max(1, Math.round(d)), 0x66FFFFFF);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            play.setForeground(face);
+        }
+        else {
+            play.setBackground(face);
+        }
+        play.setTextColor(lum > 0.62f ? 0xFF000000 : 0xFFFFFFFF);
+        play.setElevation(7 * d);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            play.setOutlineSpotShadowColor(accent);
+            play.setOutlineAmbientShadowColor(accent);
+        }
+    }
+
     public static Context wrapWithUiScale(Context base) {
         int percent;
         try {

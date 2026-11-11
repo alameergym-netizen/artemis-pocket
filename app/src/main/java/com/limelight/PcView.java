@@ -1286,12 +1286,8 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
                 play.setVisibility(View.GONE);
             }
             else {
-                if (play.getBackground() == null) {
-                    android.graphics.drawable.GradientDrawable pill = new android.graphics.drawable.GradientDrawable();
-                    pill.setCornerRadius(100 * getResources().getDisplayMetrics().density);
-                    pill.setColor(com.limelight.pocket.ui.PocketTheme.accent(this));
-                    play.setBackground(pill);
-                }
+                // Frosted glass tinted with the accent, glowing softly
+                com.limelight.pocket.ui.PocketUi.stylePlayPill(play);
                 String text = (label == R.string.pocket_hint_pair ? "\u25CF  " : "\u25B6  ") + getString(label);
                 play.setVisibility(View.VISIBLE);
                 if (!text.contentEquals(play.getText())) {
@@ -1593,6 +1589,7 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
             }
         }
         if (play != null) {
+            com.limelight.pocket.ui.PocketUi.stylePlayPill(play);
             String text = "\u25B6  " + getString(running ? R.string.pocket_hero_resume : R.string.pocket_hero_play);
             play.setVisibility(View.VISIBLE);
             if (!text.contentEquals(play.getText())) {

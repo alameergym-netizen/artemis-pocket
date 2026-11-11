@@ -73,6 +73,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
     private static final int CAPTURE_MENU = 0;
     private static final int CAPTURE_BACK = 1;
     private static final int CAPTURE_HOME = 2;
+    private static final int CAPTURE_M2 = 3;
     private int captureTarget = CAPTURE_MENU;
     private int swallowKeyUp = -1;
     private long lastCaptureEventTime = -1;
@@ -476,6 +477,30 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 },
                 () -> startCapture(CAPTURE_MENU));
         addGestureRows(ButtonActions.BUTTON_MENU);
+        addLauncherRow(ButtonActions.BUTTON_MENU);
+
+        // A second assignable button (M2), its own actions, and what it does on the home screens
+        addHeader(R.string.pocket_header_m2);
+        addAction(getString(R.string.pocket_set_m2_key), getString(R.string.pocket_set_m2_key_sub),
+                () -> {
+                    String name = PocketPrefs.describeHotkey(PocketPrefs.getM2Hotkey(this));
+                    return name != null ? name : getString(R.string.pocket_not_set);
+                },
+                () -> startCapture(CAPTURE_M2));
+        addGestureRows(ButtonActions.BUTTON_M2);
+        addLauncherRow(ButtonActions.BUTTON_M2);
+
+        // Recorded button sequences, played by M1 / M2 or a radial slot
+        addHeader(R.string.pocket_header_macros);
+        for (int i = 0; i < ButtonActions.MACRO_SLOTS; i++) {
+            final int slot = i;
+            addAction(getString(R.string.pocket_macro_n, slot + 1), getString(R.string.pocket_macro_sub),
+                    () -> {
+                        Macro m = ButtonActions.getMacro(this, slot);
+                        return m != null ? m.describe() : getString(R.string.pocket_macro_empty);
+                    },
+                    () -> macroOptions(slot));
+        }
 
         addHeader(R.string.pocket_header_radial);
         String[] positions = getResources().getStringArray(R.array.pocket_radial_positions);
@@ -511,6 +536,61 @@ public class QuickSettingsActivity extends ConsoleActivity {
             refreshRows();
             Toast.makeText(this, R.string.pocket_buttons_reset_done, Toast.LENGTH_SHORT).show();
         });
+    }
+
+    /** What M1 / M2 do on the home screen and in the library. */
+    private void addLauncherRow(final int button) {
+        addAction(getString(R.string.pocket_set_launcher), getString(R.string.pocket_set_launcher_sub),
+                () -> getString(ButtonActions.launcherLabel(ButtonActions.getLauncher(this, button))),
+                () -> {
+                    final String[] actions = ButtonActions.LAUNCHER_ACTIONS;
+                    String[] labels = new String[actions.length];
+                    int checked = 0;
+                    String current = ButtonActions.getLauncher(this, button);
+                    for (int i = 0; i < actions.length; i++) {
+                        labels[i] = getString(ButtonActions.launcherLabel(actions[i]));
+                        if (actions[i].equals(current)) {
+                            checked = i;
+                        }
+                    }
+                    new AlertDialog.Builder(this)
+                            .setTitle(getString(ButtonActions.buttonLabel(button)) + " \u00b7 " + getString(R.string.pocket_set_launcher))
+                            .setSingleChoiceItems(labels, checked, (d, which) -> {
+                                ButtonActions.setLauncher(this, button, actions[which]);
+                                d.dismiss();
+                                refreshRows();
+                            })
+                            .setNegativeButton(android.R.string.cancel, null)
+                            .show();
+                });
+    }
+
+    /** Record a macro (or record it again / delete it). */
+    private void macroOptions(final int slot) {
+        if (ButtonActions.getMacro(this, slot) == null) {
+            recordMacro(slot);
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(getString(R.string.pocket_macro_n, slot + 1))
+                .setItems(new String[]{getString(R.string.pocket_macro_record_again), getString(R.string.pocket_macro_delete)},
+                        (d, which) -> {
+                            if (which == 0) {
+                                recordMacro(slot);
+                            }
+                            else {
+                                ButtonActions.setMacro(this, slot, null);
+                                refreshRows();
+                            }
+                        })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void recordMacro(int slot) {
+        Intent record = new Intent(this, MacroRecordActivity.class);
+        record.putExtra(MacroRecordActivity.EXTRA_SLOT, slot);
+        startActivity(record);
     }
 
     private void addButtonSection(int button, int header) {
@@ -750,6 +830,15 @@ public class QuickSettingsActivity extends ConsoleActivity {
                         rowsContainer.postDelayed(this::recreate, 300);
                     });
         }
+
+        // Game pages: the trailer plays muted behind the page after a moment
+        addToggle(getString(R.string.pocket_set_trailer_autoplay), getString(R.string.pocket_set_trailer_autoplay_sub),
+                () -> PocketPrefs.trailerAutoplay(this),
+                value -> PocketPrefs.setTrailerAutoplay(this, value));
+        addAction(getString(R.string.pocket_set_clear_info), getString(R.string.pocket_set_clear_info_sub), null, () -> {
+            com.limelight.pocket.info.GameInfoService.clearAll(this);
+            Toast.makeText(this, R.string.pocket_info_cleared, Toast.LENGTH_SHORT).show();
+        });
 
         addToggle(getString(R.string.pocket_set_haptics), getString(R.string.pocket_set_haptics_sub),
                 () -> PocketPrefs.hapticsEnabled(this),
@@ -1189,7 +1278,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
         View overlay = findViewById(R.id.pocketCaptureOverlay);
         ViewGroup hints = findViewById(R.id.pocketCaptureHints);
         fillHintBar(this, hints, hintB(this, R.string.pocket_hint_cancel),
-                hintX(this, target == CAPTURE_MENU ? R.string.pocket_hint_clear : R.string.pocket_hint_reset_auto));
+                hintX(this, target == CAPTURE_MENU || target == CAPTURE_M2 ? R.string.pocket_hint_clear : R.string.pocket_hint_reset_auto));
         overlay.setAlpha(0f);
         overlay.setVisibility(View.VISIBLE);
         overlay.animate().alpha(1f).setDuration(200).start();
@@ -1220,7 +1309,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
         int keyCode = event.getKeyCode();
         // Whatever happens below, the release of this key belongs to the capture
         swallowKeyUp = keyCode;
-        if (captureTarget != CAPTURE_MENU) {
+        if (captureTarget == CAPTURE_BACK || captureTarget == CAPTURE_HOME) {
             String prefKey = captureTarget == CAPTURE_BACK ? PocketPrefs.KEY_BACK_KEY : PocketPrefs.KEY_HOME_KEY;
             switch (keyCode) {
                 case KeyEvent.KEYCODE_BUTTON_B:
@@ -1259,7 +1348,12 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 endHotkeyCapture();
                 return;
             case KeyEvent.KEYCODE_BUTTON_X:
-                PocketPrefs.clearMenuHotkey(this);
+                if (captureTarget == CAPTURE_M2) {
+                    PocketPrefs.clearM2Hotkey(this);
+                }
+                else {
+                    PocketPrefs.clearMenuHotkey(this);
+                }
                 Toast.makeText(this, R.string.pocket_hotkey_cleared, Toast.LENGTH_SHORT).show();
                 endHotkeyCapture();
                 return;
@@ -1277,8 +1371,15 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 Toast.makeText(this, R.string.pocket_hotkey_reserved, Toast.LENGTH_SHORT).show();
                 return;
         }
-        PocketPrefs.setMenuHotkey(this, event);
-        String name = PocketPrefs.describeHotkey(PocketPrefs.getMenuHotkey(this));
+        String name;
+        if (captureTarget == CAPTURE_M2) {
+            PocketPrefs.setM2Hotkey(this, event);
+            name = PocketPrefs.describeHotkey(PocketPrefs.getM2Hotkey(this));
+        }
+        else {
+            PocketPrefs.setMenuHotkey(this, event);
+            name = PocketPrefs.describeHotkey(PocketPrefs.getMenuHotkey(this));
+        }
         Toast.makeText(this, getString(R.string.pocket_hotkey_assigned, name), Toast.LENGTH_SHORT).show();
         endHotkeyCapture();
     }

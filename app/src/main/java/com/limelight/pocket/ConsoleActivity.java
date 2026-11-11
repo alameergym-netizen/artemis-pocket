@@ -67,6 +67,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
 
     private final Handler statusHandler = new Handler(Looper.getMainLooper());
     private String menuHotkey;
+    private String m2Hotkey;
     private boolean hotkeyDown;
     private int batteryPct = -1;
     private boolean charging;
@@ -191,6 +192,50 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         quickPanel.show((ViewGroup) rootView);
     }
 
+    /** M1 / M2 on the home screens: settings, Quick Resume, the game's page or the last game. */
+    protected void runLauncherShortcut(String action) {
+        switch (action) {
+            case ButtonActions.LAUNCHER_QUICK_RESUME:
+                openQuickResume();
+                break;
+            case ButtonActions.LAUNCHER_GAME_PAGE:
+                onGamePageShortcut();
+                break;
+            case ButtonActions.LAUNCHER_RESUME_LAST:
+                resumeLastGame();
+                break;
+            case ButtonActions.LAUNCHER_NONE:
+                break;
+            default:
+                onMenuButton();
+                break;
+        }
+    }
+
+    /** Opens the focused game's page. Screens with games override. */
+    protected boolean onGamePageShortcut() {
+        return false;
+    }
+
+    /** Picks up the running game, or starts the one played last. */
+    protected void resumeLastGame() {
+        if (!(this instanceof com.limelight.pocket.ui.QuickResumePanel.Source)) {
+            return;
+        }
+        com.limelight.pocket.ui.QuickResumePanel.Source source = (com.limelight.pocket.ui.QuickResumePanel.Source) this;
+        com.limelight.pocket.ui.QuickResumePanel.Entry best = null;
+        for (com.limelight.pocket.ui.QuickResumePanel.Entry e : source.quickResumeEntries()) {
+            if (best == null || (e.running && !best.running)
+                    || (e.running == best.running && e.lastPlayed > best.lastPlayed)) {
+                best = e;
+            }
+        }
+        if (best != null) {
+            PocketSounds.play(this, PocketSounds.SELECT);
+            source.quickLaunch(best);
+        }
+    }
+
     /** SELECT (the "view" button): Quick Resume. Screens can override. */
     protected void onSelectButton() {
         openQuickResume();
@@ -245,6 +290,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             }
         }
         menuHotkey = PocketPrefs.getMenuHotkey(this);
+        m2Hotkey = PocketPrefs.getM2Hotkey(this);
         enterImmersive();
         try {
             registerReceiver(batteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
@@ -960,11 +1006,13 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             }
             return true;
         }
-        if (PocketPrefs.matchesHotkey(menuHotkey, event)) {
+        boolean m1 = PocketPrefs.matchesHotkey(menuHotkey, event);
+        if (m1 || PocketPrefs.matchesHotkey(m2Hotkey, event)) {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
                 if (event.getRepeatCount() == 0 && !hotkeyDown) {
                     hotkeyDown = true;
-                    onMenuButton();
+                    // M1 / M2 here: what they are set to do on the home screens
+                    runLauncherShortcut(ButtonActions.getLauncher(this, m1 ? ButtonActions.BUTTON_MENU : ButtonActions.BUTTON_M2));
                 }
             }
             else if (event.getAction() == KeyEvent.ACTION_UP) {

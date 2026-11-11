@@ -8,9 +8,9 @@ import android.os.Looper;
  * action. Rules:
  *  - If only "tap" is set to DEFAULT and nothing else is assigned, the button passes straight
  *    through (down/up as they happen) so it can still be held in games.
- *  - "Live" controller buttons: when tap is Xbox Guide, View or Start and double press and hold
- *    are empty or the same button, the press goes to the PC exactly as long as
- *    it is held (a tap is a tap, a long press is a long press, e.g. Windows' hold-Guide).
+ *  - "Live" controller buttons: when tap is a controller button (Guide, View, Start, A, LB, L3,
+ *    D-pad... or a pair) and double press and hold are empty or the same, the press goes to the
+ *    PC exactly as long as it is held (M1 / M2 become extra buttons, like paddles).
  *  - A tap waits for a possible second press only if a double-press action exists.
  *  - Hold fires after HOLD_MS. Guide, View or Start as the hold action stay pressed on the PC
  *    until the button is let go. The radial menu stays open while the button is held and the
@@ -98,7 +98,8 @@ public class ButtonGestures {
 
     /** Controller buttons that can stay pressed on the PC for as long as the button is held. */
     public static boolean canBeHeld(PocketAction action) {
-        return action == PocketAction.GUIDE || action == PocketAction.VIEW || action == PocketAction.START;
+        // Any controller button (or pair): Guide, View, Start, A/B/X/Y, bumpers, sticks, D-pad
+        return PadMapping.isPad(action);
     }
 
     /** True when this combination makes the button behave exactly like that controller button. */

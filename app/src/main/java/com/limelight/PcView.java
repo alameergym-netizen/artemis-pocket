@@ -1834,6 +1834,11 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
         return true;
     }
 
+    @Override
+    protected boolean onGamePageShortcut() {
+        return pocketRecentCarousel != null && pocketRecentCarousel.hasFocus() && pocketOpenRecentPage();
+    }
+
     private boolean pocketOpenRecentPage() {
         if (pocketRecentAdapter == null || pocketRecentCarousel == null) {
             return false;

@@ -36,7 +36,40 @@ public enum PocketAction {
     MOUSE("mouse", R.string.pocket_act_mouse),
     ANDROID_HOME("androidhome", R.string.pocket_act_androidhome),
     DISCONNECT("disconnect", R.string.pocket_act_disconnect),
-    QUIT("quit", R.string.pocket_act_quit);
+    QUIT("quit", R.string.pocket_act_quit),
+    // A controller button on the PC, pressed for as long as the button is held (M1 / M2 as
+    // extra buttons, like paddles), and a few useful pairs
+    PAD_A("pad_a", R.string.pocket_act_pad_a),
+    PAD_B("pad_b", R.string.pocket_act_pad_b),
+    PAD_X("pad_x", R.string.pocket_act_pad_x),
+    PAD_Y("pad_y", R.string.pocket_act_pad_y),
+    PAD_LB("pad_lb", R.string.pocket_act_pad_lb),
+    PAD_RB("pad_rb", R.string.pocket_act_pad_rb),
+    PAD_L3("pad_l3", R.string.pocket_act_pad_l3),
+    PAD_R3("pad_r3", R.string.pocket_act_pad_r3),
+    PAD_UP("pad_up", R.string.pocket_act_pad_up),
+    PAD_DOWN("pad_down", R.string.pocket_act_pad_down),
+    PAD_LEFT("pad_left", R.string.pocket_act_pad_left),
+    PAD_RIGHT("pad_right", R.string.pocket_act_pad_right),
+    COMBO_VIEW_START("combo_view_start", R.string.pocket_act_combo_view_start),
+    COMBO_LB_RB("combo_lb_rb", R.string.pocket_act_combo_lb_rb),
+    COMBO_L3_R3("combo_l3_r3", R.string.pocket_act_combo_l3_r3),
+    // Recorded button sequences
+    MACRO_1("macro1", R.string.pocket_act_macro_1),
+    MACRO_2("macro2", R.string.pocket_act_macro_2),
+    MACRO_3("macro3", R.string.pocket_act_macro_3),
+    MACRO_4("macro4", R.string.pocket_act_macro_4);
+
+    /** Which macro slot (0..3) this action plays, or -1. */
+    public int macroSlot() {
+        switch (this) {
+            case MACRO_1: return 0;
+            case MACRO_2: return 1;
+            case MACRO_3: return 2;
+            case MACRO_4: return 3;
+            default: return -1;
+        }
+    }
 
     public final String id;
     public final int label;

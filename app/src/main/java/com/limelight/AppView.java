@@ -1445,6 +1445,11 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         return pocketOpenGamePage();
     }
 
+    @Override
+    protected boolean onGamePageShortcut() {
+        return pocketOpenGamePage();
+    }
+
     private boolean pocketOpenGamePage() {
         if (appGridAdapter == null || appCarousel == null || computer == null || carouselAdapter == null) {
             return false;

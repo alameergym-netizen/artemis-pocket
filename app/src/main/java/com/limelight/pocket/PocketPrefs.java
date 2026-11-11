@@ -79,6 +79,21 @@ public final class PocketPrefs {
         prefs(context).edit().remove(KEY_MENU_HOTKEY).apply();
     }
 
+    // M2: a second assignable button (same encoding as the menu button / M1)
+    public static final String KEY_M2_HOTKEY = "pocket_m2_hotkey";
+
+    public static String getM2Hotkey(Context context) {
+        return prefs(context).getString(KEY_M2_HOTKEY, "");
+    }
+
+    public static void setM2Hotkey(Context context, KeyEvent event) {
+        prefs(context).edit().putString(KEY_M2_HOTKEY, encodeKey(event)).apply();
+    }
+
+    public static void clearM2Hotkey(Context context) {
+        prefs(context).edit().remove(KEY_M2_HOTKEY).apply();
+    }
+
     public static boolean matchesHotkey(String hotkey, KeyEvent event) {
         if (hotkey == null || hotkey.length() < 3) {
             return false;

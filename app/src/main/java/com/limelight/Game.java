@@ -309,6 +309,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     // Artemis Pocket: Back / Home / menu button gestures and the radial menu
     private String pocketMenuHotkey;
+    private String pocketM2Hotkey;
     private boolean pocketGuideDown;
     private ButtonGestures[] pocketGestures;
     private RadialMenuView radialMenu;
@@ -672,6 +673,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         // Artemis Pocket: a USB-C cable (or no default network at all) is never a metered link
         boolean isMetered = UsbLink.isStreamMetered(this, getIntent().getStringExtra(EXTRA_HOST));
         pocketMenuHotkey = PocketPrefs.getMenuHotkey(this);
+        pocketM2Hotkey = PocketPrefs.getM2Hotkey(this);
         pocketBackKey = PocketPrefs.getBackKey(this);
         pocketHomeKey = PocketPrefs.getHomeKey(this);
         if (isMetered) {
@@ -1922,6 +1924,7 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         }
         pocketRecordPlaytime();
         pocketMic.stop();
+        stopPocketMacro();
 
         SpinnerDialog.closeDialogs(this);
         Dialog.closeDialogs();
@@ -2463,8 +2466,8 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 }
             }
         };
-        pocketGestures = new ButtonGestures[3];
-        for (int b = 0; b < 3; b++) {
+        pocketGestures = new ButtonGestures[ButtonActions.BUTTON_COUNT];
+        for (int b = 0; b < ButtonActions.BUTTON_COUNT; b++) {
             pocketGestures[b] = new ButtonGestures(b, callbacks);
             pocketGestures[b].configure(
                     ButtonActions.get(this, b, ButtonActions.GESTURE_TAP),
@@ -2562,27 +2565,59 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         if (controllerHandler == null) {
             return;
         }
-        int flag;
-        switch (action) {
-            case GUIDE:
-                flag = ControllerHandler.POCKET_GUIDE;
-                break;
-            case VIEW:
-                flag = ControllerHandler.POCKET_VIEW;
-                break;
-            case START:
-                flag = ControllerHandler.POCKET_START;
-                break;
-            default:
-                if (down) {
-                    performPocketAction(action, -1, true);
-                }
-                return;
+        int flags = com.limelight.pocket.PadMapping.flags(action);
+        if (flags == 0) {
+            if (down) {
+                performPocketAction(action, -1, true);
+            }
+            return;
         }
-        if (down) {
+        if (down && (action == PocketAction.GUIDE || action == PocketAction.VIEW || action == PocketAction.START)) {
+            // (Extra buttons used like paddles stay quiet: no note on every press)
             showPocketActionToast(action.shortLabel(this));
         }
-        controllerHandler.setEmulatedFlag(flag, down);
+        for (int bit : com.limelight.pocket.PadMapping.changed(0, flags)) {
+            controllerHandler.setEmulatedFlag(bit, down);
+        }
+    }
+
+    // ---- Artemis Pocket: macros (recorded button sequences) -----------------------------------
+
+    private final android.os.Handler pocketMacroHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private int pocketMacroFlags;
+
+    /** Plays a recorded macro on the PC (a new one replaces one still playing). */
+    private void playPocketMacro(int slot) {
+        com.limelight.pocket.Macro macro = ButtonActions.getMacro(this, slot);
+        if (controllerHandler == null) {
+            return;
+        }
+        if (macro == null) {
+            Toast.makeText(this, getString(R.string.pocket_macro_empty_toast, slot + 1), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        stopPocketMacro();
+        for (com.limelight.pocket.Macro.Step step : macro.steps()) {
+            final int flags = step.flags;
+            pocketMacroHandler.postDelayed(() -> applyPocketMacroFlags(flags), step.atMs);
+        }
+    }
+
+    private void applyPocketMacroFlags(int flags) {
+        if (controllerHandler == null) {
+            return;
+        }
+        for (int bit : com.limelight.pocket.PadMapping.changed(pocketMacroFlags, flags)) {
+            controllerHandler.setEmulatedFlag(bit, (flags & bit) != 0);
+        }
+        pocketMacroFlags = flags;
+    }
+
+    private void stopPocketMacro() {
+        pocketMacroHandler.removeCallbacksAndMessages(null);
+        if (pocketMacroFlags != 0) {
+            applyPocketMacroFlags(0);
+        }
     }
 
     /** Quits the game on the PC without another dialog (the in-stream menu already asked). */
@@ -3511,6 +3546,15 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                 quit();
                 break;
             default:
+                if (action.macroSlot() >= 0) {
+                    playPocketMacro(action.macroSlot());
+                }
+                else if (com.limelight.pocket.PadMapping.isPad(action) && controllerHandler != null) {
+                    // A tap of that controller button (or pair) on the PC
+                    for (int bit : com.limelight.pocket.PadMapping.changed(0, com.limelight.pocket.PadMapping.flags(action))) {
+                        controllerHandler.pulseFlag(bit);
+                    }
+                }
                 break;
         }
     }
@@ -3741,6 +3785,9 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
         int button = -1;
         if (PocketPrefs.matchesHotkey(pocketMenuHotkey, event)) {
             button = ButtonActions.BUTTON_MENU;
+        }
+        else if (PocketPrefs.matchesHotkey(pocketM2Hotkey, event)) {
+            button = ButtonActions.BUTTON_M2;
         }
         else if (!fromMouse && PocketPrefs.matchesBack(pocketBackKey, event)) {
             button = ButtonActions.BUTTON_BACK;

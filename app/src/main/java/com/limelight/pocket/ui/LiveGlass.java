@@ -133,6 +133,28 @@ public final class LiveGlass {
         }
     }
 
+    /**
+     * Colours this view's glass (Play wears the accent): the colour is part of the background, so
+     * the text always sits on top of it. Works before or after the view becomes glass.
+     */
+    public static void setFace(View host, int top, int bottom) {
+        if (host == null) {
+            return;
+        }
+        host.setTag(com.limelight.R.id.pocket_glass_face, new int[]{top, bottom});
+        Drawable bg = host.getBackground();
+        if (bg instanceof GlassDrawable) {
+            ((GlassDrawable) bg).setFace(top, bottom);
+            return;
+        }
+        float d = host.getResources().getDisplayMetrics().density;
+        android.graphics.drawable.GradientDrawable face = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[]{top, bottom});
+        face.setCornerRadius(100 * d);
+        face.setStroke(Math.max(1, Math.round(d)), 0x59FFFFFF);
+        host.setBackground(face);
+    }
+
     /** Finds views tagged "glass" / "glass_panel" under root and turns them into glass. */
     public static void attachTagged(View root, Backdrop backdrop) {
         if (root == null) {
@@ -163,6 +185,10 @@ public final class LiveGlass {
         private final Paint tint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint face = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private int faceTop;
+        private int faceBottom;
+        private boolean hasFace;
         private final RectF rect = new RectF();
         private final RectF rimRect = new RectF();
         private final int[] hostLoc = new int[2];
@@ -178,6 +204,21 @@ public final class LiveGlass {
             this.d = host.getResources().getDisplayMetrics().density;
             rim.setStyle(Paint.Style.STROKE);
             rim.setStrokeWidth(Math.max(1f, d));
+            Object f = host.getTag(com.limelight.R.id.pocket_glass_face);
+            if (f instanceof int[] && ((int[]) f).length == 2) {
+                setFace(((int[]) f)[0], ((int[]) f)[1]);
+            }
+        }
+
+        /** A colour over the blur, under the text (top to bottom). */
+        void setFace(int top, int bottom) {
+            hasFace = true;
+            faceTop = top;
+            faceBottom = bottom;
+            if (!rect.isEmpty()) {
+                face.setShader(new LinearGradient(0, rect.top, 0, rect.bottom, top, bottom, Shader.TileMode.CLAMP));
+            }
+            invalidateSelf();
         }
 
         boolean moved() {
@@ -208,6 +249,9 @@ public final class LiveGlass {
             rim.setShader(new LinearGradient(0, rect.top, 0, rect.bottom,
                     new int[]{0x8CFFFFFF, 0x1FFFFFFF, 0x14FFFFFF, 0x38FFFFFF},
                     new float[]{0f, 0.35f, 0.7f, 1f}, Shader.TileMode.CLAMP));
+            if (hasFace) {
+                face.setShader(new LinearGradient(0, rect.top, 0, rect.bottom, faceTop, faceBottom, Shader.TileMode.CLAMP));
+            }
         }
 
         @Override
@@ -231,7 +275,7 @@ public final class LiveGlass {
                     canvas.drawColor(0x33000000);
                 }
             }
-            canvas.drawRoundRect(rect, radius, radius, tint);
+            canvas.drawRoundRect(rect, radius, radius, hasFace ? face : tint);
             canvas.drawRoundRect(rect, radius, radius, sheen);
             canvas.drawRoundRect(rimRect, radius, radius, rim);
         }
@@ -245,6 +289,7 @@ public final class LiveGlass {
         public void setAlpha(int alpha) {
             this.alpha = alpha;
             tint.setAlpha(alpha);
+            face.setAlpha(alpha);
             sheen.setAlpha(alpha);
             rim.setAlpha(alpha);
             invalidateSelf();

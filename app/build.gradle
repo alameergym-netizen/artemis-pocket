@@ -94,9 +94,9 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix ".debug"
-            resValue "string", "app_label", "Artemis Pocket (Debug)"
-            resValue "string", "app_label_root", "Artemis Pocket (Debug)"
-            resValue "string", "app_label_game", "Artemis Pocket (Debug)"
+            resValue "string", "app_label", "Pocket Nexus (Debug)"
+            resValue "string", "app_label_root", "Pocket Nexus (Debug)"
+            resValue "string", "app_label_game", "Pocket Nexus (Debug)"
             signingConfig signingConfigs.pocket
 
             minifyEnabled true
@@ -135,9 +135,9 @@ android {
             // TL;DR: Leave the following line alone!
             // Artemis Pocket uses its own application ID (com.artemispocket), so it installs
             // next to the official Artemis instead of replacing it.
-            resValue "string", "app_label", "Artemis Pocket"
-            resValue "string", "app_label_root", "Artemis Pocket"
-            resValue "string", "app_label_game", "Artemis Pocket"
+            resValue "string", "app_label", "Pocket Nexus"
+            resValue "string", "app_label_root", "Pocket Nexus"
+            resValue "string", "app_label_game", "Pocket Nexus"
             signingConfig signingConfigs.pocket
 
             minifyEnabled true

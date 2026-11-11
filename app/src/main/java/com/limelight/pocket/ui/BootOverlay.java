@@ -57,8 +57,8 @@ public final class BootOverlay extends FrameLayout {
     private static final float ENTRANCE_AT = 0.46f;
     private static final long MAX_SOUND_WAIT_MS = 600;
 
-    private static final String WORD_1 = "ARTEMIS";
-    private static final String WORD_2 = "POCKET";
+    private static final String WORD_1 = "POCKET";
+    private static final String WORD_2 = "NEXUS";
 
     private final float d;
     private final int accent;

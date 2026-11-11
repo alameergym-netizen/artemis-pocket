@@ -1,4 +1,4 @@
-# Artemis Pocket PC - everything the handheld needs on the gaming PC, in one window
+# Pocket Nexus PC - everything the handheld needs on the gaming PC, in one window
 #
 #  1. USB bridge   Streams to the handheld over the USB-C cable on ROMs where Android's USB
 #                  tethering is turned off (Retroid Pocket). Needs USB debugging on the handheld.
@@ -7,6 +7,8 @@
 #                  on this PC (through VB-Audio Virtual Cable, free: https://vb-audio.com/Cable/).
 #                  Through the cable it just works; over Wi-Fi the handheld links once with the
 #                  PIN shown below (or by itself after one stream over the cable).
+#  3. PC library   Lists the games installed here (Steam, Epic, GOG) for the handheld, starts
+#                  them on request and asks Steam to install games (GAMES, LAUNCH, STEAM INSTALL).
 #
 # How the cable part works
 #   adb reverse   handheld 127.0.0.1:47984/47989/48010 -> Apollo on this PC   (TCP)
@@ -18,7 +20,7 @@
 param([switch]$Autostart)
 
 $ErrorActionPreference = "Continue"
-$Host.UI.RawUI.WindowTitle = "Artemis Pocket PC"
+$Host.UI.RawUI.WindowTitle = "Pocket Nexus PC"
 $ScriptPath = $MyInvocation.MyCommand.Path
 $here = Split-Path -Parent $ScriptPath
 $TunnelPort = 47100
@@ -31,7 +33,7 @@ function Say($text, $color = "Gray") { Write-Host ("  " + $text) -ForegroundColo
 function Stamp($text, $color = "Gray") { Write-Host ("  [" + (Get-Date -Format "HH:mm:ss") + "] " + $text) -ForegroundColor $color }
 
 Write-Host ""
-Write-Host "  ARTEMIS POCKET PC" -ForegroundColor White
+Write-Host "  POCKET NEXUS PC" -ForegroundColor White
 Write-Host ""
 
 # ---- ADB ---------------------------------------------------------------------------------
@@ -205,6 +207,8 @@ using System.Threading;
 public static class PocketCompanion {
     public static string Token = "";
     public static string Pin = "";
+    // Commands from add-ons compiled separately (so a problem there never stops this helper)
+    public static Func<string, string[], NetworkStream, bool> Extra;
     public static readonly ConcurrentQueue<string> Events = new ConcurrentQueue<string>();
     static TcpListener listener;
     static readonly object pinLock = new object();
@@ -299,13 +303,17 @@ public static class PocketCompanion {
                     WriteLine(s, Status());
                 } else if (cmd == "POWER") {
                     WriteLine(s, Power(p.Length > 1 ? p[1].ToLowerInvariant() : ""));
+                } else if (cmd == "VERSION") {
+                    WriteLine(s, "VERSION 2" + (Extra != null ? " games" : ""));
                 } else if (cmd == "MIC") {
                     int rate = p.Length > 1 ? ParseInt(p[1], 48000) : 48000;
                     int channels = p.Length > 2 ? ParseInt(p[2], 1) : 1;
                     MicPlayer.Run(s, rate, channels);
                     return;
                 } else {
-                    WriteLine(s, "ERR unknown");
+                    // Add-ons (the PC library) get the commands this doesn't know
+                    Func<string, string[], NetworkStream, bool> extra = Extra;
+                    if (extra == null || !extra(cmd, p, s)) { WriteLine(s, "ERR unknown"); }
                 }
             }
         } catch {
@@ -544,6 +552,380 @@ public static class MicPlayer {
 '@
 }
 
+# ---- PC library (an add-on: if it can't load, everything else still works) ------------------
+$pcLibraryOk = $false
+if (-not ("PcGames" -as [type])) {
+    try {
+Add-Type -IgnoreWarnings -TypeDefinition @'
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Net.Sockets;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using Microsoft.Win32;
+
+// The PC's games for the handheld's PC library: Steam (every library folder), Epic and GOG.
+// Only games found by a scan can be started or installed (never an arbitrary command).
+public static class PcGames {
+    public class Game {
+        public string Source = "", Id = "", Name = "", State = "installed", Exe = "", Dir = "", Uri = "", ArtId = "";
+        public int Progress = -1;
+        public long SizeMb = 0, LastPlayed = 0;
+
+        public string Line() {
+            return "G\t" + Source + "\t" + Clean(Id) + "\t" + Clean(Name) + "\t" + State + "\t" + Progress + "\t"
+                + SizeMb + "\t" + LastPlayed + "\t" + Clean(ArtId);
+        }
+    }
+
+    public static Action<string> Logger;
+    static readonly object scanLock = new object();
+
+    static void Log(string text) {
+        Action<string> l = Logger;
+        if (l != null) { try { l(text); } catch { } }
+    }
+
+    static void Send(NetworkStream s, string line) {
+        byte[] b = Encoding.UTF8.GetBytes(line + "\n");
+        s.Write(b, 0, b.Length);
+        s.Flush();
+    }
+
+    // The library's commands: GAMES, LAUNCH <source> <id>, STEAM INSTALL <appid>
+    public static bool Handle(string cmd, string[] p, NetworkStream s) {
+        if (cmd == "GAMES") {
+            List<Game> games = Scan();
+            foreach (Game g in games) { Send(s, g.Line()); }
+            Send(s, "END " + games.Count);
+            return true;
+        }
+        if (cmd == "LAUNCH" && p.Length > 2) {
+            Send(s, Launch(p[1].ToLowerInvariant(), p[2]));
+            return true;
+        }
+        if (cmd == "STEAM" && p.Length > 2 && p[1].ToUpperInvariant() == "INSTALL") {
+            Send(s, SteamInstall(p[2]));
+            return true;
+        }
+        return false;
+    }
+    static List<Game> last = new List<Game>();
+    static readonly Regex KeyValue = new Regex(@"""([^""]+)""\s+""((?:[^""\\]|\\.)*)""");
+    static readonly Regex LibPath = new Regex(@"""(?:path|\d+)""\s+""([A-Za-z]:(?:[^""\\]|\\.)*)""");
+
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowsProc proc, IntPtr lParam);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int max);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint pid);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern bool SetForegroundWindow(IntPtr hWnd);
+    [DllImport("user32.dll")] static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr hWnd, int cmd);
+    [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
+    delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
+    public static string Clean(string text) {
+        if (text == null) { return ""; }
+        string t = text.Replace('\t', ' ').Replace('\r', ' ').Replace('\n', ' ').Trim();
+        return t.Length > 200 ? t.Substring(0, 200) : t;
+    }
+
+    static string Unescape(string text) {
+        try { return Regex.Unescape(text); } catch { return text.Replace(@"\\", @"\"); }
+    }
+
+    static long ParseLong(string text) {
+        long v;
+        return long.TryParse(text, out v) ? v : 0;
+    }
+
+    static bool IsDigits(string text) {
+        if (string.IsNullOrEmpty(text) || text.Length > 12) { return false; }
+        foreach (char c in text) { if (c < '0' || c > '9') { return false; } }
+        return true;
+    }
+
+    static string RegValue(RegistryKey root, string path, string name) {
+        try {
+            using (RegistryKey k = root.OpenSubKey(path)) {
+                if (k == null) { return null; }
+                object v = k.GetValue(name);
+                return v == null ? null : v.ToString();
+            }
+        } catch { return null; }
+    }
+
+    public static string SteamPath() {
+        string p = RegValue(Registry.CurrentUser, @"Software\Valve\Steam", "SteamPath");
+        if (string.IsNullOrEmpty(p)) { p = RegValue(Registry.LocalMachine, @"SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath"); }
+        if (string.IsNullOrEmpty(p)) { p = RegValue(Registry.LocalMachine, @"SOFTWARE\Valve\Steam", "InstallPath"); }
+        if (string.IsNullOrEmpty(p)) { return null; }
+        p = p.Replace('/', '\\');
+        return Directory.Exists(p) ? p : null;
+    }
+
+    static Dictionary<string, string> Kv(string text) {
+        Dictionary<string, string> d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (Match m in KeyValue.Matches(text)) {
+            string k = m.Groups[1].Value;
+            if (!d.ContainsKey(k)) { d[k] = Unescape(m.Groups[2].Value); }
+        }
+        return d;
+    }
+
+    static string Get(Dictionary<string, string> d, string key) {
+        string v;
+        return d.TryGetValue(key, out v) ? v : "";
+    }
+
+    static void ScanSteam(List<Game> into) {
+        string steam = SteamPath();
+        if (steam == null) { return; }
+        List<string> libs = new List<string>();
+        libs.Add(steam);
+        string vdf = Path.Combine(steam, @"steamapps\libraryfolders.vdf");
+        try {
+            if (File.Exists(vdf)) {
+                foreach (Match m in LibPath.Matches(File.ReadAllText(vdf))) {
+                    string lib = Unescape(m.Groups[1].Value);
+                    bool seen = false;
+                    foreach (string l in libs) { if (string.Equals(l.TrimEnd('\\'), lib.TrimEnd('\\'), StringComparison.OrdinalIgnoreCase)) { seen = true; } }
+                    if (!seen) { libs.Add(lib); }
+                }
+            }
+        } catch { }
+        HashSet<string> ids = new HashSet<string>();
+        foreach (string lib in libs) {
+            string apps = Path.Combine(lib, "steamapps");
+            string[] files;
+            try { files = Directory.GetFiles(apps, "appmanifest_*.acf"); } catch { continue; }
+            foreach (string f in files) {
+                try {
+                    Dictionary<string, string> kv = Kv(File.ReadAllText(f));
+                    string id = Get(kv, "appid");
+                    string name = Get(kv, "name");
+                    if (!IsDigits(id) || name.Length == 0 || ids.Contains(id)) { continue; }
+                    if (id == "228980" || name.StartsWith("Steamworks Common", StringComparison.OrdinalIgnoreCase)
+                            || name.StartsWith("Proton", StringComparison.OrdinalIgnoreCase)
+                            || name.StartsWith("Steam Linux Runtime", StringComparison.OrdinalIgnoreCase)) { continue; }
+                    ids.Add(id);
+                    Game g = new Game();
+                    g.Source = "steam";
+                    g.Id = id;
+                    g.ArtId = id;
+                    g.Name = name;
+                    long flags = ParseLong(Get(kv, "StateFlags"));
+                    long toGet = ParseLong(Get(kv, "BytesToDownload"));
+                    long got = ParseLong(Get(kv, "BytesDownloaded"));
+                    bool full = (flags & 4) != 0;
+                    if (toGet > 0 && got < toGet && flags != 4) {
+                        g.State = full ? "updating" : "installing";
+                        g.Progress = (int)(got * 100 / toGet);
+                    } else if (full) {
+                        g.State = "installed";
+                    } else {
+                        g.State = "installing";
+                        g.Progress = 0;
+                    }
+                    g.SizeMb = ParseLong(Get(kv, "SizeOnDisk")) / (1024 * 1024);
+                    g.LastPlayed = ParseLong(Get(kv, "LastPlayed"));
+                    g.Dir = Path.Combine(apps, @"common\" + Get(kv, "installdir"));
+                    into.Add(g);
+                } catch { }
+            }
+        }
+    }
+
+    static string JsonText(string text, string key) {
+        Match m = Regex.Match(text, "\"" + Regex.Escape(key) + @"""\s*:\s*""((?:[^""\\]|\\.)*)""");
+        return m.Success ? Unescape(m.Groups[1].Value) : "";
+    }
+
+    static long JsonNumber(string text, string key) {
+        Match m = Regex.Match(text, "\"" + Regex.Escape(key) + @"""\s*:\s*""?(-?\d+)");
+        return m.Success ? ParseLong(m.Groups[1].Value) : 0;
+    }
+
+    static void ScanEpic(List<Game> into) {
+        string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+            @"Epic\EpicGamesLauncher\Data\Manifests");
+        string[] files;
+        try { files = Directory.GetFiles(dir, "*.item"); } catch { return; }
+        foreach (string f in files) {
+            try {
+                string t = File.ReadAllText(f);
+                if (Regex.IsMatch(t, @"""AppCategories""\s*:\s*\[[^\]]*""addons""")) { continue; }
+                string app = JsonText(t, "AppName");
+                string name = JsonText(t, "DisplayName");
+                if (app.Length == 0 || name.Length == 0 || app.IndexOf(' ') >= 0) { continue; }
+                Game g = new Game();
+                g.Source = "epic";
+                g.Id = app;
+                g.Name = name;
+                g.State = Regex.IsMatch(t, @"""bIsIncompleteInstall""\s*:\s*true") ? "installing" : "installed";
+                if (g.State == "installing") { g.Progress = 0; }
+                g.SizeMb = JsonNumber(t, "InstallSize") / (1024 * 1024);
+                g.Dir = JsonText(t, "InstallLocation");
+                string ns = JsonText(t, "CatalogNamespace");
+                string item = JsonText(t, "CatalogItemId");
+                string target = ns.Length > 0 && item.Length > 0 ? ns + ":" + item + ":" + app : app;
+                g.Uri = "com.epicgames.launcher://apps/" + System.Uri.EscapeDataString(target) + "?action=launch&silent=true";
+                into.Add(g);
+            } catch { }
+        }
+    }
+
+    static void ScanGog(List<Game> into) {
+        foreach (string path in new string[] { @"SOFTWARE\WOW6432Node\GOG.com\Games", @"SOFTWARE\GOG.com\Games" }) {
+            try {
+                using (RegistryKey games = Registry.LocalMachine.OpenSubKey(path)) {
+                    if (games == null) { continue; }
+                    foreach (string sub in games.GetSubKeyNames()) {
+                        using (RegistryKey k = games.OpenSubKey(sub)) {
+                            if (k == null) { continue; }
+                            object depends = k.GetValue("dependsOn");
+                            if (depends != null && depends.ToString().Trim().Length > 0) { continue; }
+                            string exe = (k.GetValue("exe") ?? "").ToString();
+                            string name = (k.GetValue("gameName") ?? "").ToString();
+                            string id = (k.GetValue("gameID") ?? sub).ToString();
+                            if (exe.Length == 0 || name.Length == 0 || !IsDigits(id) || !File.Exists(exe)) { continue; }
+                            bool dup = false;
+                            foreach (Game other in into) { if (other.Source == "gog" && other.Id == id) { dup = true; } }
+                            if (dup) { continue; }
+                            Game g = new Game();
+                            g.Source = "gog";
+                            g.Id = id;
+                            g.Name = name;
+                            g.Exe = exe;
+                            g.Dir = (k.GetValue("workingDir") ?? k.GetValue("path") ?? "").ToString();
+                            into.Add(g);
+                        }
+                    }
+                }
+            } catch { }
+        }
+    }
+
+    public static List<Game> Scan() {
+        List<Game> games = new List<Game>();
+        ScanSteam(games);
+        ScanEpic(games);
+        ScanGog(games);
+        lock (scanLock) { last = games; }
+        return games;
+    }
+
+    static Game Find(string source, string id) {
+        lock (scanLock) {
+            foreach (Game g in last) { if (g.Source == source && g.Id == id) { return g; } }
+        }
+        return null;
+    }
+
+    static void Open(string uri) {
+        ProcessStartInfo info = new ProcessStartInfo(uri);
+        info.UseShellExecute = true;
+        Process.Start(info);
+    }
+
+    public static string Launch(string source, string id) {
+        Game g = Find(source, id);
+        if (g == null) { Scan(); g = Find(source, id); }
+        if (g == null) { return "ERR unknown"; }
+        if (g.State != "installed") { return "ERR notinstalled"; }
+        try {
+            if (g.Source == "steam") {
+                Open("steam://rungameid/" + g.Id);
+            } else if (g.Source == "epic") {
+                Open(g.Uri);
+            } else {
+                ProcessStartInfo info = new ProcessStartInfo(g.Exe);
+                info.UseShellExecute = true;
+                if (g.Dir.Length > 0 && Directory.Exists(g.Dir)) { info.WorkingDirectory = g.Dir; }
+                Process.Start(info);
+            }
+        } catch (Exception e) {
+            return "ERR " + Clean(e.Message);
+        }
+        Log("Starting " + g.Name + " for the handheld");
+        return "OK";
+    }
+
+    public static string SteamInstall(string id) {
+        if (!IsDigits(id)) { return "ERR id"; }
+        if (SteamPath() == null) { return "ERR nosteam"; }
+        try { Open("steam://install/" + id); } catch (Exception e) { return "ERR " + Clean(e.Message); }
+        Log("Steam: install requested (app " + id + ")");
+        Thread t = new Thread(ConfirmInstallDialog);
+        t.IsBackground = true;
+        t.Start();
+        return "OK";
+    }
+
+    // Steam asks where to install: when its dialog comes up, press its default button (Install)
+    // the way a person would. Only that dialog, and only when it really has the focus.
+    static void ConfirmInstallDialog() {
+        for (int i = 0; i < 30; i++) {
+            Thread.Sleep(500);
+            IntPtr w = FindSteamWindow("Install");
+            if (w == IntPtr.Zero) { continue; }
+            Thread.Sleep(900);
+            keybd_event(0x12, 0, 0, UIntPtr.Zero);
+            keybd_event(0x12, 0, 2, UIntPtr.Zero);
+            ShowWindow(w, 9);
+            SetForegroundWindow(w);
+            Thread.Sleep(300);
+            if (GetForegroundWindow() == w) {
+                keybd_event(0x0D, 0, 0, UIntPtr.Zero);
+                keybd_event(0x0D, 0, 2, UIntPtr.Zero);
+                Log("Steam: install confirmed");
+            } else {
+                Log("Steam: confirm the install on the PC (the window didn't take the focus)");
+            }
+            return;
+        }
+    }
+
+    static IntPtr FindSteamWindow(string titleStart) {
+        IntPtr found = IntPtr.Zero;
+        EnumWindows(delegate (IntPtr hWnd, IntPtr lParam) {
+            if (!IsWindowVisible(hWnd)) { return true; }
+            StringBuilder title = new StringBuilder(256);
+            GetWindowText(hWnd, title, title.Capacity);
+            if (!title.ToString().StartsWith(titleStart, StringComparison.OrdinalIgnoreCase)) { return true; }
+            uint pid;
+            GetWindowThreadProcessId(hWnd, out pid);
+            try {
+                string proc = Process.GetProcessById((int)pid).ProcessName;
+                if (proc.Equals("steamwebhelper", StringComparison.OrdinalIgnoreCase) || proc.Equals("steam", StringComparison.OrdinalIgnoreCase)) {
+                    found = hWnd;
+                    return false;
+                }
+            } catch { }
+            return true;
+        }, IntPtr.Zero);
+        return found;
+    }
+}
+'@
+    } catch {
+        Say ("PC library unavailable: " + $_.Exception.Message) "Yellow"
+    }
+}
+if ("PcGames" -as [type]) {
+    try {
+        [PcGames]::Logger = [Delegate]::CreateDelegate([Action[string]], [PocketCompanion].GetMethod("Log"))
+        [PocketCompanion]::Extra = [Delegate]::CreateDelegate([Func[string, string[], System.Net.Sockets.NetworkStream, bool]], [PcGames].GetMethod("Handle"))
+        $pcLibraryOk = $true
+    } catch {
+        Say ("PC library unavailable: " + $_.Exception.Message) "Yellow"
+    }
+}
+
 # Secret for Wi-Fi control (kept between runs) and a fresh PIN for linking each run
 $tokenFile = "$DataDir\companion-token.txt"
 $token = ""
@@ -563,10 +945,11 @@ try {
     [PocketCompanion]::Start($CompanionPort, $token, $pin)
 } catch {
     $companionOk = $false
-    Say "PC helper: port $CompanionPort is busy (another copy of this window is open?)" "Yellow"
+    Say "PC helper: port $CompanionPort is busy (another copy of this window, or the old Artemis Pocket PC, is open? Close it and start this again)" "Yellow"
 }
 if ($companionOk) {
     Say "PC helper ready  -  Wi-Fi link PIN: $pin" "Green"
+    if ($pcLibraryOk) { Say "PC library ready: Steam, Epic and GOG games show on the handheld" "Green" }
     $cableId = 0
     $cable = [MicPlayer]::FindCable([ref]$cableId)
     if ($cable) { Say "Microphone: VB-Cable found ($cable)" "Green" }
@@ -577,11 +960,12 @@ if ($companionOk) {
 $fwFlag = "$DataDir\firewall-asked"
 if ($companionOk -and -not $Autostart -and -not (Test-Path $fwFlag)) {
     New-Item -ItemType File -Force -Path $fwFlag | Out-Null
-    $rule = Get-NetFirewallRule -DisplayName "Artemis Pocket PC" -ErrorAction SilentlyContinue
+    $rule = Get-NetFirewallRule -DisplayName "Pocket Nexus PC" -ErrorAction SilentlyContinue
+    if (-not $rule) { $rule = Get-NetFirewallRule -DisplayName "Artemis Pocket PC" -ErrorAction SilentlyContinue }
     if (-not $rule) {
         $answer = Read-Host "  Let the handheld use these PC controls over Wi-Fi too (adds a firewall rule, asks for admin)? (Y/N)"
         if ($answer -match "^[Yy]") {
-            $cmd = "New-NetFirewallRule -DisplayName 'Artemis Pocket PC' -Direction Inbound -Protocol TCP -LocalPort $CompanionPort -Action Allow -Profile Private,Domain"
+            $cmd = "New-NetFirewallRule -DisplayName 'Pocket Nexus PC' -Direction Inbound -Protocol TCP -LocalPort $CompanionPort -Action Allow -Profile Private,Domain"
             try {
                 Start-Process powershell.exe -Verb RunAs -Wait -ArgumentList "-NoProfile -Command $cmd"
                 Say "Firewall rule added (private networks only)" "Green"
@@ -601,8 +985,8 @@ if (Get-NetTCPConnection -LocalPort 47989 -State Listen -ErrorAction SilentlyCon
 
 # ---- Start with Windows (asked once) --------------------------------------------------------
 $startup = [Environment]::GetFolderPath("Startup")
-$oldLink = "$startup\Artemis Pocket USB bridge.lnk"
-$newLink = "$startup\Artemis Pocket PC.lnk"
+$oldLinks = @("$startup\Artemis Pocket USB bridge.lnk", "$startup\Artemis Pocket PC.lnk")
+$newLink = "$startup\Pocket Nexus PC.lnk"
 function New-StartupLink {
     $shell = New-Object -ComObject WScript.Shell
     $lnk = $shell.CreateShortcut($newLink)
@@ -611,16 +995,19 @@ function New-StartupLink {
     $lnk.WindowStyle = 7
     $lnk.Save()
 }
-if (Test-Path $oldLink) {
-    # The old USB bridge started with Windows: this window replaces it
-    Remove-Item $oldLink -ErrorAction SilentlyContinue
+$hadOldLink = $false
+foreach ($oldLink in $oldLinks) {
+    # The old helper (Artemis Pocket) started with Windows: this window replaces it
+    if (Test-Path $oldLink) { Remove-Item $oldLink -ErrorAction SilentlyContinue; $hadOldLink = $true }
+}
+if ($hadOldLink) {
     New-StartupLink
-    Say "Startup shortcut updated to Artemis Pocket PC" "Green"
+    Say "Startup shortcut updated to Pocket Nexus PC" "Green"
 }
 $flag = "$DataDir\autostart-asked-v2"
 if (-not $Autostart -and -not (Test-Path $flag) -and -not (Test-Path $newLink)) {
     New-Item -ItemType File -Force -Path $flag | Out-Null
-    $answer = Read-Host "  Start Artemis Pocket PC automatically when Windows starts? (Y/N)"
+    $answer = Read-Host "  Start Pocket Nexus PC automatically when Windows starts? (Y/N)"
     if ($answer -match "^[Yy]") {
         New-StartupLink
         Say "Added to Windows startup (delete it from shell:startup to undo)" "Green"
@@ -658,7 +1045,7 @@ while ($true) {
             Reset-UsbMode
             Set-Reverse
             $model = ((& $adb shell getprop ro.product.model 2>$null) -join "").Trim()
-            Stamp "Connected: $model - open Artemis Pocket" "Green"
+            Stamp "Connected: $model - open Pocket Nexus" "Green"
         } elseif ($state -match "unauthorized") {
             Stamp "Press 'Allow' on the handheld (tick 'Always allow from this computer')" "Yellow"
         } else {
@@ -674,7 +1061,7 @@ while ($true) {
 
     $sessions = [PocketBridge]::Sessions
     if ($sessions -ne $lastSessions) {
-        Stamp "Artemis Pocket linked through the cable" "Cyan"
+        Stamp "Pocket Nexus linked through the cable" "Cyan"
         $lastSessions = $sessions
     }
     if ($companionOk) {

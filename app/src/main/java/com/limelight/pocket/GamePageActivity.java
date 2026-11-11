@@ -586,6 +586,12 @@ public class GamePageActivity extends ConsoleActivity {
         boolean darkText = luminance(accent) > 0.6f;
         play.setText("▶  " + getString(running ? R.string.pocket_hero_resume : R.string.pocket_hero_play));
         play.setTextColor(darkText ? 0xFF000000 : 0xFFFFFFFF);
+        // The accent is the button's own colour, under its text; focus adds a bright ring on top
+        com.limelight.pocket.ui.LiveGlass.setFace(play, PocketTheme.withAlpha(accent, 0xF2),
+                PocketTheme.withAlpha(accent, 0xC8));
+        if (!darkText) {
+            play.setShadowLayer(dp(3), 0f, dp(1) / 2f, 0x66000000);
+        }
         play.setForeground(buttonFace(accent, true));
         quit.setText("■  " + getString(R.string.pocket_page_close));
         quit.setVisibility(running && canQuit ? View.VISIBLE : View.GONE);
@@ -641,18 +647,18 @@ public class GamePageActivity extends ConsoleActivity {
         return (0.299f * Color.red(color) + 0.587f * Color.green(color) + 0.114f * Color.blue(color)) / 255f;
     }
 
-    /** What a glass button wears over the glass: the accent (Play), a bright ring when focused. */
+    /**
+     * What a glass button wears over the glass: a bright ring when focused (with a faint light on
+     * the plain ones). Never a fill over the text: Play's accent is its background.
+     */
     private StateListDrawable buttonFace(int accent, boolean primary) {
         StateListDrawable face = new StateListDrawable();
         GradientDrawable focused = new GradientDrawable();
         focused.setCornerRadius(dp(100));
-        focused.setColor(primary ? accent : 0x26FFFFFF);
+        focused.setColor(primary ? 0x00000000 : 0x14FFFFFF);
         focused.setStroke(dp(2), 0xF2FFFFFF);
         face.addState(new int[]{android.R.attr.state_focused}, focused);
-        GradientDrawable rest = new GradientDrawable();
-        rest.setCornerRadius(dp(100));
-        rest.setColor(primary ? PocketTheme.withAlpha(accent, 0xD9) : 0x00000000);
-        face.addState(new int[]{}, rest);
+        face.addState(new int[]{}, new android.graphics.drawable.ColorDrawable(0x00000000));
         return face;
     }
 

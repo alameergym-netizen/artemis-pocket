@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="pocket_brand_title">Artemis Pocket</string>
+    <string name="pocket_brand_title">Pocket Nexus</string>
     <string name="pocket_my_pcs">أجهزتك</string>
     <string name="pocket_hero_no_pc">اشبك كيبل USB-C أو اتصل بنفس واي فاي الكمبيوتر حتى تبدأ</string>
     <string name="pocket_searching_title">عم ندوّر على الكمبيوتر…</string>
@@ -46,7 +46,7 @@
     <string name="pocket_usb_status_off">غير متصل</string>
     <string name="pocket_usb_help_title">إعداد الستريم عبر USB-C</string>
     <string name="pocket_usb_help_sub">خطوات مرة وحدة على الجهاز والكمبيوتر</string>
-    <string name="pocket_usb_help_body">الستريم عبر الكيبل ما بيحتاج واي فاي ولا إنترنت.\n\nRETROID POCKET (أندرويد فيه الـ USB tethering معطّل، فبنستخدم جسر USB)\nعلى الجهاز، مرة وحدة:\n1. الإعدادات ← حول الجهاز ← اضغط على رقم الإصدار (Build number) ٧ مرات.\n2. الإعدادات ← النظام ← خيارات المطوّر ← فعّل USB debugging.\nعلى الكمبيوتر، مرة وحدة:\n3. نزّل Apollo (أو Sunshine).\n4. نزّل ArtemisPocket-PC-Tools من صفحة Artemis Pocket على GitHub واعمل دبل كليك على ArtemisPocket-USB-Bridge.bat. بينزّل ADB لحاله إذا لزم، وبيقدر يشتغل مع ويندوز تلقائياً.\nكل مرة:\n5. اشبك الكيبل (أول مرة اسمح بالـ USB debugging) وافتح Artemis Pocket، وهو بيلاقي الكمبيوتر لحاله. أول مرة اعمل اقتران بالرمز من صفحة Apollo.\n\nأجهزة ثانية فيها USB tethering\nشغّل USB tethering (الإعدادات ← الشبكة ← نقطة الاتصال والتيثرنج) وشغّل ArtemisPocket-USB-Setup.bat على الكمبيوتر مرة وحدة.\n\nنصائح: الجسر بيحمل لحد تقريباً 60 Mbps، نزّل البت ريت تبع USB-C إذا الصورة بتقطّع. الجهاز بيشحن من الكمبيوتر وإنت بتلعب.</string>
+    <string name="pocket_usb_help_body">الستريم عبر الكيبل ما بيحتاج واي فاي ولا إنترنت.\n\nRETROID POCKET (أندرويد فيه الـ USB tethering معطّل، فبنستخدم جسر USB)\nعلى الجهاز، مرة وحدة:\n1. الإعدادات ← حول الجهاز ← اضغط على رقم الإصدار (Build number) ٧ مرات.\n2. الإعدادات ← النظام ← خيارات المطوّر ← فعّل USB debugging.\nعلى الكمبيوتر، مرة وحدة:\n3. نزّل Apollo (أو Sunshine).\n4. نزّل ArtemisPocket-PC-Tools من صفحة Pocket Nexus على GitHub واعمل دبل كليك على ArtemisPocket-USB-Bridge.bat. بينزّل ADB لحاله إذا لزم، وبيقدر يشتغل مع ويندوز تلقائياً.\nكل مرة:\n5. اشبك الكيبل (أول مرة اسمح بالـ USB debugging) وافتح Pocket Nexus، وهو بيلاقي الكمبيوتر لحاله. أول مرة اعمل اقتران بالرمز من صفحة Apollo.\n\nأجهزة ثانية فيها USB tethering\nشغّل USB tethering (الإعدادات ← الشبكة ← نقطة الاتصال والتيثرنج) وشغّل ArtemisPocket-USB-Setup.bat على الكمبيوتر مرة وحدة.\n\nنصائح: الجسر بيحمل لحد تقريباً 60 Mbps، نزّل البت ريت تبع USB-C إذا الصورة بتقطّع. الجهاز بيشحن من الكمبيوتر وإنت بتلعب.</string>
 
     <string name="pocket_library">المكتبة</string>
     <string name="pocket_library_count">المكتبة · %1$d</string>
@@ -143,7 +143,7 @@
     <string name="pocket_set_advanced">إعدادات متقدمة</string>
     <string name="pocket_set_advanced_sub">كل خيارات Artemis: الصوت، الإدخال، الكوديك، العرض…</string>
     <string name="pocket_set_about">الإصدار</string>
-    <string name="pocket_about_sub">Artemis Pocket، مبني على Artemis و Moonlight</string>
+    <string name="pocket_about_sub">Pocket Nexus، مبني على Artemis و Moonlight</string>
 
     <string name="pocket_capture_title">اضغط الزر اللي بدك ياه</string>
     <string name="pocket_capture_sub">مثلاً M1 أو M2 من ورا. اربطهم أول بإعدادات ريترويد بزر ما بتستخدمه الألعاب.</string>
@@ -152,7 +152,7 @@
     <string name="pocket_hotkey_reserved">هالزر بنحتاجه للقوائم. اختار زر ثاني.</string>
 
     <string name="pocket_a11y_title">السماح لزر Home يشتغل كـ Guide</string>
-    <string name="pocket_a11y_message">أندرويد ما بيعطي زر Home للتطبيقات إلا عن طريق خدمة إمكانية الوصول. بالصفحة الجاية فعّل \"Artemis Pocket: Home button and keyboard capture\".\n\nبيشتغل بس وإنت عامل ستريم. عشان Home يصير Guide بكل التطبيقات، اتبع خطوات Key Mapper بدليل الإعداد.</string>
+    <string name="pocket_a11y_message">أندرويد ما بيعطي زر Home للتطبيقات إلا عن طريق خدمة إمكانية الوصول. بالصفحة الجاية فعّل \"Pocket Nexus: Home button and keyboard capture\".\n\nبيشتغل بس وإنت عامل ستريم. عشان Home يصير Guide بكل التطبيقات، اتبع خطوات Key Mapper بدليل الإعداد.</string>
     <string name="pocket_a11y_open">افتح الإعدادات</string>
 
     <string name="pocket_menu_guide">اضغط Xbox Guide</string>
@@ -193,7 +193,7 @@
     <string name="pocket_button_test_exit">اضغط مرتين للخروج</string>
     <string name="pocket_button_test_via_service">وصل لخدمة إمكانية الوصول (Home بيشتغل أثناء الستريم)</string>
     <string name="pocket_button_test_service_on">خدمة إمكانية الوصول: شغّالة · Home بيشتغل كـ Guide أثناء الستريم</string>
-    <string name="pocket_button_test_service_off">خدمة إمكانية الوصول: طافية · فعّل \"Artemis Pocket: Home button and keyboard capture\" عشان Home يصير Guide</string>
+    <string name="pocket_button_test_service_off">خدمة إمكانية الوصول: طافية · فعّل \"Pocket Nexus: Home button and keyboard capture\" عشان Home يصير Guide</string>
     <string name="pocket_usb_status_bridge">متصل · جسر ADB</string>
 
     <!-- v3: buttons, radial menu, focus style, turbo -->
@@ -328,7 +328,7 @@
     <string name="pocket_set_sounds_sub">نقرات خفيفة لما تتنقل وتختار</string>
     <string name="pocket_set_battery_alerts">تنبيه البطارية الضعيفة</string>
     <string name="pocket_set_battery_alerts_sub">تنبيه عند 15% و 5% وانت بتلعب</string>
-    <string name="pocket_crash_title">Artemis Pocket سكّر فجأة</string>
+    <string name="pocket_crash_title">Pocket Nexus سكّر فجأة</string>
     <string name="pocket_crash_body">انسخ هالتقرير وابعته لـ Claude عشان تنحل المشكلة:</string>
     <string name="pocket_crash_copy">نسخ التقرير</string>
     <string name="pocket_crash_copied">تم نسخ التقرير</string>
@@ -362,19 +362,19 @@
     <string name="pocket_power_lock">قفل</string>
     <string name="pocket_power_signout">تسجيل خروج</string>
     <string name="pocket_power_display_off">إطفاء الشاشة</string>
-    <string name="pocket_screenshot_saved">انحفظت بالصور › Artemis Pocket</string>
+    <string name="pocket_screenshot_saved">انحفظت بالصور › Pocket Nexus</string>
     <string name="pocket_screenshot_failed">ما قدرت آخذ لقطة الشاشة</string>
     <string name="pocket_mic_connecting">عم يوصل المايك…</string>
     <string name="pocket_mic_on">المايك شغال: اختار \"CABLE Output\" كمايك على الكمبيوتر</string>
     <string name="pocket_mic_on_no_cable">المايك شغال بس VB-Cable مش منزّل على الكمبيوتر: صوتك رح يطلع من سماعاته</string>
-    <string name="pocket_companion_missing">برنامج Artemis Pocket PC مش شغال على الكمبيوتر</string>
+    <string name="pocket_companion_missing">برنامج Pocket Nexus PC مش شغال على الكمبيوتر</string>
     <string name="pocket_companion_not_paired">اربط برنامج الكمبيوتر أول: العب مرة عن طريق USB، أو خيارات الكمبيوتر › رمز برنامج الكمبيوتر</string>
     <string name="pocket_mic_failed">المايك وقف</string>
     <string name="pocket_sm_ping">بنق %1$d ms</string>
     <string name="pocket_sm_decode">فك الترميز %1$d ms</string>
     <string name="pocket_companion_pin_menu">رمز برنامج الكمبيوتر (واي فاي)</string>
-    <string name="pocket_companion_pin_title">ربط Artemis Pocket PC</string>
-    <string name="pocket_companion_pin_body">اكتب الرمز المكوّن من 6 أرقام اللي ظاهر بنافذة Artemis Pocket PC. (عن طريق كيبل USB بيصير لحاله.)</string>
+    <string name="pocket_companion_pin_title">ربط Pocket Nexus PC</string>
+    <string name="pocket_companion_pin_body">اكتب الرمز المكوّن من 6 أرقام اللي ظاهر بنافذة Pocket Nexus PC. (عن طريق كيبل USB بيصير لحاله.)</string>
     <string name="pocket_companion_linked">انربط: طاقة الكمبيوتر والمايك صاروا يشتغلوا عالواي فاي كمان</string>
     <string name="pocket_companion_wrong_pin">الرمز غلط</string>
     <string name="pocket_companion_locked">محاولات كثيرة. استنى دقيقة.</string>
@@ -397,7 +397,7 @@
     <string name="pocket_set_resume">استكمال تلقائي</string>
     <string name="pocket_set_resume_sub">طفّيت الشاشة أو طلعت وانت بتلعب: اللعبة بتضل شغالة وبترجع عليها لما ترجع</string>
     <string name="pocket_set_mic">المايك للكمبيوتر</string>
-    <string name="pocket_set_mic_sub">بدها Artemis Pocket PC و VB-Cable على الكمبيوتر؛ اختار \"CABLE Output\" كمايك</string>
+    <string name="pocket_set_mic_sub">بدها Pocket Nexus PC و VB-Cable على الكمبيوتر؛ اختار \"CABLE Output\" كمايك</string>
     <string name="pocket_set_accent">لون التمييز</string>
     <string name="pocket_set_accent_sub">إطار التحديد والإبرازات وشريط التقدم</string>
     <string name="pocket_accent_white">أبيض</string>
@@ -435,7 +435,7 @@
     <string name="pocket_tip_24ghz">انت على 2.4 GHz. الواي فاي 5 GHz أسرع وأثبت بكثير للبث.</string>
     <string name="pocket_tip_signal">الإشارة ضعيفة: قرّب من الراوتر أو استخدم كيبل USB-C.</string>
     <string name="pocket_tip_adaptive">شغّل الجودة المتكيّفة عشان البث ينزّل حاله بدل ما يقطّع.</string>
-    <string name="pocket_tip_usb_bridge">ما في رد عن طريق الكيبل: افتح Artemis Pocket PC على الكمبيوتر وتأكد إنه مكتوب Connected.</string>
+    <string name="pocket_tip_usb_bridge">ما في رد عن طريق الكيبل: افتح Pocket Nexus PC على الكمبيوتر وتأكد إنه مكتوب Connected.</string>
     <string name="pocket_tip_pc_awake">ما في رد: الكمبيوتر صاحي، و Apollo شغال، والجهاز على نفس الشبكة؟</string>
     <string name="pocket_tip_latency">البنق عالي أو متذبذب. وقّف التنزيلات على الشبكة، أو جرّب كيبل USB-C.</string>
     <string name="pocket_tip_power_save">موفّر البطارية شغال وممكن يبطّئ الواي فاي.</string>
@@ -451,7 +451,7 @@
     <string name="pocket_gs_reset">رجّع للافتراضي</string>
     <string name="pocket_gs_reset_done">اللعبة رجعت للإعدادات العادية</string>
     <string name="pocket_gs_note">هدول بس لـ %1$s وبيغلبوا الإعدادات العادية. يمين ويسار للتغيير.</string>
-    <string name="pocket_error_hint_usb">تشييك USB-C: برنامج Artemis Pocket PC مفتوح على الكمبيوتر ومكتوب Connected، الكيبل موصول، تصحيح USB شغال، و Apollo شغال.</string>
+    <string name="pocket_error_hint_usb">تشييك USB-C: برنامج Pocket Nexus PC مفتوح على الكمبيوتر ومكتوب Connected، الكيبل موصول، تصحيح USB شغال، و Apollo شغال.</string>
     <string name="pocket_error_hint_wifi">تشييك الواي فاي: الكمبيوتر صاحي و Apollo شغال، نفس الشبكة، و 5 GHz إذا بتقدر. بطاقة الكمبيوتر › الخيارات › فحص الاتصال بيوضّح المشكلة.</string>
     <string name="pocket_radial_hint">اترك الزر أو اضغط A</string>
     <string name="pocket_framegen_lsfg">LSFG-Android (تطبيق خارجي)</string>
@@ -508,7 +508,7 @@
     <string name="pocket_signin_switch_sub">عم نبلش من جديد على شاشة معمولة لهالجهاز</string>
     <string name="pocket_sm_switch_vdisplay">انتقل للشاشة الافتراضية</string>
     <string name="pocket_ob_kicker_welcome">الإعداد الأول</string>
-    <string name="pocket_ob_welcome_title">أهلاً فيك بـ Artemis Pocket</string>
+    <string name="pocket_ob_welcome_title">أهلاً فيك بـ Pocket Nexus</string>
     <string name="pocket_ob_welcome_body">ألعاب جهازك صارت بين إيديك. خلّينا نجهّز كم شغلة بسيطة — بتاخذ دقيقة بس.</string>
     <string name="pocket_ob_chip_120">120 Hz</string>
     <string name="pocket_ob_chip_vd">شاشة افتراضية</string>
@@ -711,4 +711,58 @@
     <string name="pocket_set_m2_key_sub">اضغطه لتعيّنه (زر إضافي ثاني)</string>
     <string name="pocket_set_trailer_autoplay">التريلر بصفحة اللعبة</string>
     <string name="pocket_set_trailer_autoplay_sub">بيشتغل بدون صوت ورا الصفحة بعد لحظة</string>
+    <string name="pocket_error_launch_failed">ما قدر الكمبيوتر يشغّل اللعبة. إذا كانت لعبة ثانية عم تتسكّر، استنى كم ثانية وجرّب كمان مرة. إذا ضلّت تصير، افحص أمر تشغيل اللعبة في Apollo على الكمبيوتر.</string>
+    <string name="pocket_pclib_button">ألعاب الكمبيوتر</string>
+    <string name="pocket_pclib_title">ألعاب %1$s</string>
+    <string name="pocket_pclib_hint_filter">فلترة</string>
+    <string name="pocket_pclib_loading">عم دوّر على الألعاب بالكمبيوتر…</string>
+    <string name="pocket_pclib_empty">ما لقيت ألعاب على الكمبيوتر</string>
+    <string name="pocket_pclib_empty_filter">ما في ألعاب هون. L1 / R1 بيغيّروا الفلتر</string>
+    <string name="pocket_pclib_not_linked">اربط الجهاز ببرنامج Pocket Nexus PC أول: اكتب الرمز اللي ظاهر بنافذته.</string>
+    <string name="pocket_pclib_old_helper">برنامج الكمبيوتر نسخة قديمة. نزّل PocketNexus-PC.zip من آخر إصدار، فك الضغط وشغّل PocketNexus-PC.bat.</string>
+    <string name="pocket_pclib_no_helper">برنامج Pocket Nexus PC مش عم يرد. شغّل PocketNexus-PC.bat على الكمبيوتر (عالواي فاي بده قاعدة الجدار الناري، بيسأل مرة وحدة).</string>
+    <string name="pocket_pclib_no_helper_short">برنامج Pocket Nexus PC مش عم يرد</string>
+    <string name="pocket_pclib_filter_all">كل الألعاب</string>
+    <string name="pocket_pclib_filter_installed">على الكمبيوتر</string>
+    <string name="pocket_pclib_filter_not_installed">مش مثبتة</string>
+    <string name="pocket_pclib_filter_steam">Steam</string>
+    <string name="pocket_pclib_filter_other">Epic و GOG</string>
+    <string name="pocket_pclib_played">لعبت %1$s</string>
+    <string name="pocket_pclib_not_on_pc">مش مثبتة على الكمبيوتر</string>
+    <string name="pocket_pclib_installing">عم تتثبت %1$d%%</string>
+    <string name="pocket_pclib_install">ثبّت عالكمبيوتر</string>
+    <string name="pocket_pclib_install_on">ثبّت على %1$s</string>
+    <string name="pocket_pclib_install_sub">Steam على الكمبيوتر بينزّلها. اكبس A كمان مرة للبدء.</string>
+    <string name="pocket_pclib_install_sent">Steam على الكمبيوتر عم يثبتها. نافذة التثبيت بتنأكد لحالها إذا ويندوز سمح؛ غير هيك أكّدها مرة على الكمبيوتر.</string>
+    <string name="pocket_pclib_install_elsewhere">ثبّتها من %1$s على الكمبيوتر</string>
+    <string name="pocket_pclib_start_on_pc">شغّلها عالكمبيوتر بس (بدون ستريم)</string>
+    <string name="pocket_pclib_started_on_pc">%1$s عم تشتغل على الكمبيوتر</string>
+    <string name="pocket_pclib_no_desktop">ما في تطبيق Desktop بـ Apollo عشان نعمل ستريم للعبة من خلاله. ضيف واحد بـ Apollo، أو شغّل اللعبة عالكمبيوتر بس.</string>
+    <string name="pocket_pclib_refresh">حدّث القائمة</string>
+    <string name="pocket_pclib_refreshing">عم يحدّث…</string>
+    <string name="pocket_pclib_helper_help">مساعدة Pocket Nexus PC</string>
+    <string name="pocket_pclib_helper_title">Pocket Nexus PC</string>
+    <string name="pocket_pclib_try_again">جرّب كمان مرة</string>
+    <string name="pocket_pclib_no_steam">Steam مش مثبت على الكمبيوتر</string>
+    <string name="pocket_pclib_failed">الكمبيوتر رد: %1$s</string>
+    <string name="pocket_pclib_starting_on_pc">%1$s عم تشتغل على الكمبيوتر…</string>
+    <string name="pocket_pclib_launch_failed">الكمبيوتر ما قدر يشغّل %1$s. برنامج Pocket Nexus PC شغّال؟</string>
+    <string name="pocket_pclib_app_missing">هالتطبيق مش موجود بقائمة الكمبيوتر هلق</string>
+    <string name="pocket_steam_account_named">حساب Steam: %1$s</string>
+    <string name="pocket_steam_link">اربط حساب Steam</string>
+    <string name="pocket_steam_link_message">بيبيّن كل الألعاب اللي بتملكها مع وقت اللعب، وبتقدر تثبتها عالكمبيوتر من هون.\n\n1. رابط بروفايل Steam أو الاسم المخصص أو SteamID.\n2. مفتاح Steam Web API من steamcommunity.com/dev/apikey (أي اسم دومين بيمشي هناك).\n\nلازم تكون تفاصيل الألعاب Public بإعدادات الخصوصية بـ Steam.</string>
+    <string name="pocket_steam_account_hint">رابط البروفايل أو الاسم المخصص أو SteamID</string>
+    <string name="pocket_steam_key_hint">مفتاح Steam Web API (32 حرف)</string>
+    <string name="pocket_steam_checking">عم نتأكد مع Steam…</string>
+    <string name="pocket_steam_linked">انربط حساب Steam: %1$s</string>
+    <string name="pocket_steam_unlink">فك الربط</string>
+    <string name="pocket_steam_unlinked">انفك ربط حساب Steam</string>
+    <string name="pocket_steam_err_key">مفتاح Web API هاد ما بيشتغل. هو 32 حرف ورقم من steamcommunity.com/dev/apikey.</string>
+    <string name="pocket_steam_err_account">ما لقيت حساب Steam. الصق رابط البروفايل أو SteamID.</string>
+    <string name="pocket_steam_err_private">Steam ما شارك الألعاب: خلّي تفاصيل الألعاب Public بإعدادات خصوصية البروفايل.</string>
+    <string name="pocket_steam_err_network">ما قدرنا نوصل لـ Steam. تأكد من الإنترنت وجرّب كمان مرة.</string>
+    <string name="pocket_steam_not_linked">مش مربوط</string>
+    <string name="pocket_header_accounts">الحسابات</string>
+    <string name="pocket_set_steam">حساب Steam</string>
+    <string name="pocket_set_steam_sub">ألعابك ووقت اللعب بألعاب الكمبيوتر، وتثبيت الألعاب عالكمبيوتر من الجهاز</string>
 </resources>

@@ -301,6 +301,25 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         statusHandler.post(statusTick);
     }
 
+    /** The hero that UP lifts (home and library), when the screen has one. */
+    protected com.limelight.pocket.ui.HeroFocus heroFocus;
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (heroFocus != null) {
+            heroFocus.reset();
+        }
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        if (heroFocus != null) {
+            heroFocus.onTouch(event);
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
     @Override
     protected void onPause() {
         super.onPause();
@@ -1018,6 +1037,9 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             else if (event.getAction() == KeyEvent.ACTION_UP) {
                 hotkeyDown = false;
             }
+            return true;
+        }
+        if (heroFocus != null && heroFocus.handleKey(event)) {
             return true;
         }
 

@@ -140,6 +140,11 @@ public final class GameInfoService {
         });
     }
 
+    /** The Steam game chosen for this name (0: found by searching the name). */
+    public static int steamIdFor(Context context, String name) {
+        return PocketPrefs.prefs(context).getInt(KEY_STEAM_ID + InfoParsers.normalize(name), 0);
+    }
+
     /** The user picked the right Steam game for this name (or 0 to search again by name). */
     public static void setSteamId(Context context, String name, int steamAppId) {
         String k = KEY_STEAM_ID + InfoParsers.normalize(name);
@@ -253,7 +258,7 @@ public final class GameInfoService {
 
     private static String http(String url) throws IOException {
         Request request = new Request.Builder().url(url)
-                .header("User-Agent", "ArtemisPocket/1.0 (game info for a game streaming client)")
+                .header("User-Agent", "PocketNexus/1.0 (game info for a game streaming client)")
                 .header("Accept", "application/json")
                 .build();
         try (Response response = CLIENT.newCall(request).execute()) {

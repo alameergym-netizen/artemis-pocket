@@ -369,7 +369,63 @@ public class NvConnection {
             }
         }
 
-        return launchNotRunningApp(h, context);
+        // Artemis Pocket: the PC needs a moment to close the old game (Apollo also tears down its
+        // virtual display and runs the game's undo commands). Launching straight away makes it
+        // fail with error -1, so wait until it reports nothing running, then launch, trying again
+        // a few times while it still isn't ready.
+        waitUntilNothingRuns(h, 12000);
+        return launchWithRetries(h, context, 4);
+    }
+
+    private static void sleepQuietly(long ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    private void waitUntilNothingRuns(NvHTTP h, long timeoutMs) {
+        long end = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < end && !Thread.currentThread().isInterrupted()) {
+            try {
+                String info = h.getServerInfo(true);
+                String uuid = h.getCurrentGameUUID(info);
+                if (h.getCurrentGame(info) == 0 && (uuid == null || uuid.isEmpty())) {
+                    break;
+                }
+            } catch (IOException | XmlPullParserException e) {
+                // Busy closing the game: ask again
+            }
+            sleepQuietly(400);
+        }
+        // Its display and audio settle right after the game is gone
+        sleepQuietly(700);
+    }
+
+    private boolean launchWithRetries(NvHTTP h, ConnectionContext context, int tries)
+            throws IOException, XmlPullParserException {
+        for (int attempt = 0; ; attempt++) {
+            try {
+                if (h.launchApp(context, "launch", context.streamConfig.getApp().getAppUUID(),
+                        context.streamConfig.getApp().getAppId(), context.negotiatedHdr)) {
+                    LimeLog.info("Launched new game session" + (attempt > 0 ? " (try " + (attempt + 1) + ")" : ""));
+                    return true;
+                }
+                if (attempt >= tries - 1) {
+                    context.connListener.displayMessage("Failed to launch application");
+                    return false;
+                }
+            } catch (HostHttpResponseException e) {
+                int code = e.getErrorCode();
+                boolean notReadyYet = code == -1 || code == 500 || code == 503;
+                if (!notReadyYet || attempt >= tries - 1) {
+                    throw e;
+                }
+                LimeLog.warning("Launch right after quitting failed (" + code + "), trying again");
+            }
+            sleepQuietly(1200 + attempt * 800L);
+        }
     }
     
     private boolean launchNotRunningApp(NvHTTP h, ConnectionContext context)

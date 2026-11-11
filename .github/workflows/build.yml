@@ -1,4 +1,4 @@
-name: Build Artemis Pocket
+name: Build Pocket Nexus
 
 on:
   push:
@@ -61,15 +61,19 @@ jobs:
         run: |
           mkdir -p out
           APK=$(find app/build/outputs/apk -name "*release*.apk" | head -n 1)
-          cp "$APK" "out/ArtemisPocket-${GITHUB_SHA::7}.apk"
+          cp "$APK" "out/PocketNexus-${GITHUB_SHA::7}.apk"
+          # The PC helper goes with every build (the app and the helper speak the same protocol)
+          (cd pc-setup && zip -qr "../out/PocketNexus-PC.zip" . -x "*.md")
           ls -la out
 
       - name: Upload artifact
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ArtemisPocket-apk
-          path: out/*.apk
+          name: PocketNexus-apk
+          path: |
+            out/*.apk
+            out/*.zip
 
       - name: Publish "latest" release
         if: success() && github.ref_name == github.event.repository.default_branch
@@ -77,9 +81,9 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
-          gh release create latest out/*.apk \
-            --title "Artemis Pocket (latest build)" \
-            --notes "Automatic build of ${GITHUB_SHA::7}. Download the APK below on your Retroid Pocket and install it." \
+          gh release create latest out/*.apk out/*.zip \
+            --title "Pocket Nexus (latest build)" \
+            --notes "Automatic build of ${GITHUB_SHA::7}. Install the APK on your Retroid Pocket. On the gaming PC, unzip PocketNexus-PC.zip and run PocketNexus-PC.bat (it replaces Artemis Pocket PC)." \
             --target "$GITHUB_SHA"
 
       # The build log is pushed to the ci-logs branch so it can be read with plain git (no login needed)

@@ -922,6 +922,18 @@ public class QuickSettingsActivity extends ConsoleActivity {
             Toast.makeText(this, R.string.pocket_art_cleared, Toast.LENGTH_SHORT).show();
         });
 
+        addHeader(R.string.pocket_header_accounts);
+
+        addAction(getString(R.string.pocket_set_steam), getString(R.string.pocket_set_steam_sub),
+                () -> {
+                    if (!com.limelight.pocket.pclib.SteamAccount.linked(this)) {
+                        return getString(R.string.pocket_steam_not_linked);
+                    }
+                    String name = com.limelight.pocket.pclib.SteamAccount.name(this);
+                    return name.isEmpty() ? com.limelight.pocket.pclib.SteamAccount.steamId(this) : name;
+                },
+                () -> com.limelight.pocket.pclib.PcLibraryActivity.askToLink(this, this::refreshRows));
+
         addHeader(R.string.pocket_header_device);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

@@ -337,6 +337,11 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         // Setup the profiles button
         findViewById(R.id.profilesButton)
             .setOnClickListener(v -> startActivity(new Intent(this, ProfilesActivity.class)));
+        // Pocket Nexus: the PC's own game library (Steam, Epic, GOG)
+        View pcLibrary = findViewById(R.id.pocketPcLibraryButton);
+        if (pcLibrary != null) {
+            pcLibrary.setOnClickListener(v -> pocketOpenPcLibrary());
+        }
 
         showHiddenApps = getIntent().getBooleanExtra(SHOW_HIDDEN_APPS_EXTRA, false);
         uuidString = getIntent().getStringExtra(UUID_EXTRA);
@@ -443,6 +448,13 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
     @Override
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == com.limelight.pocket.pclib.PcLibraryActivity.REQUEST) {
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                pocketStartAppId(data.getIntExtra(com.limelight.pocket.pclib.PcLibraryActivity.RESULT_APP_ID, 0));
+            }
+            return;
+        }
 
         if (requestCode == com.limelight.pocket.GamePageActivity.REQUEST && data != null) {
             int id = data.getIntExtra(com.limelight.pocket.GamePageActivity.RESULT_APP_ID, 0);
@@ -819,9 +831,72 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         appCarousel.setItemAnimator(null);
         carouselAdapter = new CarouselAdapter(appGridAdapter, this, 14);
         appCarousel.setAdapter(carouselAdapter);
+        if (heroFocus == null) {
+            // UP from the row lifts the hero: big Play, the art and the logo take the screen
+            heroFocus = com.limelight.pocket.ui.HeroFocus.install(this, new com.limelight.pocket.ui.HeroFocus.Host() {
+                @Override
+                public boolean heroCanLift() {
+                    return appCarousel != null && appCarousel.hasFocus();
+                }
+
+                @Override
+                public void heroPlay() {
+                    pocketHeroPlay();
+                }
+            }, R.id.appFragmentContainer);
+        }
         updateSectionTitle();
         updateHints();
         appCarousel.post(this::focusInitialGame);
+    }
+
+    /** The PC's game library (needs Pocket Nexus PC on the PC). */
+    private void pocketOpenPcLibrary() {
+        String host = UsbLink.getUsbAddressFor(this, uuidString);
+        if (host == null && computer != null && computer.activeAddress != null) {
+            host = computer.activeAddress.address;
+        }
+        if (host == null) {
+            Toast.makeText(this, R.string.pair_pc_offline, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        com.limelight.pocket.PocketSounds.play(this, com.limelight.pocket.PocketSounds.OPEN);
+        com.limelight.pocket.pclib.PcLibraryActivity.open(this, uuidString, computer != null ? computer.name : "", host);
+    }
+
+    /** Streams this Apollo app (picked in the PC library), as A on its card would. */
+    private void pocketStartAppId(int appId) {
+        if (appGridAdapter != null) {
+            for (int i = 0; i < appGridAdapter.getCount(); i++) {
+                if (((AppObject) appGridAdapter.getItem(i)).app.getAppId() == appId) {
+                    pocketFocusApp(appId);
+                    onItemClicked(i, pocketCardAt(i));
+                    return;
+                }
+            }
+        }
+        // Not in the row (hidden): straight from the PC's list
+        for (com.limelight.pocket.RecentGames.Game g : com.limelight.pocket.RecentGames.forPc(this, uuidString, 100000)) {
+            if (g.app.getAppId() == appId && computer != null && managerBinder != null) {
+                ServerHelper.doStart(this, g.app, computer, managerBinder, prefConfig.useVirtualDisplay);
+                return;
+            }
+        }
+        Toast.makeText(this, R.string.pocket_pclib_app_missing, Toast.LENGTH_LONG).show();
+    }
+
+    /** Play on the hero (A while it is lifted, or a touch): the focused game, as A on its card. */
+    private void pocketHeroPlay() {
+        if (carouselAdapter == null || appGridAdapter == null) {
+            return;
+        }
+        int pos = carouselAdapter.getFocusedPosition();
+        if (pos < 0 || pos >= appGridAdapter.getCount()) {
+            pos = pocketHeroPos;
+        }
+        if (pos >= 0 && pos < appGridAdapter.getCount()) {
+            onItemClicked(pos, pocketCardAt(pos));
+        }
     }
 
     /** Lands on the running game, else the last one played, else the first. */

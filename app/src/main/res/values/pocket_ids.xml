@@ -2,4 +2,5 @@
 <resources>
     <item name="pocket_blur_animator" type="id" />
     <item name="pocket_blur_radius" type="id" />
+    <item name="pocket_glass_face" type="id" />
 </resources>

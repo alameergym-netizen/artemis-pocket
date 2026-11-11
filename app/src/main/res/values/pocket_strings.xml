@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="pocket_brand" translatable="false">ARTEMIS POCKET</string>
-    <string name="pocket_brand_title">Artemis Pocket</string>
+    <string name="pocket_brand" translatable="false">POCKET NEXUS</string>
+    <string name="pocket_brand_title">Pocket Nexus</string>
     <string name="pocket_my_pcs">Your PCs</string>
     <string name="pocket_hero_no_pc">Plug in USB-C or join your PC\'s Wi-Fi to begin</string>
     <string name="pocket_searching_title">Looking for your PC…</string>
@@ -49,7 +49,7 @@
     <string name="pocket_usb_status_off">Not connected</string>
     <string name="pocket_usb_help_title">USB-C streaming setup</string>
     <string name="pocket_usb_help_sub">One-time steps on the handheld and the PC</string>
-    <string name="pocket_usb_help_body">Streaming over the cable needs no Wi-Fi and no internet.\n\nRETROID POCKET (USB tethering is turned off on its Android, so we use the USB bridge)\nOn the handheld, once:\n1. Settings → About device → tap Build number 7 times.\n2. Settings → System → Developer options → turn on USB debugging.\nOn the PC, once:\n3. Install Apollo (or Sunshine).\n4. Get ArtemisPocket-PC-Tools from the Artemis Pocket GitHub page and double-click ArtemisPocket-USB-Bridge.bat. It downloads ADB if needed and can start with Windows.\nEvery time:\n5. Plug the cable in (allow USB debugging the first time) and open Artemis Pocket. It finds the PC on its own. The first time, pair with the PIN in Apollo\'s web page.\n\nOTHER HANDHELDS WITH USB TETHERING\nTurn on USB tethering (Settings → Network → Hotspot &amp; tethering) and run ArtemisPocket-USB-Setup.bat on the PC once.\n\nTips: the bridge carries up to about 60 Mbps; lower the USB-C bitrate if the picture stutters. The handheld charges from the PC while you play.</string>
+    <string name="pocket_usb_help_body">Streaming over the cable needs no Wi-Fi and no internet.\n\nRETROID POCKET (USB tethering is turned off on its Android, so we use the USB bridge)\nOn the handheld, once:\n1. Settings → About device → tap Build number 7 times.\n2. Settings → System → Developer options → turn on USB debugging.\nOn the PC, once:\n3. Install Apollo (or Sunshine).\n4. Get ArtemisPocket-PC-Tools from the Pocket Nexus GitHub page and double-click ArtemisPocket-USB-Bridge.bat. It downloads ADB if needed and can start with Windows.\nEvery time:\n5. Plug the cable in (allow USB debugging the first time) and open Pocket Nexus. It finds the PC on its own. The first time, pair with the PIN in Apollo\'s web page.\n\nOTHER HANDHELDS WITH USB TETHERING\nTurn on USB tethering (Settings → Network → Hotspot &amp; tethering) and run ArtemisPocket-USB-Setup.bat on the PC once.\n\nTips: the bridge carries up to about 60 Mbps; lower the USB-C bitrate if the picture stutters. The handheld charges from the PC while you play.</string>
 
     <!-- Library -->
     <string name="pocket_library">Library</string>
@@ -148,7 +148,7 @@
     <string name="pocket_set_advanced">Advanced settings</string>
     <string name="pocket_set_advanced_sub">Every Artemis option: audio, input, codecs, overlays…</string>
     <string name="pocket_set_about">Version</string>
-    <string name="pocket_about_sub">Artemis Pocket, based on Artemis and Moonlight</string>
+    <string name="pocket_about_sub">Pocket Nexus, based on Artemis and Moonlight</string>
 
     <string name="pocket_capture_title">Press the button to use</string>
     <string name="pocket_capture_sub">For example M1 or M2 on the back. Map them in Retroid\'s handheld settings to a button the games don\'t use first.</string>
@@ -157,7 +157,7 @@
     <string name="pocket_hotkey_reserved">That button is needed for menus. Pick another one.</string>
 
     <string name="pocket_a11y_title">Allow Home as Guide</string>
-    <string name="pocket_a11y_message">Android only gives the Home button to apps through an accessibility service. In the next screen, turn on \"Artemis Pocket: Home button and keyboard capture\".\n\nIt only acts while you are streaming. To make Home act as Guide in every app, follow the Key Mapper steps in the setup guide.</string>
+    <string name="pocket_a11y_message">Android only gives the Home button to apps through an accessibility service. In the next screen, turn on \"Pocket Nexus: Home button and keyboard capture\".\n\nIt only acts while you are streaming. To make Home act as Guide in every app, follow the Key Mapper steps in the setup guide.</string>
     <string name="pocket_a11y_open">Open settings</string>
 
     <!-- In-stream quick menu -->
@@ -200,7 +200,7 @@
     <string name="pocket_button_test_exit">Press twice to exit</string>
     <string name="pocket_button_test_via_service">Seen by the accessibility service (Home works while streaming)</string>
     <string name="pocket_button_test_service_on">Accessibility service: ON · Home can act as Guide while streaming</string>
-    <string name="pocket_button_test_service_off">Accessibility service: OFF · turn on \"Artemis Pocket: Home button and keyboard capture\" for Home as Guide</string>
+    <string name="pocket_button_test_service_off">Accessibility service: OFF · turn on \"Pocket Nexus: Home button and keyboard capture\" for Home as Guide</string>
     <string name="pocket_usb_status_bridge">Connected · ADB bridge</string>
 
     <!-- v3: buttons, radial menu, focus style, turbo -->
@@ -335,7 +335,7 @@
     <string name="pocket_set_sounds_sub">Soft clicks when you move and select</string>
     <string name="pocket_set_battery_alerts">Low battery alerts</string>
     <string name="pocket_set_battery_alerts_sub">A heads-up at 15% and 5% while you play</string>
-    <string name="pocket_crash_title">Artemis Pocket closed unexpectedly</string>
+    <string name="pocket_crash_title">Pocket Nexus closed unexpectedly</string>
     <string name="pocket_crash_body">Copy this report and send it to Claude so the problem can be fixed:</string>
     <string name="pocket_crash_copy">Copy report</string>
     <string name="pocket_crash_copied">Report copied</string>
@@ -369,19 +369,19 @@
     <string name="pocket_power_lock">Lock</string>
     <string name="pocket_power_signout">Sign out</string>
     <string name="pocket_power_display_off">Turn off display</string>
-    <string name="pocket_screenshot_saved">Saved to Pictures › Artemis Pocket</string>
+    <string name="pocket_screenshot_saved">Saved to Pictures › Pocket Nexus</string>
     <string name="pocket_screenshot_failed">Couldn\'t take the screenshot</string>
     <string name="pocket_mic_connecting">Connecting the mic…</string>
     <string name="pocket_mic_on">Mic on: use \"CABLE Output\" as the mic on the PC</string>
     <string name="pocket_mic_on_no_cable">Mic on, but VB-Cable isn\'t installed on the PC: your voice plays on its speakers</string>
-    <string name="pocket_companion_missing">Artemis Pocket PC isn\'t running on the PC</string>
+    <string name="pocket_companion_missing">Pocket Nexus PC isn\'t running on the PC</string>
     <string name="pocket_companion_not_paired">Link the PC helper first: stream once over USB, or PC options › PC helper PIN</string>
     <string name="pocket_mic_failed">The mic stopped</string>
     <string name="pocket_sm_ping">Ping %1$d ms</string>
     <string name="pocket_sm_decode">Decode %1$d ms</string>
     <string name="pocket_companion_pin_menu">PC helper PIN (Wi-Fi)</string>
-    <string name="pocket_companion_pin_title">Link Artemis Pocket PC</string>
-    <string name="pocket_companion_pin_body">Type the 6-digit PIN shown in the Artemis Pocket PC window. (Over the USB cable this happens by itself.)</string>
+    <string name="pocket_companion_pin_title">Link Pocket Nexus PC</string>
+    <string name="pocket_companion_pin_body">Type the 6-digit PIN shown in the Pocket Nexus PC window. (Over the USB cable this happens by itself.)</string>
     <string name="pocket_companion_linked">Linked: PC power and mic now work over Wi-Fi too</string>
     <string name="pocket_companion_wrong_pin">Wrong PIN</string>
     <string name="pocket_companion_locked">Too many tries. Wait a minute.</string>
@@ -404,7 +404,7 @@
     <string name="pocket_set_resume">Seamless resume</string>
     <string name="pocket_set_resume_sub">Screen off or Home mid-game: the game keeps running and you\'re back in it when you return</string>
     <string name="pocket_set_mic">Microphone to PC</string>
-    <string name="pocket_set_mic_sub">Needs Artemis Pocket PC and VB-Cable on the PC; pick \"CABLE Output\" as the mic</string>
+    <string name="pocket_set_mic_sub">Needs Pocket Nexus PC and VB-Cable on the PC; pick \"CABLE Output\" as the mic</string>
     <string name="pocket_set_accent">Accent color</string>
     <string name="pocket_set_accent_sub">Focus ring, highlights and progress bars</string>
     <string name="pocket_accent_white">White</string>
@@ -442,7 +442,7 @@
     <string name="pocket_tip_24ghz">You\'re on 2.4 GHz. 5 GHz Wi-Fi is much faster and steadier for streaming.</string>
     <string name="pocket_tip_signal">The signal is weak: move closer to the router or use the USB-C cable.</string>
     <string name="pocket_tip_adaptive">Turn on Adaptive quality so the stream lowers itself instead of stuttering.</string>
-    <string name="pocket_tip_usb_bridge">No reply over the cable: open Artemis Pocket PC on the PC and check it says Connected.</string>
+    <string name="pocket_tip_usb_bridge">No reply over the cable: open Pocket Nexus PC on the PC and check it says Connected.</string>
     <string name="pocket_tip_pc_awake">No reply: is the PC awake, Apollo running and the handheld on the same network?</string>
     <string name="pocket_tip_latency">The ping is high or uneven. Pause downloads on the network, or try the USB-C cable.</string>
     <string name="pocket_tip_power_save">Battery saver is on and can slow down Wi-Fi.</string>
@@ -458,7 +458,7 @@
     <string name="pocket_gs_reset">Reset to default</string>
     <string name="pocket_gs_reset_done">This game uses the normal settings again</string>
     <string name="pocket_gs_note">These apply only to %1$s and win over the normal settings. Left / right to change.</string>
-    <string name="pocket_error_hint_usb">USB-C checklist: Artemis Pocket PC open on the PC and showing Connected, cable plugged in, USB debugging on, Apollo running.</string>
+    <string name="pocket_error_hint_usb">USB-C checklist: Pocket Nexus PC open on the PC and showing Connected, cable plugged in, USB debugging on, Apollo running.</string>
     <string name="pocket_error_hint_wifi">Wi-Fi checklist: PC awake with Apollo running, same network, 5 GHz if possible. PC card › Options › Connection test shows what\'s wrong.</string>
     <string name="pocket_radial_hint">Release or press A</string>
     <string name="pocket_framegen_lsfg">LSFG-Android (external app)</string>
@@ -515,7 +515,7 @@
     <string name="pocket_signin_switch_sub">Starting again on a screen made for this device</string>
     <string name="pocket_sm_switch_vdisplay">Switch to the virtual display</string>
     <string name="pocket_ob_kicker_welcome">First boot setup</string>
-    <string name="pocket_ob_welcome_title">Welcome to Artemis Pocket</string>
+    <string name="pocket_ob_welcome_title">Welcome to Pocket Nexus</string>
     <string name="pocket_ob_welcome_body">Your PC\'s games, right on your handheld. Let\'s get a few things ready — it only takes a minute.</string>
     <string name="pocket_ob_chip_120">120 Hz</string>
     <string name="pocket_ob_chip_vd">Virtual display</string>
@@ -718,4 +718,58 @@
     <string name="pocket_set_m2_key_sub">Press it to assign (a second extra button)</string>
     <string name="pocket_set_trailer_autoplay">Trailers on game pages</string>
     <string name="pocket_set_trailer_autoplay_sub">Plays muted behind the page after a moment</string>
+    <string name="pocket_error_launch_failed">The PC couldn\'t start the game. If another game was just closing, wait a few seconds and try again. If it keeps happening, check this game\'s command in Apollo on the PC.</string>
+    <string name="pocket_pclib_button">PC games</string>
+    <string name="pocket_pclib_title">PC games · %1$s</string>
+    <string name="pocket_pclib_hint_filter">Filter</string>
+    <string name="pocket_pclib_loading">Looking for the games on the PC…</string>
+    <string name="pocket_pclib_empty">No games found on the PC</string>
+    <string name="pocket_pclib_empty_filter">No games here. L1 / R1 change the filter</string>
+    <string name="pocket_pclib_not_linked">Link this handheld to Pocket Nexus PC first: type the PIN shown in its window.</string>
+    <string name="pocket_pclib_old_helper">Pocket Nexus PC on the PC is an older version. Download PocketNexus-PC.zip from the latest release, unzip it and run PocketNexus-PC.bat.</string>
+    <string name="pocket_pclib_no_helper">Pocket Nexus PC isn\'t answering. Start PocketNexus-PC.bat on the PC (over Wi-Fi it needs its firewall rule, it asks once).</string>
+    <string name="pocket_pclib_no_helper_short">Pocket Nexus PC isn\'t answering</string>
+    <string name="pocket_pclib_filter_all">All games</string>
+    <string name="pocket_pclib_filter_installed">On the PC</string>
+    <string name="pocket_pclib_filter_not_installed">Not installed</string>
+    <string name="pocket_pclib_filter_steam">Steam</string>
+    <string name="pocket_pclib_filter_other">Epic and GOG</string>
+    <string name="pocket_pclib_played">%1$s played</string>
+    <string name="pocket_pclib_not_on_pc">Not installed on the PC</string>
+    <string name="pocket_pclib_installing">Installing %1$d%%</string>
+    <string name="pocket_pclib_install">Install on PC</string>
+    <string name="pocket_pclib_install_on">Install on %1$s</string>
+    <string name="pocket_pclib_install_sub">Steam on the PC downloads it. Press A again to start.</string>
+    <string name="pocket_pclib_install_sent">Steam on the PC is installing it. Its install window is confirmed by itself when Windows allows it; otherwise confirm it once on the PC.</string>
+    <string name="pocket_pclib_install_elsewhere">Install it from %1$s on the PC</string>
+    <string name="pocket_pclib_start_on_pc">Start on the PC only (no stream)</string>
+    <string name="pocket_pclib_started_on_pc">%1$s is starting on the PC</string>
+    <string name="pocket_pclib_no_desktop">Apollo has no Desktop app to stream this game through. Add one in Apollo, or start the game on the PC only.</string>
+    <string name="pocket_pclib_refresh">Refresh the list</string>
+    <string name="pocket_pclib_refreshing">Refreshing…</string>
+    <string name="pocket_pclib_helper_help">Pocket Nexus PC help</string>
+    <string name="pocket_pclib_helper_title">Pocket Nexus PC</string>
+    <string name="pocket_pclib_try_again">Try again</string>
+    <string name="pocket_pclib_no_steam">Steam isn\'t installed on the PC</string>
+    <string name="pocket_pclib_failed">The PC said: %1$s</string>
+    <string name="pocket_pclib_starting_on_pc">%1$s is starting on the PC…</string>
+    <string name="pocket_pclib_launch_failed">The PC couldn\'t start %1$s. Is Pocket Nexus PC running?</string>
+    <string name="pocket_pclib_app_missing">That app isn\'t in this PC\'s list any more</string>
+    <string name="pocket_steam_account_named">Steam account: %1$s</string>
+    <string name="pocket_steam_link">Link your Steam account</string>
+    <string name="pocket_steam_link_message">Shows every game you own, with playtime, so you can install them on the PC from here.\n\n1. Your Steam profile link, custom URL name or SteamID.\n2. A Steam Web API key from steamcommunity.com/dev/apikey (any domain name works there).\n\nGame details must be Public in your Steam privacy settings.</string>
+    <string name="pocket_steam_account_hint">Profile link, custom URL name or SteamID</string>
+    <string name="pocket_steam_key_hint">Steam Web API key (32 characters)</string>
+    <string name="pocket_steam_checking">Checking with Steam…</string>
+    <string name="pocket_steam_linked">Steam account linked: %1$s</string>
+    <string name="pocket_steam_unlink">Unlink</string>
+    <string name="pocket_steam_unlinked">Steam account unlinked</string>
+    <string name="pocket_steam_err_key">That Web API key doesn\'t work. It\'s 32 letters and numbers from steamcommunity.com/dev/apikey.</string>
+    <string name="pocket_steam_err_account">Steam account not found. Paste your profile link or SteamID.</string>
+    <string name="pocket_steam_err_private">Steam didn\'t share the games: set Game details to Public in your profile\'s privacy settings.</string>
+    <string name="pocket_steam_err_network">Couldn\'t reach Steam. Check the internet and try again.</string>
+    <string name="pocket_steam_not_linked">Not linked</string>
+    <string name="pocket_header_accounts">Accounts</string>
+    <string name="pocket_set_steam">Steam account</string>
+    <string name="pocket_set_steam_sub">Your games and playtime in PC games; install games on the PC from the handheld</string>
 </resources>

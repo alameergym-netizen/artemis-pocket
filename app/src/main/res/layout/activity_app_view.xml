@@ -76,11 +76,13 @@
         </FrameLayout>
 
         <View
+            android:id="@+id/pocketHeroScrim"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@drawable/pocket_hero_scrim" />
 
         <View
+            android:id="@+id/pocketBottomScrim"
             android:layout_width="match_parent"
             android:layout_height="200dp"
             android:layout_gravity="bottom"
@@ -352,6 +354,24 @@
                 android:minWidth="34dp"
                 android:paddingStart="9dp"
                 android:paddingEnd="9dp"
+                android:textColor="@color/pocket_row_text"
+                android:textSize="11sp" />
+
+            <!-- The PC's own game library (Steam, Epic, GOG) through Pocket Nexus PC -->
+            <TextView
+                android:id="@+id/pocketPcLibraryButton"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/pocket_pill_button_bg"
+                android:clickable="true"
+                android:focusable="true"
+                android:fontFamily="sans-serif-medium"
+                android:gravity="center"
+                android:maxLines="1"
+                android:paddingStart="12dp"
+                android:paddingEnd="13dp"
+                android:text="@string/pocket_pclib_button"
                 android:textColor="@color/pocket_row_text"
                 android:textSize="11sp" />
 

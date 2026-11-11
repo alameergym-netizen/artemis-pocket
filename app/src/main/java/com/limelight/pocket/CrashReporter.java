@@ -58,7 +58,7 @@ public final class CrashReporter {
     private static void save(Context context, Thread thread, Throwable error, boolean fatal) throws Exception {
         StringWriter text = new StringWriter();
         PrintWriter out = new PrintWriter(text);
-        out.println("Artemis Pocket " + BuildConfig.VERSION_NAME + " (" + BuildConfig.VERSION_CODE + ")"
+        out.println("Pocket Nexus " + BuildConfig.VERSION_NAME + " (" + BuildConfig.VERSION_CODE + ")"
                 + (fatal ? "" : " [caught]"));
         out.println("Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + "), "
                 + Build.MANUFACTURER + " " + Build.MODEL);
@@ -113,7 +113,7 @@ public final class CrashReporter {
                     .setPositiveButton(R.string.pocket_crash_copy, (dialog, which) -> {
                         ClipboardManager clipboard = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
                         if (clipboard != null) {
-                            clipboard.setPrimaryClip(ClipData.newPlainText("Artemis Pocket crash", report));
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Pocket Nexus crash", report));
                             Toast.makeText(activity, R.string.pocket_crash_copied, Toast.LENGTH_SHORT).show();
                         }
                     })

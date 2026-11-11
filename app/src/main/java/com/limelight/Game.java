@@ -3113,6 +3113,18 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
 
     private void pocketOnStreamStarted() {
         pocketWatchSignIn();
+        // A game from the PC library that Apollo has no entry for: the Desktop stream is up, so
+        // now the PC starts the game (it opens on the screen being streamed)
+        final String[] pcLaunch = com.limelight.pocket.pclib.PcLaunchTicket.take(pocketPcUuid(),
+                getIntent().getIntExtra(EXTRA_APP_ID, 0));
+        if (pcLaunch != null) {
+            showPocketToast(getString(R.string.pocket_pclib_starting_on_pc, pcLaunch[1]), true, 3500);
+            PcCompanion.runAsync(this, host, pocketPcUuid(), pcLaunch[0], reply -> {
+                if (reply == null || !reply.startsWith("OK")) {
+                    showPocketToast(getString(R.string.pocket_pclib_launch_failed, pcLaunch[1]), true, 5000);
+                }
+            });
+        }
         pocketStatsHandler.removeCallbacks(pocketStatsSampler);
         pocketStatsHandler.postDelayed(pocketStatsSampler, 1000);
         pocketApplyBrightness(PocketPrefs.streamBrightness(this));
@@ -5190,6 +5202,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                         }
                         case -408: {
                             dialogText += "\n\n" + getResources().getString(R.string.error_msg_timeout);
+                            break;
+                        }
+                        case -1: {
+                            // The PC couldn't start the game (Apollo's generic launch failure)
+                            dialogText += "\n\n" + getResources().getString(R.string.pocket_error_launch_failed);
                             break;
                         }
                         default: {

@@ -42,24 +42,17 @@ public final class PocketUi {
         int accent = PocketTheme.accent(c);
         float lum = (0.299f * android.graphics.Color.red(accent) + 0.587f * android.graphics.Color.green(accent)
                 + 0.114f * android.graphics.Color.blue(accent)) / 255f;
-        if (play.getBackground() == null) {
-            android.graphics.drawable.GradientDrawable base = new android.graphics.drawable.GradientDrawable();
-            base.setCornerRadius(100 * d);
-            base.setColor(0x33FFFFFF);
-            play.setBackground(base);
-        }
-        android.graphics.drawable.GradientDrawable face = new android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{PocketTheme.withAlpha(accent, 0xE0), PocketTheme.withAlpha(accent, 0xA6)});
-        face.setCornerRadius(100 * d);
-        face.setStroke(Math.max(1, Math.round(d)), 0x66FFFFFF);
+        // The accent is part of the glass (under the text), never laid over it
+        LiveGlass.setFace(play, PocketTheme.withAlpha(accent, 0xF0), PocketTheme.withAlpha(accent, 0xC4));
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            play.setForeground(face);
+            play.setForeground(null);
         }
-        else {
-            play.setBackground(face);
-        }
-        play.setTextColor(lum > 0.62f ? 0xFF000000 : 0xFFFFFFFF);
+        boolean darkText = lum > 0.62f;
+        play.setShadowLayer(darkText ? 0f : 3 * d, 0f, darkText ? 0f : 0.5f * d, 0x66000000);
+        // Touch presses it; with buttons, the hero takes "focus" without stealing it from the row
+        play.setFocusable(false);
+        play.setClickable(true);
+        play.setTextColor(darkText ? 0xFF000000 : 0xFFFFFFFF);
         play.setElevation(7 * d);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
             play.setOutlineSpotShadowColor(accent);

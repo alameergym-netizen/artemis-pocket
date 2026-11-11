@@ -68,7 +68,7 @@ public final class StreamScreenshot {
         ContentValues values = new ContentValues();
         values.put(MediaStore.Images.Media.DISPLAY_NAME, name);
         values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
-        values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Artemis Pocket");
+        values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Pocket Nexus");
         values.put(MediaStore.Images.Media.IS_PENDING, 1);
         ContentResolver resolver = context.getContentResolver();
         Uri uri = null;

@@ -362,8 +362,8 @@
     <string name="pacing_smoothness">Prefer smoothest video (may significantly increase latency)</string>
 
 
-    <string name="keyboard_service_label">Artemis Pocket: Home button and keyboard capture</string>
-    <string name="accessibility_description_text">While you are streaming, Artemis Pocket receives the Home button (and system keyboard shortcuts) so they reach your PC. With \"Home acts as Guide\" turned on in Artemis Pocket, Home presses the Xbox Guide button. Nothing is captured when you are not streaming.</string>
+    <string name="keyboard_service_label">Pocket Nexus: Home button and keyboard capture</string>
+    <string name="accessibility_description_text">While you are streaming, Pocket Nexus receives the Home button (and system keyboard shortcuts) so they reach your PC. With \"Home acts as Guide\" turned on in Pocket Nexus, Home presses the Xbox Guide button. Nothing is captured when you are not streaming.</string>
 
 
     <!-- In Game menu -->
@@ -471,7 +471,7 @@
     <string name="summary_share_performance_logs">Share your performance with friends or the community</string>
     <string name="title_share_performance_logs_button">Share Performance Logs</string>
     <string name="title_software_update">Software Update</string>
-    <string name="summary_software_update">Artemis Pocket, based on Artemis by ClassicOldSong. Visit GitHub Releases for the latest build</string>
+    <string name="summary_software_update">Pocket Nexus, based on Artemis by ClassicOldSong. Visit GitHub Releases for the latest build</string>
     <string name="title_follow_update">Follow Update</string>
     <string name="summary_follow_update">Follow updates of Artemis with Obtainium</string>
     <string name="title_special_key_layout">Special Key Layout</string>

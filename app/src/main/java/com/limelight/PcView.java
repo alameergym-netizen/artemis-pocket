@@ -181,6 +181,7 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
     private final static int POCKET_POWER_MENU_ID = 99;
     private final static int POCKET_POWER_BASE_ID = 100;
     private final static int POCKET_COMPANION_PIN_ID = 130;
+    private final static int POCKET_PC_LIBRARY_ID = 131;
     private final static int PAIR_ID_OTP = 21;
 
     private void initializeViews() {
@@ -217,6 +218,19 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
             pocketRecentAdapter = new com.limelight.pocket.ui.RecentGamesAdapter(this);
             pocketRecentCarousel.setAdapter(new CarouselAdapter(pocketRecentAdapter, pocketRecentListener, 14));
         }
+        // UP from the row lifts the hero: big Play / Open, the art and the logo take the screen
+        heroFocus = com.limelight.pocket.ui.HeroFocus.install(this, new com.limelight.pocket.ui.HeroFocus.Host() {
+            @Override
+            public boolean heroCanLift() {
+                View row = findViewById(R.id.pocketHomeRow);
+                return row != null && row.hasFocus() && usbState == USB_IDLE;
+            }
+
+            @Override
+            public void heroPlay() {
+                pocketHeroPlay();
+            }
+        }, R.id.pcFragmentContainer);
 
         setHints(hintA(this, R.string.pocket_hint_open),
                 hintY(this, R.string.pocket_hint_options),
@@ -522,6 +536,8 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
             }
 
             menu.add(Menu.NONE, FULL_APP_LIST_ID, 4, getResources().getString(R.string.pcview_menu_app_list));
+            // Pocket Nexus: the PC's own games (Steam, Epic, GOG) through Pocket Nexus PC
+            menu.add(Menu.NONE, POCKET_PC_LIBRARY_ID, 4, getString(R.string.pocket_pclib_button));
 
             // Artemis Pocket: PC power through the Artemis Pocket PC helper
             android.view.SubMenu power = menu.addSubMenu(Menu.NONE, POCKET_POWER_MENU_ID, 4,
@@ -914,6 +930,9 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
 
     // ---- Artemis Pocket: PC power + helper pairing -----------------------------------------
 
+    /** The PC whose game library is open (its pick is streamed when it comes back). */
+    private ComputerDetails pocketPcLibraryPc;
+
     private String pocketCompanionHost(ComputerDetails details) {
         String usb = UsbLink.getUsbAddressFor(this, details.uuid);
         if (usb != null) {
@@ -954,6 +973,16 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
             else {
                 run.run();
             }
+            return true;
+        }
+        if (id == POCKET_PC_LIBRARY_ID) {
+            String host = pocketCompanionHost(details);
+            if (host == null) {
+                Toast.makeText(this, R.string.pair_pc_offline, Toast.LENGTH_SHORT).show();
+                return true;
+            }
+            pocketPcLibraryPc = details;
+            com.limelight.pocket.pclib.PcLibraryActivity.open(this, details.uuid, details.name, host);
             return true;
         }
         if (id == POCKET_COMPANION_PIN_ID) {
@@ -1634,6 +1663,21 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
     }
 
     /** A: play it (or resume it); the library takes over when another game is running. */
+    /** Play on the hero (A while it is lifted, or a touch): what A does on the card it tells about. */
+    private void pocketHeroPlay() {
+        if (pocketHeroShowsGame) {
+            pocketPlayRecent(pocketRecentHeroPos);
+            return;
+        }
+        if (pcGridAdapter == null || pcCarousel == null || pocketHeroPos < 0 || pocketHeroPos >= pcGridAdapter.getCount()) {
+            return;
+        }
+        RecyclerView.ViewHolder holder = pcCarousel.findViewHolderForAdapterPosition(pocketHeroPos);
+        View card = holder != null && holder.itemView instanceof ViewGroup && ((ViewGroup) holder.itemView).getChildCount() > 0
+                ? ((ViewGroup) holder.itemView).getChildAt(0) : null;
+        onItemClicked(pocketHeroPos, card);
+    }
+
     private void pocketPlayRecent(int position) {
         if (pocketRecentAdapter == null || position < 0 || position >= pocketRecentAdapter.getCount()) {
             return;
@@ -1860,6 +1904,21 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
     @Override
     protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == com.limelight.pocket.pclib.PcLibraryActivity.REQUEST) {
+            ComputerDetails pc = pocketPcLibraryPc;
+            pocketPcLibraryPc = null;
+            if (resultCode == RESULT_OK && data != null && pc != null) {
+                int appId = data.getIntExtra(com.limelight.pocket.pclib.PcLibraryActivity.RESULT_APP_ID, 0);
+                for (com.limelight.pocket.RecentGames.Game g : com.limelight.pocket.RecentGames.forPc(this, pc.uuid, 100000)) {
+                    if (g.app.getAppId() == appId) {
+                        pocketLaunch(pc, g.app);
+                        return;
+                    }
+                }
+                Toast.makeText(this, R.string.pocket_pclib_app_missing, Toast.LENGTH_LONG).show();
+            }
+            return;
+        }
         if (requestCode != com.limelight.pocket.GamePageActivity.REQUEST || data == null) {
             return;
         }

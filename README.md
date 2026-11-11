@@ -1,10 +1,15 @@
-# Artemis Pocket
+# Pocket Nexus
+
+*(formerly Artemis Pocket)*
 
 A console-style fork of [Artemis](https://github.com/ClassicOldSong/moonlight-android) (Moonlight for Apollo/Sunshine),
 built for the **Retroid Pocket 6** and other Android handhelds.
 
 ## What's different
 
+- **PC games**: the games installed on the PC (Steam, Epic, GOG) in a console library, started through Apollo's
+  Desktop when Apollo has no entry for them; with a linked Steam account, owned games can be installed on the PC
+  remotely (needs Pocket Nexus PC on the PC).
 - **Console UI, fully controller-driven**: animated home screen with your PCs, a game library with box-art carousel
   and blurred hero art, button hints everywhere (A / B / X / Y / START / L1 / R1).
 - **Streaming over the USB-C cable** — no Wi-Fi, no router, no internet. Plug the cable into the PC and the stream starts.
@@ -26,7 +31,7 @@ It installs next to the official Artemis (`com.artemispocket`).
 1. Handheld: Settings → About device → tap *Build number* 7 times, then Developer options → **USB debugging** on.
 2. PC: install [Apollo](https://github.com/ClassicOldSong/Apollo/releases), download the [`pc-setup`](pc-setup) folder and
    double-click **`ArtemisPocket-USB-Bridge.bat`**. It downloads ADB if needed, can start with Windows, and needs no admin rights.
-3. Plug the cable in, allow USB debugging, open Artemis Pocket. First time only, pair with the PIN in Apollo's web page.
+3. Plug the cable in, allow USB debugging, open Pocket Nexus. First time only, pair with the PIN in Apollo's web page.
 
 The bridge uses `adb reverse` for Apollo's TCP ports and relays the stream's UDP packets (video/control/audio)
 through a single ADB tunnel. Roughly 60 Mbps is comfortable.
@@ -37,8 +42,8 @@ through a single ADB tunnel. Roughly 60 Mbps is comfortable.
 
 Android hands the Home key to the launcher before any app sees it, so this needs a system-level remapper:
 
-- **Inside Artemis Pocket (streaming)**: Settings → Controls → *Home acts as Xbox Guide*, then enable the
-  "Artemis Pocket: Home button and keyboard capture" accessibility service.
+- **Inside Pocket Nexus (streaming)**: Settings → Controls → *Home acts as Xbox Guide*, then enable the
+  "Pocket Nexus: Home button and keyboard capture" accessibility service.
 - **Everywhere (no root)**: [Key Mapper](https://github.com/keymapperorg/KeyMapper) with *Expert mode* — remap Home → key code `BUTTON_MODE`.
   Expert mode needs Wireless debugging to start (Wi-Fi on once after each reboot).
 - **Everywhere (root)**: a Magisk module that maps the Home key to `BUTTON_MODE` in the controller's keylayout file.

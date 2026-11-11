@@ -1235,6 +1235,10 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             }
             pocketBackdropKey = null;
             pocketHeroArt().show(null);
+            if (pocketKeyArt() != null) {
+                pocketKeyArt().show(null);
+            }
+            pocketHeroLogo().clear(getString(R.string.pocket_brand_title));
             return;
         }
         if (position < 0 || position >= count) {
@@ -1259,6 +1263,8 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         boolean moved = position != pocketHeroPos;
         pocketHeroPos = position;
         com.limelight.pocket.ui.PocketMotion.swapText(title, computer.details.name, dir);
+        // A PC has no logo: its name
+        pocketHeroLogo().clear(computer.details.name);
         String sub = describeComputer(computer.details, true);
         if (latencyText != null && computer.details.uuid.equals(latencyForUuid)
                 && computer.details.state == ComputerDetails.State.ONLINE) {
@@ -1374,8 +1380,17 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         }
         final int token = ++pocketBackdropToken;
         final String key = uuid + ":" + appId;
+        // Its key art sharp across the top (like the library) over its colours; without key art,
+        // just its colours (or its cover, by the style)
         android.graphics.Bitmap keyArt = com.limelight.pocket.PocketArt.cached(this, uuid, appId, com.limelight.pocket.PocketArt.HERO);
-        if (keyArt != null) {
+        com.limelight.pocket.ui.KeyArtStage stage = pocketKeyArt();
+        if (stage != null) {
+            com.limelight.pocket.ui.LaunchOverlay.rememberKeyArt(name, keyArt);
+            if (keyArt != null || !com.limelight.pocket.PocketArt.has(this, uuid, appId, com.limelight.pocket.PocketArt.HERO)) {
+                stage.show(keyArt);
+            }
+        }
+        else if (keyArt != null) {
             pocketHeroArt().show(keyArt, "hero:" + key, true);
             return;
         }
@@ -1390,14 +1405,61 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
                 }
             });
         }
-        com.limelight.pocket.PocketArt.load(this, uuid, appId, com.limelight.pocket.PocketArt.HERO, bitmap -> {
-            if (bitmap != null && token == pocketBackdropToken && !isFinishing()) {
-                pocketHeroArt().show(bitmap, "hero:" + key, true);
-            }
-        });
+        if (keyArt == null) {
+            com.limelight.pocket.PocketArt.load(this, uuid, appId, com.limelight.pocket.PocketArt.HERO, bitmap -> {
+                if (token != pocketBackdropToken || isFinishing()) {
+                    return;
+                }
+                if (stage != null) {
+                    com.limelight.pocket.ui.LaunchOverlay.rememberKeyArt(name, bitmap);
+                    stage.show(bitmap);
+                }
+                else if (bitmap != null) {
+                    pocketHeroArt().show(bitmap, "hero:" + key, true);
+                }
+            });
+        }
     }
 
     private com.limelight.pocket.ui.HeroArt pocketHeroArt;
+    private com.limelight.pocket.ui.KeyArtStage pocketKeyArt;
+    private boolean pocketKeyArtLooked;
+    private com.limelight.pocket.ui.HeroLogo pocketHeroLogo;
+    private Runnable pocketAutoArt;
+
+    private com.limelight.pocket.ui.KeyArtStage pocketKeyArt() {
+        if (!pocketKeyArtLooked) {
+            pocketKeyArtLooked = true;
+            pocketKeyArt = com.limelight.pocket.ui.KeyArtStage.find(this);
+        }
+        return pocketKeyArt;
+    }
+
+    private com.limelight.pocket.ui.HeroLogo pocketHeroLogo() {
+        if (pocketHeroLogo == null) {
+            pocketHeroLogo = new com.limelight.pocket.ui.HeroLogo(this,
+                    (android.widget.ImageView) findViewById(R.id.pocketHeroLogo), (TextView) findViewById(R.id.pocketHeroTitle));
+        }
+        return pocketHeroLogo;
+    }
+
+    /** New art arrived (fetched while resting on a game): the hero and the cards take it. */
+    private void pocketArtArrived() {
+        if (isFinishing()) {
+            return;
+        }
+        pocketBackdropKey = null;
+        if (pocketKeyArt != null) {
+            pocketKeyArt.invalidate();
+        }
+        pocketHeroLogo().invalidate();
+        if (pocketRecentAdapter != null) {
+            pocketRecentAdapter.notifyDataSetChanged();
+        }
+        if (pocketHeroShowsGame && pocketRecentHeroPos >= 0) {
+            pocketShowRecentHero(pocketRecentHeroPos);
+        }
+    }
 
     // ---- Artemis Pocket: "Jump back in" (recent games on the home screen) ---------------------
 
@@ -1517,6 +1579,8 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
             section.setText(R.string.pocket_jump_back_in);
         }
         com.limelight.pocket.ui.PocketMotion.swapText(title, game.app.getAppName(), dir);
+        // Its logo in place of its name, like the library
+        pocketHeroLogo().forGame(uuid, appId, game.app.getAppName(), dir);
         String sub = (pc != null ? pc.name + "  \u00b7  " : "")
                 + getString(running ? R.string.pocket_now_playing : R.string.pocket_ready_to_play);
         if (!sub.contentEquals(subtitle.getText())) {
@@ -1557,6 +1621,16 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         }
         // Its key art behind everything when it has one, else its colours
         pocketBackdropFor(uuid, appId, game.app.getAppName());
+
+        // Rest on it a moment and its key art and logo are fetched (SteamGridDB), as in the library
+        final String fetchName = game.app.getAppName();
+        View host = getWindow().getDecorView();
+        if (pocketAutoArt != null) {
+            host.removeCallbacks(pocketAutoArt);
+        }
+        pocketAutoArt = () -> com.limelight.pocket.PocketArt.autoFetch(this, uuid, appId, fetchName, false,
+                this::pocketArtArrived);
+        host.postDelayed(pocketAutoArt, 900);
     }
 
     /** A: play it (or resume it); the library takes over when another game is running. */

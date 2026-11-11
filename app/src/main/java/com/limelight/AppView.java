@@ -1195,46 +1195,29 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
                 ? ((ViewGroup) frame).getChildAt(0) : null;
     }
 
-    private int pocketLogoFor = -1;
+    private com.limelight.pocket.ui.HeroLogo pocketHeroLogo;
+
+    private com.limelight.pocket.ui.HeroLogo pocketHeroLogo() {
+        if (pocketHeroLogo == null) {
+            pocketHeroLogo = new com.limelight.pocket.ui.HeroLogo(this,
+                    (ImageView) findViewById(R.id.pocketHeroLogo), (TextView) findViewById(R.id.pocketHeroTitle));
+        }
+        return pocketHeroLogo;
+    }
 
     /** The game's logo in place of its name (the name shows while it loads, or if there is none). */
     private void pocketShowLogoFor(AppObject obj) {
         if (computer == null) {
             return;
         }
-        final int appId = obj.app.getAppId();
-        final String uuid = computer.uuid;
-        pocketLogoFor = appId;
-        if (com.limelight.pocket.PocketArt.cached(this, uuid, appId, com.limelight.pocket.PocketArt.LOGO) == null) {
-            ImageView logoView = findViewById(R.id.pocketHeroLogo);
-            if (logoView != null && logoView.getVisibility() == View.VISIBLE
-                    && com.limelight.pocket.PocketArt.logosForNames(this)
-                    && com.limelight.pocket.PocketArt.has(this, uuid, appId, com.limelight.pocket.PocketArt.LOGO)) {
-                // Its logo is on its way (a moment): the previous one steps out meanwhile, rather
-                // than the name flashing up in between
-                logoView.animate().alpha(0f).setStartDelay(0).setDuration(90).withEndAction(null).start();
-                // Whatever logo comes next (even the same one again) must bring it back
-                logoShown = null;
-            }
-            else {
-                // The previous game's logo must not linger next to this game's details
-                showLogo(null);
-            }
-        }
-        com.limelight.pocket.PocketArt.load(this, uuid, appId, com.limelight.pocket.PocketArt.LOGO, bitmap -> {
-            if (pocketLogoFor == appId) {
-                showLogo(bitmap);
-            }
-        });
+        pocketHeroLogo().forGame(computer.uuid, obj.app.getAppId(), obj.app.getAppName(), pocketHeroDir);
     }
 
     // ---- Artemis Pocket: key art and logos (SteamGridDB) --------------------------------------
 
     private int pocketArtFor = -1;
     private int pocketArtVersion = -1;
-    private boolean keyArtOnA;
-    private Bitmap keyArtShown;
-    private Bitmap logoShown;
+    private com.limelight.pocket.ui.KeyArtStage pocketKeyArt;
     private Runnable pocketAutoArt;
 
     /** The focused game's background and logo (if any), and fetching them once you rest on it. */
@@ -1324,8 +1307,10 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         if (appGridAdapter != null) {
             appGridAdapter.notifyDataSetChanged();
         }
-        keyArtShown = null;
-        logoShown = null;
+        if (pocketKeyArt != null) {
+            pocketKeyArt.invalidate();
+        }
+        pocketHeroLogo().invalidate();
         if (appGridAdapter != null && pocketHeroPos >= 0 && pocketHeroPos < appGridAdapter.getCount()) {
             View focused = appCarousel != null ? appCarousel.getFocusedChild() : null;
             View card = focused instanceof ViewGroup && ((ViewGroup) focused).getChildCount() > 0
@@ -1336,128 +1321,20 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
     }
 
     private void showKeyArt(Bitmap bitmap) {
-        View frame = findViewById(R.id.pocketKeyArtFrame);
-        View under = findViewById(R.id.pocketKeyArtUnderlay);
-        ImageView a = findViewById(R.id.pocketKeyArtA);
-        ImageView b = findViewById(R.id.pocketKeyArtB);
-        if (frame == null || under == null || a == null || b == null) {
-            return;
-        }
         // The "Starting..." screen uses it too
         com.limelight.pocket.ui.LaunchOverlay.rememberKeyArt(heroTitleForLaunch, bitmap);
-        // Key art is made to be seen: every style shows it, except pure black
-        if (bitmap != null && PocketPrefs.BACKDROP_BLACK.equals(PocketPrefs.backdrop(this))) {
-            bitmap = null;
+        if (pocketKeyArt == null) {
+            pocketKeyArt = com.limelight.pocket.ui.KeyArtStage.find(this);
         }
-        if (bitmap == keyArtShown && (bitmap != null || frame.getAlpha() == 0f)) {
-            return;
+        if (pocketKeyArt != null) {
+            pocketKeyArt.show(bitmap);
         }
-        keyArtShown = bitmap;
-        boolean animate = PocketPrefs.animationsEnabled(this);
-        if (bitmap == null) {
-            if (animate) {
-                frame.animate().alpha(0f).setDuration(300).start();
-                under.animate().alpha(0f).setDuration(300).start();
-            }
-            else {
-                frame.setAlpha(0f);
-                under.setAlpha(0f);
-            }
-            return;
-        }
-        ImageView incoming = keyArtOnA ? b : a;
-        ImageView outgoing = keyArtOnA ? a : b;
-        keyArtOnA = !keyArtOnA;
-        incoming.setImageBitmap(bitmap);
-        if (PocketPrefs.colorBackgroundArt(this)) {
-            incoming.clearColorFilter();
-        }
-        else {
-            ColorMatrix mono = new ColorMatrix();
-            mono.setSaturation(0f);
-            incoming.setColorFilter(new ColorMatrixColorFilter(mono));
-        }
-        incoming.animate().cancel();
-        outgoing.animate().cancel();
-        if (animate) {
-            // A soft cross-fade with a slow settle in size (like a console's home screen)
-            incoming.setPivotY(0f);
-            incoming.setScaleX(1.04f);
-            incoming.setScaleY(1.04f);
-            incoming.setAlpha(0f);
-            incoming.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(700)
-                    .setInterpolator(new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f)).start();
-            outgoing.animate().alpha(0f).setDuration(380).start();
-            frame.animate().alpha(1f).setDuration(380).start();
-            under.animate().alpha(1f).setDuration(380).start();
-        }
-        else {
-            incoming.setAlpha(1f);
-            outgoing.setAlpha(0f);
-            frame.setAlpha(1f);
-            under.setAlpha(1f);
-        }
-    }
-
-    /** True for a logo too dark to read on the black backdrop (worked out when it loaded). */
-    private boolean pocketDarkLogo(Bitmap logo) {
-        return com.limelight.pocket.PocketArt.isDarkLogo(logo);
     }
 
     private void showLogo(Bitmap logo) {
-        ImageView view = findViewById(R.id.pocketHeroLogo);
-        TextView title = findViewById(R.id.pocketHeroTitle);
-        if (view == null || title == null) {
-            return;
-        }
-        if (logo != null && (!com.limelight.pocket.PocketArt.logosForNames(this) || pocketDarkLogo(logo))) {
-            logo = null;
-        }
-        com.limelight.pocket.ui.LaunchOverlay.rememberLogo(heroTitleForLaunch, logo);
-        if (logo == logoShown && (logo != null) == (view.getVisibility() == View.VISIBLE)) {
-            return;
-        }
-        logoShown = logo;
-        if (logo == null) {
-            // Takes over alpha and X (drops a logo swap in progress) without freezing an entrance
-            view.animate().alpha(1f).translationX(0f).setStartDelay(0).setDuration(0).withEndAction(null).start();
-            view.setVisibility(View.GONE);
-            view.setImageDrawable(null);
-            if (title.getVisibility() != View.VISIBLE) {
-                // The name was hidden behind a logo: it comes in as this game's name straight away
-                // (not as the previous game's name leaving first)
-                if (heroTitleForLaunch != null) {
-                    title.setText(heroTitleForLaunch);
-                }
-                title.setVisibility(View.VISIBLE);
-                // Alpha and X only (taking over a name swap in progress): an entrance still lifting
-                // the name into place carries on
-                if (PocketPrefs.animationsEnabled(this)) {
-                    title.setAlpha(0f);
-                    title.animate().alpha(1f).translationX(0f).setStartDelay(0).setDuration(260)
-                            .setInterpolator(com.limelight.pocket.ui.PocketMotion.DECELERATE).withEndAction(null).start();
-                }
-                else {
-                    title.animate().alpha(1f).translationX(0f).setStartDelay(0).setDuration(0).withEndAction(null).start();
-                }
-            }
-            return;
-        }
-        // Logo to logo: the old one slips out the way you moved and the new one comes in, like
-        // the names do (it used to swap in place and then fade, a little pop)
-        boolean wasShowing = view.getVisibility() == View.VISIBLE && view.getDrawable() != null;
-        view.setContentDescription(title.getText());
-        title.setVisibility(View.GONE);
-        view.setVisibility(View.VISIBLE);
-        if (PocketPrefs.animationsEnabled(this)) {
-            com.limelight.pocket.ui.PocketMotion.swapImage(view, logo, wasShowing ? pocketHeroDir : 0);
-        }
-        else {
-            view.setImageBitmap(logo);
-            view.setAlpha(1f);
-            view.setTranslationX(0f);
-        }
+        pocketHeroLogo().show(logo);
     }
+
 
     private void showHeroArt(Bitmap bitmap) {
         if (bitmap == null || bitmap == heroBitmap || bitmap.isRecycled()) {

@@ -1,0 +1,121 @@
+package com.limelight.pocket.ui;
+
+import android.app.Activity;
+import android.graphics.Bitmap;
+import android.graphics.ColorMatrix;
+import android.graphics.ColorMatrixColorFilter;
+import android.view.View;
+import android.widget.ImageView;
+
+import com.limelight.R;
+import com.limelight.pocket.PocketPrefs;
+
+/**
+ * A game's key art, sharp across the top of the screen (console style), cross-faded between two
+ * layers with a slow settle in size. Used by the home screen and the library alike.
+ *
+ * Layout: pocketKeyArtUnderlay (black, hides the blurred art while key art shows),
+ * pocketKeyArtFrame holding pocketKeyArtA / pocketKeyArtB and a fade to the background.
+ */
+public final class KeyArtStage {
+
+    private final Activity activity;
+    private final View frame;
+    private final View under;
+    private final ImageView a;
+    private final ImageView b;
+    private boolean onA;
+    private Bitmap shown;
+
+    private KeyArtStage(Activity activity, View frame, View under, ImageView a, ImageView b) {
+        this.activity = activity;
+        this.frame = frame;
+        this.under = under;
+        this.a = a;
+        this.b = b;
+    }
+
+    /** The stage of this screen, or null when its layout has none. */
+    public static KeyArtStage find(Activity activity) {
+        View frame = activity.findViewById(R.id.pocketKeyArtFrame);
+        View under = activity.findViewById(R.id.pocketKeyArtUnderlay);
+        ImageView a = activity.findViewById(R.id.pocketKeyArtA);
+        ImageView b = activity.findViewById(R.id.pocketKeyArtB);
+        if (frame == null || under == null || a == null || b == null) {
+            return null;
+        }
+        return new KeyArtStage(activity, frame, under, a, b);
+    }
+
+    /** Forget what is shown, so the next request puts it up again (new art arrived). */
+    public void invalidate() {
+        shown = null;
+    }
+
+    /** True while key art is on screen. */
+    public boolean showing() {
+        return shown != null;
+    }
+
+    /** Shows this key art (null: none, the blurred art and lights show again). */
+    public void show(Bitmap bitmap) {
+        // Key art is made to be seen: every style shows it, except pure black
+        if (bitmap != null && PocketPrefs.BACKDROP_BLACK.equals(PocketPrefs.backdrop(activity))) {
+            bitmap = null;
+        }
+        if (bitmap != null && bitmap.isRecycled()) {
+            bitmap = null;
+        }
+        if (bitmap == shown && (bitmap != null || frame.getAlpha() == 0f)) {
+            return;
+        }
+        shown = bitmap;
+        boolean animate = PocketPrefs.animationsEnabled(activity);
+        if (bitmap == null) {
+            if (animate) {
+                frame.animate().alpha(0f).setDuration(300).start();
+                under.animate().alpha(0f).setDuration(300).start();
+            }
+            else {
+                frame.setAlpha(0f);
+                under.setAlpha(0f);
+            }
+            return;
+        }
+        ImageView incoming = onA ? b : a;
+        ImageView outgoing = onA ? a : b;
+        onA = !onA;
+        incoming.setImageBitmap(bitmap);
+        if (PocketPrefs.colorBackgroundArt(activity)) {
+            incoming.clearColorFilter();
+        }
+        else {
+            ColorMatrix mono = new ColorMatrix();
+            mono.setSaturation(0f);
+            incoming.setColorFilter(new ColorMatrixColorFilter(mono));
+        }
+        // Background layers: no entrance runs on them, so taking them over completely is fine
+        incoming.animate().cancel();
+        outgoing.animate().cancel();
+        if (animate) {
+            // A soft cross-fade with a slow settle in size (like a console's home screen)
+            incoming.setPivotY(0f);
+            incoming.setScaleX(1.05f);
+            incoming.setScaleY(1.05f);
+            incoming.setAlpha(0f);
+            incoming.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(900)
+                    .setInterpolator(PocketMotion.DECELERATE).start();
+            outgoing.animate().alpha(0f).setDuration(420).start();
+            frame.animate().alpha(1f).setDuration(420).start();
+            under.animate().alpha(1f).setDuration(420).start();
+        }
+        else {
+            incoming.setAlpha(1f);
+            incoming.setScaleX(1f);
+            incoming.setScaleY(1f);
+            outgoing.setAlpha(0f);
+            frame.setAlpha(1f);
+            under.setAlpha(1f);
+        }
+    }
+}

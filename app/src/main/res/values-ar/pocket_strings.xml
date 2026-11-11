@@ -618,4 +618,6 @@
     <string name="pocket_hint_library">المكتبة</string>
     <string name="pocket_backdrop_ambient">محيطي (ألوان اللعبة)</string>
     <string name="pocket_hero_playing">شغّال: %1$s</string>
+    <string name="pocket_art_from_device">من الجهاز</string>
+    <string name="pocket_art_device_failed">ما قدرت أستخدم هالصورة</string>
 </resources>

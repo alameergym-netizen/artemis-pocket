@@ -344,6 +344,8 @@ public class ArtPickerActivity extends ConsoleActivity {
             hints.add(hintY(this, R.string.pocket_art_original));
             hints.add(hintX(this, R.string.pocket_art_search));
         }
+        // Your own picture (works without SteamGridDB too)
+        hints.add(hintStart(this, R.string.pocket_art_from_device));
         hints.add(hintB(this, R.string.pocket_hint_back));
         fillHintBar(this, hintBar, hints.toArray(new Hint[0]));
     }
@@ -605,7 +607,95 @@ public class ArtPickerActivity extends ConsoleActivity {
 
     @Override
     protected void onMenuButton() {
-        // No settings shortcut here
+        // START: a picture from this device instead (no settings shortcut here)
+        pickFromDevice();
+    }
+
+    // ---- Your own pictures --------------------------------------------------------------------
+
+    private static final int REQUEST_PICK_IMAGE = 4711;
+    /** Biggest picture accepted (an uncompressed photo can be huge; art never needs more). */
+    private static final int MAX_IMPORT_BYTES = 48 * 1024 * 1024;
+
+    /** Opens the system's picker for a picture on the device (or a USB drive, cloud storage...). */
+    private void pickFromDevice() {
+        if (busy) {
+            return;
+        }
+        PocketSounds.play(this, PocketSounds.OPEN);
+        Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        pick.addCategory(Intent.CATEGORY_OPENABLE);
+        pick.setType("image/*");
+        try {
+            startActivityForResult(pick, REQUEST_PICK_IMAGE);
+        } catch (RuntimeException e) {
+            Intent get = new Intent(Intent.ACTION_GET_CONTENT);
+            get.addCategory(Intent.CATEGORY_OPENABLE);
+            get.setType("image/*");
+            try {
+                startActivityForResult(get, REQUEST_PICK_IMAGE);
+            } catch (RuntimeException e2) {
+                Toast.makeText(this, R.string.pocket_art_device_failed, Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_PICK_IMAGE && resultCode == Activity.RESULT_OK && data != null
+                && data.getData() != null) {
+            importImage(data.getData());
+        }
+    }
+
+    /** Scales the chosen picture for this kind of art and keeps it (like SteamGridDB art). */
+    private void importImage(final android.net.Uri uri) {
+        if (busy) {
+            return;
+        }
+        busy = true;
+        final int k = kind;
+        Toast.makeText(this, R.string.pocket_art_saving, Toast.LENGTH_SHORT).show();
+        work.execute(() -> {
+            boolean ok = false;
+            try (java.io.InputStream in = getContentResolver().openInputStream(uri)) {
+                if (in != null) {
+                    java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+                    byte[] buffer = new byte[64 * 1024];
+                    int n;
+                    while ((n = in.read(buffer)) > 0) {
+                        bytes.write(buffer, 0, n);
+                        if (bytes.size() > MAX_IMPORT_BYTES) {
+                            throw new IOException("Too big");
+                        }
+                    }
+                    PocketArt.save(this, uuid, appId, k, bytes.toByteArray());
+                    ok = true;
+                }
+            } catch (IOException | RuntimeException | OutOfMemoryError e) {
+                ok = false;
+            }
+            final boolean saved = ok;
+            main.post(() -> {
+                busy = false;
+                if (isFinishing()) {
+                    return;
+                }
+                if (!saved) {
+                    Toast.makeText(this, R.string.pocket_art_device_failed, Toast.LENGTH_LONG).show();
+                    return;
+                }
+                // Not one of SteamGridDB's: none of the grid is ticked
+                PocketPrefs.prefs(this).edit().remove(KEY_APPLIED + uuid + "_" + appId + "_" + k).apply();
+                PocketSounds.play(this, PocketSounds.TOGGLE_ON);
+                Toast.makeText(this, R.string.pocket_art_saved, Toast.LENGTH_SHORT).show();
+                adapter.notifyDataSetChanged();
+                if (k == PocketArt.HERO) {
+                    showBackdrop();
+                }
+            });
+        });
     }
 
     @Override

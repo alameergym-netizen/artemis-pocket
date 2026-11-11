@@ -1535,8 +1535,8 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
         pocketHintsRecent = recent;
         if (recent) {
             setHints(hintA(this, R.string.pocket_hint_play),
+                    hintX(this, R.string.pocket_hint_details),
                     hintY(this, R.string.pocket_hint_library),
-                    hintX(this, R.string.pocket_hint_add_pc),
                     hintStart(this, R.string.pocket_hint_settings));
         }
         else {
@@ -1781,8 +1781,55 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener 
 
     @Override
     protected boolean onButtonX() {
+        // On a game of "Jump back in": its page; on a PC: add another PC
+        if (pocketRecentCarousel != null && pocketRecentCarousel.hasFocus() && pocketOpenRecentPage()) {
+            return true;
+        }
         startActivity(new Intent(PcView.this, AddComputerManually.class));
         return true;
+    }
+
+    private boolean pocketOpenRecentPage() {
+        if (pocketRecentAdapter == null || pocketRecentCarousel == null) {
+            return false;
+        }
+        View focused = pocketRecentCarousel.getFocusedChild();
+        int pos = focused != null ? pocketRecentCarousel.getChildAdapterPosition(focused) : -1;
+        if (pos < 0 || pos >= pocketRecentAdapter.getCount()) {
+            return false;
+        }
+        com.limelight.pocket.RecentGames.Game game = pocketRecentAdapter.getItem(pos);
+        ComputerDetails pc = pocketRecentPc();
+        android.widget.ImageView image = focused.findViewById(R.id.grid_image);
+        android.graphics.Bitmap cover = image != null && image.getDrawable() instanceof android.graphics.drawable.BitmapDrawable
+                ? ((android.graphics.drawable.BitmapDrawable) image.getDrawable()).getBitmap() : null;
+        boolean running = pc != null && pc.runningGameId != 0 && pc.runningGameId == game.app.getAppId();
+        com.limelight.pocket.GamePageActivity.open(this, image != null ? image : focused,
+                pocketRecentAdapter.getUuid(), game.app.getAppId(), game.app.getAppName(),
+                pc != null ? pc.name : null, running, false, cover);
+        return true;
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != com.limelight.pocket.GamePageActivity.REQUEST || data == null) {
+            return;
+        }
+        if (data.getBooleanExtra(com.limelight.pocket.GamePageActivity.RESULT_CHANGED, false)) {
+            com.limelight.pocket.RecentGames.invalidate(pocketRecentAdapter != null ? pocketRecentAdapter.getUuid() : null);
+            pocketArtArrived();
+        }
+        if (com.limelight.pocket.GamePageActivity.ACTION_PLAY.equals(
+                data.getStringExtra(com.limelight.pocket.GamePageActivity.RESULT_ACTION)) && pocketRecentAdapter != null) {
+            int id = data.getIntExtra(com.limelight.pocket.GamePageActivity.RESULT_APP_ID, 0);
+            for (int i = 0; i < pocketRecentAdapter.getCount(); i++) {
+                if (pocketRecentAdapter.getItem(i).app.getAppId() == id) {
+                    pocketPlayRecent(i);
+                    break;
+                }
+            }
+        }
     }
 
     @Override

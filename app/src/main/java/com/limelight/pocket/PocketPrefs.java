@@ -403,6 +403,15 @@ public final class PocketPrefs {
         return Math.max(0, Math.min(100, prefs(context).getInt(key, fallback)));
     }
 
+    /** Game page: the trailer plays (muted) behind the page after a moment, like a console. */
+    public static boolean trailerAutoplay(Context context) {
+        return prefs(context).getBoolean("pocket_trailer_autoplay", true);
+    }
+
+    public static void setTrailerAutoplay(Context context, boolean on) {
+        prefs(context).edit().putBoolean("pocket_trailer_autoplay", on).apply();
+    }
+
     /** Real frosted glass (live blur) on the console screens. */
     public static boolean liveGlass(Context context) {
         return prefs(context).getBoolean(KEY_LIVE_GLASS, true);

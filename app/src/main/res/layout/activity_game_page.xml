@@ -1,0 +1,442 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Artemis Pocket: a game's page (console game hub): art and trailer, Play, info, media -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pocketRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipChildren="false">
+
+    <!-- Behind the glass: the game's art, its trailer, and the scrims that keep text readable -->
+    <FrameLayout
+        android:id="@+id/pocketBackdrop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0">
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#FF05060A" />
+
+        <ImageView
+            android:id="@+id/pageBlur"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop" />
+
+        <ImageView
+            android:id="@+id/pageArt"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            android:importantForAccessibility="no"
+            android:scaleType="centerCrop" />
+
+        <TextureView
+            android:id="@+id/pageTrailer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0" />
+
+        <View
+            android:id="@+id/pageScrimLeft"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/pocket_page_scrim_left" />
+
+        <View
+            android:id="@+id/pageScrimBottom"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/pocket_page_scrim_bottom" />
+
+        <!-- Deepens as the page scrolls down to the details -->
+        <View
+            android:id="@+id/pageScrimDeep"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            android:background="#E605060A" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/pocketMain"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipChildren="false">
+
+        <com.limelight.pocket.ui.PageScrollView
+            android:id="@+id/pageScroll"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:clipChildren="false"
+            android:descendantFocusability="afterDescendants"
+            android:fillViewport="true">
+
+            <LinearLayout
+                android:id="@+id/pageContent"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:orientation="vertical">
+
+                <!-- The hero: fills the screen; everything else is below it -->
+                <LinearLayout
+                    android:id="@+id/pageHero"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    android:gravity="bottom"
+                    android:orientation="vertical"
+                    android:paddingStart="40dp"
+                    android:paddingEnd="40dp"
+                    android:paddingBottom="22dp">
+
+                    <TextView
+                        android:id="@+id/pageEyebrow"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="6dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.2"
+                        android:textAllCaps="true"
+                        android:textColor="@color/pocket_text_dim"
+                        android:textSize="9.5sp" />
+
+                    <ImageView
+                        android:id="@+id/pageLogo"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:adjustViewBounds="true"
+                        android:importantForAccessibility="no"
+                        android:maxWidth="380dp"
+                        android:maxHeight="96dp"
+                        android:scaleType="fitStart"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/pageTitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:fontFamily="sans-serif-black"
+                        android:letterSpacing="-0.02"
+                        android:maxWidth="560dp"
+                        android:maxLines="2"
+                        android:textColor="@color/pocket_text"
+                        android:textSize="34sp" />
+
+                    <LinearLayout
+                        android:id="@+id/pageMeta"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/pageMetacritic"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="9dp"
+                            android:fontFamily="sans-serif-black"
+                            android:minWidth="24dp"
+                            android:paddingStart="6dp"
+                            android:paddingTop="1dp"
+                            android:paddingEnd="6dp"
+                            android:paddingBottom="1dp"
+                            android:gravity="center"
+                            android:textColor="#FF000000"
+                            android:textSize="11sp"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/pageMetaLine"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:fontFamily="sans-serif-medium"
+                            android:maxLines="1"
+                            android:textColor="@color/pocket_text_dim"
+                            android:textSize="11.5sp" />
+                    </LinearLayout>
+
+                    <FrameLayout
+                        android:layout_width="520dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp">
+
+                        <TextView
+                            android:id="@+id/pageShort"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:lineSpacingMultiplier="1.18"
+                            android:maxLines="3"
+                            android:minLines="3"
+                            android:textColor="#D9FFFFFF"
+                            android:textSize="12.5sp" />
+
+                        <com.limelight.pocket.ui.ShimmerLines
+                            android:id="@+id/pageSkeleton"
+                            android:layout_width="match_parent"
+                            android:layout_height="52dp" />
+                    </FrameLayout>
+
+                    <LinearLayout
+                        android:id="@+id/pageButtons"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="18dp"
+                        android:clipChildren="false"
+                        android:clipToPadding="false"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/pagePlay"
+                            style="@style/PocketPageButton"
+                            android:minWidth="150dp"
+                            android:paddingStart="22dp"
+                            android:paddingEnd="26dp"
+                            android:tag="glass"
+                            android:textSize="14sp" />
+
+                        <TextView
+                            android:id="@+id/pageQuit"
+                            style="@style/PocketPageButton"
+                            android:tag="glass"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/pageTrailerButton"
+                            style="@style/PocketPageButton"
+                            android:tag="glass"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/pageArtButton"
+                            style="@style/PocketPageButton"
+                            android:tag="glass" />
+
+                        <TextView
+                            android:id="@+id/pageFavButton"
+                            style="@style/PocketPageButton"
+                            android:minWidth="44dp"
+                            android:paddingStart="0dp"
+                            android:paddingEnd="0dp"
+                            android:tag="glass" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/pageMore"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:letterSpacing="0.16"
+                        android:textAllCaps="true"
+                        android:textColor="@color/pocket_text_faint"
+                        android:textSize="9sp" />
+                </LinearLayout>
+
+                <!-- Trailers and screenshots -->
+                <TextView
+                    android:id="@+id/pageMediaLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="0.2"
+                    android:paddingStart="40dp"
+                    android:text="@string/pocket_page_media"
+                    android:textAllCaps="true"
+                    android:textColor="@color/pocket_text_dim"
+                    android:textSize="9.5sp" />
+
+                <com.limelight.pocket.ui.CarouselRow
+                    android:id="@+id/pageMedia"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    android:descendantFocusability="afterDescendants"
+                    android:overScrollMode="never"
+                    android:paddingStart="34dp"
+                    android:paddingTop="10dp"
+                    android:paddingEnd="120dp"
+                    android:paddingBottom="10dp" />
+
+                <!-- About and details, on glass -->
+                <LinearLayout
+                    android:id="@+id/pageInfoRow"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:baselineAligned="false"
+                    android:clipChildren="false"
+                    android:orientation="horizontal"
+                    android:paddingStart="40dp"
+                    android:paddingEnd="40dp">
+
+                    <LinearLayout
+                        android:id="@+id/pageAbout"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.65"
+                        android:focusable="true"
+                        android:orientation="vertical"
+                        android:padding="20dp"
+                        android:tag="glass_panel">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="0.2"
+                            android:text="@string/pocket_page_about"
+                            android:textAllCaps="true"
+                            android:textColor="@color/pocket_text_dim"
+                            android:textSize="9.5sp" />
+
+                        <TextView
+                            android:id="@+id/pageAboutText"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:lineSpacingMultiplier="1.22"
+                            android:textColor="#E6FFFFFF"
+                            android:textSize="12sp" />
+
+                        <TextView
+                            android:id="@+id/pageSource"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="14dp"
+                            android:textColor="@color/pocket_text_faint"
+                            android:textSize="9.5sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/pageDetails"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp"
+                        android:layout_weight="1"
+                        android:focusable="true"
+                        android:orientation="vertical"
+                        android:padding="20dp"
+                        android:tag="glass_panel">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:fontFamily="sans-serif-medium"
+                            android:letterSpacing="0.2"
+                            android:text="@string/pocket_page_details"
+                            android:textAllCaps="true"
+                            android:textColor="@color/pocket_text_dim"
+                            android:textSize="9.5sp" />
+
+                        <LinearLayout
+                            android:id="@+id/pageDetailRows"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:orientation="vertical" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <Space
+                    android:layout_width="match_parent"
+                    android:layout_height="96dp" />
+            </LinearLayout>
+        </com.limelight.pocket.ui.PageScrollView>
+
+        <!-- Buttons, bottom right (stays put while the page scrolls) -->
+        <LinearLayout
+            android:id="@+id/pocketHintBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="18dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/pocket_glass_pill"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="2dp"
+            android:paddingTop="6dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="6dp"
+            android:tag="glass" />
+    </FrameLayout>
+
+    <!-- Full screen: a screenshot, or a trailer with its sound -->
+    <FrameLayout
+        android:id="@+id/pageViewer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#F7000000"
+        android:visibility="gone">
+
+        <ImageView
+            android:id="@+id/viewerImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:importantForAccessibility="no"
+            android:scaleType="fitCenter" />
+
+        <TextureView
+            android:id="@+id/viewerVideo"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            android:visibility="gone" />
+
+        <ProgressBar
+            android:id="@+id/viewerSpinner"
+            style="?android:attr/progressBarStyle"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_gravity="center"
+            android:indeterminateTint="#B3FFFFFF"
+            android:visibility="gone" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="28dp"
+            android:paddingEnd="28dp"
+            android:paddingBottom="16dp">
+
+            <TextView
+                android:id="@+id/viewerCaption"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:maxLines="1"
+                android:shadowColor="#CC000000"
+                android:shadowRadius="8"
+                android:textColor="@color/pocket_text"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/viewerCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:shadowColor="#CC000000"
+                android:shadowRadius="8"
+                android:textColor="@color/pocket_text_dim"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </FrameLayout>
+</FrameLayout>

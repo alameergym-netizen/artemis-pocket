@@ -182,6 +182,12 @@
             android:screenOrientation="sensorLandscape"
             android:enableOnBackInvokedCallback="false"
             android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
+        <!-- A game's page: opens over the screen it came from (translucent) -->
+        <activity
+            android:name=".pocket.GamePageActivity"
+            android:theme="@style/PocketPageTheme"
+            android:enableOnBackInvokedCallback="false"
+            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
         <activity
             android:name=".pocket.OnboardingActivity"
             android:screenOrientation="sensorLandscape"

@@ -443,6 +443,31 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
     protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
+        if (requestCode == com.limelight.pocket.GamePageActivity.REQUEST && data != null) {
+            int id = data.getIntExtra(com.limelight.pocket.GamePageActivity.RESULT_APP_ID, 0);
+            if (data.getBooleanExtra(com.limelight.pocket.GamePageActivity.RESULT_CHANGED, false)) {
+                // A favourite or new art from the page
+                if (appGridAdapter != null) {
+                    appGridAdapter.resort();
+                }
+                pocketArtChanged();
+                pocketFocusApp(id);
+            }
+            String action = data.getStringExtra(com.limelight.pocket.GamePageActivity.RESULT_ACTION);
+            if (com.limelight.pocket.GamePageActivity.ACTION_PLAY.equals(action) && appGridAdapter != null) {
+                for (int i = 0; i < appGridAdapter.getCount(); i++) {
+                    if (((AppObject) appGridAdapter.getItem(i)).app.getAppId() == id) {
+                        onItemClicked(i, pocketCardAt(i));
+                        break;
+                    }
+                }
+            }
+            else if (com.limelight.pocket.GamePageActivity.ACTION_QUIT.equals(action)) {
+                pocketQuitRunning();
+            }
+            return;
+        }
+
         if (requestCode == ShortcutHelper.REQUEST_CODE_EXPORT_ART_FILE) {
             if (resultCode == Activity.RESULT_OK && data != null && data.getData() != null) {
                 Uri uri = data.getData();
@@ -1053,19 +1078,12 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
 
     private void updateHints() {
         boolean running = lastRunningAppId != 0;
-        if (running) {
-            setHints(hintA(this, R.string.pocket_hint_play),
-                    hintY(this, R.string.pocket_hint_options),
-                    hintX(this, R.string.pocket_hint_quit_game),
-                    hintB(this, R.string.pocket_hint_back),
-                    hintStart(this, R.string.pocket_hint_settings));
-        }
-        else {
-            setHints(hintA(this, R.string.pocket_hint_play),
-                    hintY(this, R.string.pocket_hint_options),
-                    hintB(this, R.string.pocket_hint_back),
-                    hintStart(this, R.string.pocket_hint_settings));
-        }
+        // X: the game's page (closing a running game is there and in the options)
+        setHints(hintA(this, R.string.pocket_hint_play),
+                hintX(this, R.string.pocket_hint_details),
+                hintY(this, R.string.pocket_hint_options),
+                hintB(this, R.string.pocket_hint_back),
+                hintStart(this, R.string.pocket_hint_settings));
     }
 
     private void updateHero(int position, View card) {
@@ -1420,8 +1438,33 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         kenBurns.start();
     }
 
+    /** X: the focused game's page (info, media, Play). */
     @Override
     protected boolean onButtonX() {
+        return pocketOpenGamePage();
+    }
+
+    private boolean pocketOpenGamePage() {
+        if (appGridAdapter == null || appCarousel == null || computer == null || carouselAdapter == null) {
+            return false;
+        }
+        int pos = carouselAdapter.getFocusedPosition();
+        if (pos < 0 || pos >= appGridAdapter.getCount()) {
+            return false;
+        }
+        AppObject obj = (AppObject) appGridAdapter.getItem(pos);
+        View card = pocketCardAt(pos);
+        ImageView image = card != null ? card.findViewById(R.id.grid_image) : null;
+        Bitmap cover = image != null && image.getDrawable() instanceof BitmapDrawable
+                ? ((BitmapDrawable) image.getDrawable()).getBitmap() : null;
+        boolean running = lastRunningAppId != 0 && lastRunningAppId == obj.app.getAppId();
+        com.limelight.pocket.GamePageActivity.open(this, image != null ? image : card, computer.uuid,
+                obj.app.getAppId(), obj.app.getAppName(), computer.name, running, running, cover);
+        return true;
+    }
+
+    /** Closes the game running on the PC (asks first). */
+    private boolean pocketQuitRunning() {
         if (lastRunningAppId == 0 || computer == null || managerBinder == null) {
             return false;
         }

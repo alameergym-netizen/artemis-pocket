@@ -110,4 +110,30 @@
         <attr name="aperture_middle_color" format="color" />
     </declare-styleable>
 
+    <!-- Artemis Pocket: the game page sits over the screen it was opened from (that screen stays
+         visible behind it while the page opens and closes) -->
+    <style name="PocketPageTheme" parent="AppTheme">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:colorBackgroundCacheHint">@null</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+
+    <!-- A glass button of the game page -->
+    <style name="PocketPageButton">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">44dp</item>
+        <item name="android:layout_marginEnd">10dp</item>
+        <item name="android:minWidth">44dp</item>
+        <item name="android:gravity">center</item>
+        <item name="android:focusable">true</item>
+        <item name="android:clickable">true</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">18dp</item>
+        <item name="android:textColor">@color/pocket_text</item>
+        <item name="android:textSize">12.5sp</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:background">@drawable/pocket_glass_pill</item>
+    </style>
 </resources>

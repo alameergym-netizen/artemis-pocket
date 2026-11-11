@@ -48,6 +48,14 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon --stacktrace assembleNonRoot_gameRelease 2>&1 | tee build.log
 
+      # Artemis Pocket's own unit tests (game info, matching, button setup...): a failure stops
+      # the release, and the failing checks land in the CI log like build errors do
+      - name: Unit tests
+        id: tests
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon testNonRoot_gameReleaseUnitTest --tests 'com.limelight.pocket.*' 2>&1 | tee -a build.log
+
       - name: Collect APK
         if: success()
         run: |
@@ -89,7 +97,7 @@ jobs:
             echo "run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           } > status.txt
           if [ -f "$GITHUB_WORKSPACE/build.log" ]; then
-            grep -nE "error:|warning: \[|FAILED|What went wrong|e: |\.java:[0-9]+: error|Exception" "$GITHUB_WORKSPACE/build.log" | head -n 300 > errors.txt || true
+            grep -nE "error:|warning: \[|FAILED|What went wrong|e: |\.java:[0-9]+: error|Exception|expected:|AssertionError" "$GITHUB_WORKSPACE/build.log" | head -n 300 > errors.txt || true
             tail -n 400 "$GITHUB_WORKSPACE/build.log" > tail.txt
           fi
           git add -A

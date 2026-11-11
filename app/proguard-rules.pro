@@ -43,3 +43,7 @@
 # MPAndroidChart
 -keep class com.github.mikephil.charting.** { *; }
 -dontwarn com.github.mikephil.charting.**
+# Artemis Pocket: game info is kept on disk as JSON (Gson reads the fields by name)
+-keep class com.limelight.pocket.info.GameInfo { *; }
+-keep class com.limelight.pocket.info.GameInfo$* { *; }
+-keep class com.limelight.pocket.info.GameInfoService$Entry { *; }

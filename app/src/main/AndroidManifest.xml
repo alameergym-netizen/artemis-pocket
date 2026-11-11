@@ -210,6 +210,11 @@
             android:enableOnBackInvokedCallback="false"
             android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
         <activity
+            android:name=".pocket.apps.AppPickerActivity"
+            android:screenOrientation="sensorLandscape"
+            android:enableOnBackInvokedCallback="false"
+            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
+        <activity
             android:name=".pocket.pclib.PcLibraryActivity"
             android:resizeableActivity="true"
             android:screenOrientation="sensorLandscape"

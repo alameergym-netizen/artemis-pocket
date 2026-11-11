@@ -938,6 +938,10 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 },
                 () -> com.limelight.pocket.pclib.PcLibraryActivity.askToLink(this, this::refreshRows));
 
+        addAction(getString(R.string.pocket_set_igdb), getString(R.string.pocket_set_igdb_sub),
+                () -> getString(com.limelight.pocket.info.Igdb.configured(this) ? R.string.pocket_igdb_set : R.string.pocket_steam_not_linked),
+                this::askIgdb);
+
         addHeader(R.string.pocket_header_device);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -992,6 +996,48 @@ public class QuickSettingsActivity extends ConsoleActivity {
 
         addAction(getString(R.string.pocket_set_about), getString(R.string.pocket_about_sub),
                 () -> BuildConfig.VERSION_NAME, null);
+    }
+
+    /** IGDB's Twitch app (client ID and secret, free at dev.twitch.tv): checked, then kept. */
+    private void askIgdb() {
+        float d = getResources().getDisplayMetrics().density;
+        android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = Math.round(20 * d);
+        box.setPadding(pad, pad / 2, pad, 0);
+        final android.widget.EditText id = new android.widget.EditText(this);
+        id.setSingleLine(true);
+        id.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+        id.setHint(R.string.pocket_igdb_id_hint);
+        id.setText(com.limelight.pocket.info.Igdb.clientId(this));
+        final android.widget.EditText secret = new android.widget.EditText(this);
+        secret.setSingleLine(true);
+        secret.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+        secret.setHint(R.string.pocket_igdb_secret_hint);
+        box.addView(id);
+        box.addView(secret);
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(R.string.pocket_set_igdb)
+                .setMessage(R.string.pocket_igdb_message)
+                .setView(box)
+                .setPositiveButton(android.R.string.ok, (dlg, w) -> {
+                    com.limelight.pocket.info.Igdb.setCredentials(this, id.getText().toString(), secret.getText().toString());
+                    Toast.makeText(this, R.string.pocket_steam_checking, Toast.LENGTH_SHORT).show();
+                    final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
+                    final android.content.Context app = getApplicationContext();
+                    new Thread(() -> {
+                        final boolean ok = com.limelight.pocket.info.Igdb.check(app);
+                        main.post(() -> {
+                            if (!ok) {
+                                com.limelight.pocket.info.Igdb.setCredentials(app, "", "");
+                            }
+                            Toast.makeText(app, ok ? R.string.pocket_igdb_ok : R.string.pocket_igdb_bad, Toast.LENGTH_LONG).show();
+                            refreshRows();
+                        });
+                    }, "PocketIgdbCheck").start();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     // ---- Row builders -------------------------------------------------------------------

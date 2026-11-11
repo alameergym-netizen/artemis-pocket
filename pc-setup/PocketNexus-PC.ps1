@@ -719,7 +719,57 @@ public static class PcGames {
             Send(s, "PCLIB " + Clean(LastNote));
             return true;
         }
+        if (cmd == "APOLLOLOG") {
+            List<string> lines = ApolloLog();
+            foreach (string l in lines) { Send(s, "L\t" + Clean(l)); }
+            Send(s, "END " + lines.Count);
+            return true;
+        }
         return false;
+    }
+
+    // ---- Apollo's own log: why it couldn't start something -----------------------------------
+
+    /** The last problems Apollo (or Vibepollo / Sunshine) wrote in its log, newest last. */
+    public static List<string> ApolloLog() {
+        List<string> found = new List<string>();
+        string log = null;
+        DateTime newest = DateTime.MinValue;
+        List<string> dirs = new List<string>();
+        foreach (string root in new string[] {
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+                Environment.GetEnvironmentVariable("ProgramW6432") ?? "",
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86) }) {
+            if (root.Length == 0 || !Directory.Exists(root)) { continue; }
+            try { dirs.AddRange(Directory.GetDirectories(root)); } catch { }
+        }
+        foreach (string dir in dirs) {
+            foreach (string name in new string[] { @"config\sunshine.log", @"config\apollo.log", "sunshine.log" }) {
+                string f = Path.Combine(dir, name);
+                try {
+                    if (File.Exists(f) && File.GetLastWriteTimeUtc(f) > newest) {
+                        newest = File.GetLastWriteTimeUtc(f);
+                        log = f;
+                    }
+                } catch { }
+            }
+        }
+        if (log == null) { return found; }
+        try {
+            string[] all = ReadShared(log).Split('\n');
+            for (int i = Math.Max(0, all.Length - 400); i < all.Length; i++) {
+                string l = all[i].Trim();
+                if (l.Length == 0) { continue; }
+                if (l.IndexOf("Error", StringComparison.OrdinalIgnoreCase) >= 0
+                        || l.IndexOf("Couldn't", StringComparison.OrdinalIgnoreCase) >= 0
+                        || l.IndexOf("Failed", StringComparison.OrdinalIgnoreCase) >= 0
+                        || l.IndexOf("Fatal", StringComparison.OrdinalIgnoreCase) >= 0) {
+                    found.Add(l);
+                }
+            }
+        } catch { }
+        if (found.Count > 6) { found = found.GetRange(found.Count - 6, 6); }
+        return found;
     }
 
     public static string Clean(string text) {
@@ -1805,6 +1855,10 @@ function Invoke-SelfTest {
     $writer.WriteLine("LAUNCH steam 1"); Check ($reader.ReadLine() -like "ERR *") "LAUNCH of something not found"
     $writer.WriteLine("STEAM INSTALL abc"); Check ($reader.ReadLine() -eq "ERR id") "STEAM INSTALL checks the id"
     $writer.WriteLine("PCLIB"); $pl = $reader.ReadLine(); Check ($pl -like "PCLIB*") ("PCLIB: " + $pl)
+    $writer.WriteLine("APOLLOLOG")
+    $n = 0
+    while ($true) { $line = $reader.ReadLine(); if ($line -eq $null -or $line.StartsWith("END") -or $line.StartsWith("ERR")) { break }; $n++ }
+    Check ($line -like "END *") ("APOLLOLOG answered (" + $n + " lines): " + $line)
     $writer.WriteLine("QUIT")
     $client.Close()
 

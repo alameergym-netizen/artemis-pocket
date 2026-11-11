@@ -409,6 +409,22 @@ public final class PocketArt {
         return got;
     }
 
+    /**
+     * SteamGridDB (sure matches only) for whatever this item is missing. Blocking; true when
+     * something new was saved. Used by the scraper, which tries the other sources after it.
+     */
+    public static boolean fillFromSteamGridDb(Context context, String uuid, int appId, String name, boolean needsCover) {
+        Context app = context.getApplicationContext();
+        if (uuid == null || !hasKey(app) || neverAuto(name)) {
+            return false;
+        }
+        try {
+            return fetchMissing(app, apiKey(app), uuid, appId, name, needsCover);
+        } catch (IOException | RuntimeException e) {
+            return false;
+        }
+    }
+
     public interface CountCallback {
         void done(int changed, boolean badKey);
     }

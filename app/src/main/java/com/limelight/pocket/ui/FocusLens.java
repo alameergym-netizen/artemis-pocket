@@ -187,7 +187,8 @@ public class FocusLens extends RecyclerView.ItemDecoration {
         if (rowFocused) {
             View c = content(focused);
             float s = host.focusScale();
-            float left = focused.getLeft() + focused.getTranslationX() + (c != focused ? c.getLeft() : 0);
+            float left = focused.getLeft() + focused.getTranslationX()
+                    + (c != focused ? c.getLeft() + c.getTranslationX() : 0);
             float top = focused.getTop() + focused.getTranslationY() + (c != focused ? c.getTop() : 0);
             float cw = c.getWidth();
             float ch = c.getHeight();

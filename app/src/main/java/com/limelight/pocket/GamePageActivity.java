@@ -482,6 +482,8 @@ public class GamePageActivity extends ConsoleActivity {
         aboutText.setText(found.about != null && !found.about.isEmpty() ? found.about
                 : (found.shortDescription != null ? found.shortDescription : ""));
         source.setText(GameInfo.SOURCE_STEAM.equals(found.source) ? R.string.pocket_page_source_steam
+                : GameInfo.SOURCE_IGDB.equals(found.source) ? R.string.pocket_page_source_igdb
+                : GameInfo.SOURCE_PLAY.equals(found.source) ? R.string.pocket_page_source_play
                 : R.string.pocket_page_source_wiki);
         fillDetails(found);
 
@@ -496,7 +498,8 @@ public class GamePageActivity extends ConsoleActivity {
         boolean hasMedia = !items.isEmpty();
         mediaLabel.setVisibility(hasMedia ? View.VISIBLE : View.GONE);
         media.setVisibility(hasMedia ? View.VISIBLE : View.GONE);
-        trailerButton.setVisibility(found.mainTrailer() != null ? View.VISIBLE : View.GONE);
+        trailerButton.setVisibility(found.mainTrailer() != null || found.youtubeTrailer() != null
+                ? View.VISIBLE : View.GONE);
         if (trailerButton.getVisibility() == View.VISIBLE) {
             PocketMotion.arrive(trailerButton, 0, -10, 0, 1f);
         }
@@ -939,7 +942,22 @@ public class GamePageActivity extends ConsoleActivity {
 
     // ---- Full screen viewer -------------------------------------------------------------------
 
+    /** A trailer that only exists on YouTube (IGDB's): it opens in YouTube. */
+    private void openYouTube(GameInfo.Movie movie) {
+        PocketSounds.play(this, PocketSounds.SELECT);
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW,
+                    android.net.Uri.parse("https://www.youtube.com/watch?v=" + movie.youtube)));
+        } catch (RuntimeException e) {
+            android.widget.Toast.makeText(this, R.string.pocket_page_no_youtube, android.widget.Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void openTrailer() {
+        if (info != null && info.mainTrailer() == null && info.youtubeTrailer() != null) {
+            openYouTube(info.youtubeTrailer());
+            return;
+        }
         if (info == null || info.mainTrailer() == null) {
             return;
         }
@@ -958,6 +976,11 @@ public class GamePageActivity extends ConsoleActivity {
 
     private void openViewer(int index) {
         if (index < 0 || index >= items.size()) {
+            return;
+        }
+        GameInfo.Movie movie = items.get(index).movie;
+        if (movie != null && movie.youtube != null && movie.playable() == null) {
+            openYouTube(movie);
             return;
         }
         PocketSounds.play(this, PocketSounds.OPEN);
@@ -989,7 +1012,19 @@ public class GamePageActivity extends ConsoleActivity {
             viewerImage.animate().translationX(0).alpha(1f).setDuration(Spring.UI_DURATION_MS)
                     .setInterpolator(Spring.UI_CURVE).start();
         }
-        if (item.movie != null) {
+        if (item.movie != null && item.movie.playable() == null) {
+            // On YouTube only: its picture here, X opens it there
+            viewerCaption.setText(getString(R.string.pocket_page_youtube_caption,
+                    item.movie.name != null ? item.movie.name : getString(R.string.pocket_page_trailer)));
+            viewerVideo.setVisibility(View.GONE);
+            viewerSpinner.setVisibility(View.GONE);
+            RemoteImages.load(this, item.movie.thumb, dp(208), bitmap -> {
+                if (viewerIndex >= 0 && items.get(viewerIndex) == item) {
+                    viewerImage.setImageBitmap(bitmap);
+                }
+            });
+        }
+        else if (item.movie != null) {
             viewerCaption.setText(item.movie.name != null ? item.movie.name : getString(R.string.pocket_page_trailer));
             viewerVideo.setVisibility(View.VISIBLE);
             viewerSpinner.setVisibility(View.VISIBLE);
@@ -1282,6 +1317,10 @@ public class GamePageActivity extends ConsoleActivity {
     protected boolean onButtonX() {
         if (viewerIndex < 0) {
             openTrailer();
+        }
+        else if (viewerIndex < items.size() && items.get(viewerIndex).movie != null
+                && items.get(viewerIndex).movie.youtube != null && items.get(viewerIndex).movie.playable() == null) {
+            openYouTube(items.get(viewerIndex).movie);
         }
         return true;
     }

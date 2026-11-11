@@ -268,6 +268,8 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
                 startActivity(new Intent(PcView.this, ProfilesActivity.class));
             }
         });
+        // Streaming | Android at the top: always clear which games are where
+        com.limelight.pocket.ui.SectionBar.attach(this, com.limelight.pocket.ui.SectionBar.STREAMING);
         View appsButton = findViewById(R.id.pocketAppsButton);
         if (appsButton != null) {
             appsButton.setOnClickListener(v -> com.limelight.pocket.apps.AndroidAppsActivity.open(PcView.this));
@@ -1988,6 +1990,12 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
                 }
             }
         }
+    }
+
+    /** L1 / R1: the other section (Android). */
+    @Override
+    protected boolean onShoulder(int direction) {
+        return com.limelight.pocket.ui.SectionBar.step(this, com.limelight.pocket.ui.SectionBar.STREAMING, direction);
     }
 
     @Override

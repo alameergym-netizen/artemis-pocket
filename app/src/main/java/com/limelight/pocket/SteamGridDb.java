@@ -100,7 +100,7 @@ public final class SteamGridDb {
         Request request = new Request.Builder()
                 .url(BASE + path)
                 .header("Authorization", "Bearer " + key.trim())
-                .header("User-Agent", "ArtemisPocket")
+                .header("User-Agent", "PocketNexus")
                 .build();
         try (Response response = CLIENT.newCall(request).execute()) {
             ResponseBody body = response.body();
@@ -190,7 +190,7 @@ public final class SteamGridDb {
 
     /** Downloads a file (art or a thumbnail), at most max bytes. */
     public static byte[] download(String url, int max) throws IOException {
-        Request request = new Request.Builder().url(url).header("User-Agent", "ArtemisPocket").build();
+        Request request = new Request.Builder().url(url).header("User-Agent", "PocketNexus").build();
         try (Response response = CLIENT.newCall(request).execute()) {
             ResponseBody body = response.body();
             if (!response.isSuccessful() || body == null) {

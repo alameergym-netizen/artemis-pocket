@@ -12,6 +12,8 @@ public final class GameInfo {
 
     public static final String SOURCE_STEAM = "steam";
     public static final String SOURCE_WIKIPEDIA = "wikipedia";
+    public static final String SOURCE_IGDB = "igdb";
+    public static final String SOURCE_PLAY = "play";
 
     /** The name as the source spells it. */
     public String title;
@@ -62,6 +64,8 @@ public final class GameInfo {
         public String dash;
         /** A direct file (older entries). */
         public String mp4;
+        /** A YouTube video id (IGDB's trailers): opened in YouTube, not played here. */
+        public String youtube;
         public boolean highlight;
 
         /** The best thing to play: a direct file, else HLS, else DASH (null when none). */
@@ -91,6 +95,16 @@ public final class GameInfo {
             }
         }
         return first;
+    }
+
+    /** A trailer that opens in YouTube (when there's nothing to play here), or null. */
+    public Movie youtubeTrailer() {
+        for (Movie m : movies) {
+            if (m.youtube != null && !m.youtube.isEmpty()) {
+                return m;
+            }
+        }
+        return null;
     }
 
     /** The release year ("2019"), or null. */

@@ -318,6 +318,10 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
 
     @Override
     public void onViewRecycled(@NonNull Holder holder) {
+        // Whatever moved this card (an entrance, a press) is over: it comes back as new
+        holder.frame.animate().cancel();
+        holder.frame.setTranslationX(0);
+        holder.frame.setAlpha(1f);
         applyFocus(holder, false, false);
         if (holder.frame.getChildCount() > 0) {
             holder.frame.getChildAt(0).animate().cancel();
@@ -357,9 +361,32 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         // The focused card draws above its neighbours while it grows
         float d = frame.getResources().getDisplayMetrics().density;
         float z = focused ? 6 * d : 0f;
+        // The card that takes the focus ends exactly in its place: the lens lands where the card
+        // belongs, so nothing an interrupted entrance or step-aside left may stay on it
+        if (focused && content != null && content.getTranslationX() != 0f) {
+            if (animated) {
+                content.animate().setStartDelay(0).translationX(0).setDuration(GLIDE_MS).setInterpolator(GLIDE).start();
+            }
+            else {
+                content.animate().cancel();
+                content.setTranslationX(0);
+            }
+        }
         // No cancel(): the row's entrance may still be sliding this card in (alpha / X); the
-        // focus animation only takes over scale, Y and Z
-        if (animated) {
+        // focus animation only takes over scale, Y and Z (and, for the focused card, X and alpha)
+        if (animated && focused) {
+            frame.animate().setStartDelay(0).scaleX(scale).scaleY(scale).translationX(0).alpha(1f)
+                    .translationY(0).translationZ(z)
+                    .setDuration(GLIDE_MS)
+                    .setInterpolator(GLIDE)
+                    .setUpdateListener(a -> {
+                        if (frame.getParent() instanceof View) {
+                            ((View) frame.getParent()).invalidate();
+                        }
+                    })
+                    .start();
+        }
+        else if (animated) {
             // A smooth glide in size, no overshoot (a bounce reads as a pulse)
             frame.animate().setStartDelay(0).scaleX(scale).scaleY(scale).translationY(0).translationZ(z)
                     .setDuration(GLIDE_MS)

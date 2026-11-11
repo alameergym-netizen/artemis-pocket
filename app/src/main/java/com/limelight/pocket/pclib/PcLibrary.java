@@ -93,6 +93,63 @@ public final class PcLibrary {
         }, "PocketPcLibrary").start();
     }
 
+    /** The same as load, blocking (never on the main thread). */
+    public static Result loadBlocking(Context context, String host, String uuid) {
+        Result r = loadNow(context.getApplicationContext(), host, uuid, false);
+        if (r.status == OK) {
+            remember(uuid, r.games);
+        }
+        return r;
+    }
+
+    /** The game of the PC library with this name (the same name, ignoring case and marks), or null. */
+    public static PcGame byName(List<PcGame> games, String name) {
+        String want = PcGame.normalize(name);
+        if (games == null || want.isEmpty()) {
+            return null;
+        }
+        PcGame found = null;
+        for (PcGame g : games) {
+            if (want.equals(PcGame.normalize(g.name))) {
+                if (g.isInstalled()) {
+                    return g;
+                }
+                if (found == null) {
+                    found = g;
+                }
+            }
+        }
+        return found;
+    }
+
+    /** The last problems in Apollo's own log on the PC (blocking; empty when unknown). */
+    public static List<String> apolloLog(Context context, String host, String uuid) {
+        List<String> out = new ArrayList<>();
+        PcCompanion.Session session = PcCompanion.open(context.getApplicationContext(), host, uuid);
+        if (session == null) {
+            return out;
+        }
+        try {
+            if (session.authed) {
+                session.setReadTimeout(8000);
+                session.send("APOLLOLOG");
+                for (int i = 0; i < 50; i++) {
+                    String line = session.readLine();
+                    if (line == null || line.startsWith("END") || line.startsWith("ERR")) {
+                        break;
+                    }
+                    if (line.startsWith("L\t")) {
+                        out.add(line.substring(2));
+                    }
+                }
+            }
+        } catch (IOException ignored) {
+        } finally {
+            session.close();
+        }
+        return out;
+    }
+
     private static Result loadNow(Context context, String host, String uuid, boolean refreshAccount) {
         List<String> lines = new ArrayList<>();
         int status = OK;

@@ -3627,6 +3627,86 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
      * the next start away (RTSP error 500/503). That clears in a few seconds, so go back to the
      * console screen, which tries again by itself (up to three times) instead of an error.
      */
+    private boolean pocketDesktopTried;
+
+    /**
+     * Apollo couldn't start this game (error -1: its command failed on the PC). When Pocket Nexus
+     * PC knows the game (Steam, Epic, GOG, non-Steam, PC apps), it's started through Apollo's
+     * Desktop instead: the stream opens on Desktop and the PC starts the game. Otherwise the
+     * error comes with what Apollo wrote in its log about it.
+     */
+    private boolean pocketTryDesktopFallback(final String stage, final int errorCode) {
+        if (errorCode != -1 || pocketSwitching || pocketDesktopTried) {
+            return false;
+        }
+        final String uuid = pocketPcUuid();
+        final int appId = getIntent().getIntExtra(EXTRA_APP_ID, 0);
+        final String appName = getIntent().getStringExtra(EXTRA_APP_NAME);
+        final com.limelight.nvstream.http.NvApp desktop = uuid != null
+                ? com.limelight.pocket.pclib.PcLibrary.desktopApp(this, uuid) : null;
+        if (uuid == null || appName == null || host == null) {
+            return false;
+        }
+        pocketDesktopTried = true;
+        showPocketToast(getString(R.string.pocket_fallback_trying), true, 4000);
+        final android.content.Context app = getApplicationContext();
+        new Thread(() -> {
+            com.limelight.pocket.pclib.PcGame match = null;
+            java.util.List<String> log = new java.util.ArrayList<>();
+            if (desktop != null && desktop.getAppId() != appId) {
+                com.limelight.pocket.pclib.PcLibrary.Result r =
+                        com.limelight.pocket.pclib.PcLibrary.loadBlocking(app, host, uuid);
+                if (r.status == com.limelight.pocket.pclib.PcLibrary.OK) {
+                    match = com.limelight.pocket.pclib.PcLibrary.byName(r.games, appName);
+                }
+            }
+            if (match == null || !match.isInstalled()) {
+                log = com.limelight.pocket.pclib.PcLibrary.apolloLog(app, host, uuid);
+            }
+            final com.limelight.pocket.pclib.PcGame found = match;
+            final java.util.List<String> reasons = log;
+            runOnUiThread(() -> {
+                if (isFinishing()) {
+                    return;
+                }
+                if (found != null && found.isInstalled() && desktop != null) {
+                    // Through Desktop, with this game's own settings
+                    com.limelight.pocket.pclib.PcLaunchTicket.arm(uuid, desktop.getAppId(), found.launchCommand(),
+                            found.name, appId);
+                    Intent again = new Intent(getIntent());
+                    again.putExtra(EXTRA_APP_ID, desktop.getAppId());
+                    again.putExtra(EXTRA_APP_NAME, desktop.getAppName());
+                    again.putExtra(EXTRA_APP_UUID, desktop.getAppUUID());
+                    again.putExtra(EXTRA_APP_HDR, desktop.isHdrSupported());
+                    pocketSwitching = true;
+                    startActivity(again);
+                    finish();
+                    overridePendingTransition(0, 0);
+                    return;
+                }
+                StringBuilder text = new StringBuilder(getResources().getString(R.string.conn_error_msg))
+                        .append(" ").append(stage).append(" (error ").append(errorCode).append(")\n\n")
+                        .append(getString(R.string.pocket_error_launch_failed));
+                if (found != null && !found.isInstalled()) {
+                    text.append("\n\n").append(getString(R.string.pocket_fallback_not_installed, found.name));
+                }
+                else if (desktop == null) {
+                    text.append("\n\n").append(getString(R.string.pocket_fallback_no_desktop));
+                }
+                if (!reasons.isEmpty()) {
+                    text.append("\n\n").append(getString(R.string.pocket_fallback_apollo_said));
+                    for (String line : reasons) {
+                        text.append("\n\u2022 ").append(line.length() > 160 ? line.substring(0, 160) + "\u2026" : line);
+                    }
+                }
+                Dialog.displayDialog(Game.this, getResources().getString(R.string.conn_error_title),
+                        text.toString() + pocketTroubleshootHint(), true);
+                finishSecondScreen();
+            });
+        }, "PocketDesktopFallback").start();
+        return true;
+    }
+
     private boolean pocketRetryStart(String stage, int errorCode) {
         if (!PocketPrefs.autoRecover(this) || pocketSwitching || stage == null) {
             return false;
@@ -5187,6 +5267,11 @@ public class Game extends AppCompatActivity implements SurfaceHolder.Callback,
                     spinner = null;
                 }
 
+                if (!displayedFailureDialog && pocketTryDesktopFallback(stage, errorCode)) {
+                    displayedFailureDialog = true;
+                    LimeLog.warning(stage + " failed: " + errorCode + " (trying through Desktop)");
+                    return;
+                }
                 if (!displayedFailureDialog && pocketRetryStart(stage, errorCode)) {
                     displayedFailureDialog = true;
                     LimeLog.warning(stage + " failed: " + errorCode + " (PC busy, retrying)");

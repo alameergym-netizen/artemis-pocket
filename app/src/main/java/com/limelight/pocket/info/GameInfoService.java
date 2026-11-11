@@ -48,6 +48,7 @@ public final class GameInfoService {
     private static final long MISS_MS = TimeUnit.DAYS.toMillis(3);
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final String KEY_STEAM_ID = "pocket_info_steam_";
+    private static final String KEY_PLAY_PKG = "pocket_info_play_";
 
     private static final OkHttpClient CLIENT = new OkHttpClient.Builder()
             .connectTimeout(8, TimeUnit.SECONDS)
@@ -140,6 +141,63 @@ public final class GameInfoService {
         });
     }
 
+    /** An Android app's package for this name: its Google Play page is a source too. */
+    public static void setPlayPackage(Context context, String name, String packageName) {
+        PocketPrefs.prefs(context).edit().putString(KEY_PLAY_PKG + InfoParsers.normalize(name), packageName).apply();
+    }
+
+    /** Google Play's page about an app (blocking; null when it can't be read). */
+    public static ExtraParsers.PlayApp playApp(String packageName) {
+        try {
+            return ExtraParsers.parsePlay(httpHtml("https://play.google.com/store/apps/details?id="
+                    + enc(packageName) + "&hl=en&gl=US"));
+        } catch (IOException e) {
+            return null;
+        }
+    }
+
+    /** Fills what the first source left empty from a second one. */
+    static GameInfo merge(GameInfo first, GameInfo more) {
+        if (first == null) {
+            return more;
+        }
+        if (more == null) {
+            return first;
+        }
+        if (!first.hasText()) {
+            first.about = more.about;
+            first.shortDescription = more.shortDescription;
+        }
+        if (first.releaseDate == null) {
+            first.releaseDate = more.releaseDate;
+        }
+        if (first.developers.isEmpty()) {
+            first.developers.addAll(more.developers);
+        }
+        if (first.publishers.isEmpty()) {
+            first.publishers.addAll(more.publishers);
+        }
+        if (first.genres.isEmpty()) {
+            first.genres.addAll(more.genres);
+        }
+        if (first.screenshots.isEmpty()) {
+            first.screenshots.addAll(more.screenshots);
+        }
+        if (first.movies.isEmpty()) {
+            first.movies.addAll(more.movies);
+        }
+        if (first.metacritic == 0) {
+            first.metacritic = more.metacritic;
+        }
+        if (first.background == null) {
+            first.background = more.background;
+        }
+        if (first.headerImage == null) {
+            first.headerImage = more.headerImage;
+        }
+        return first;
+    }
+
     /** The Steam game chosen for this name (0: found by searching the name). */
     public static int steamIdFor(Context context, String name) {
         return PocketPrefs.prefs(context).getInt(KEY_STEAM_ID + InfoParsers.normalize(name), 0);
@@ -195,6 +253,7 @@ public final class GameInfoService {
             steamId = best != null ? best.id : 0;
         }
         GameInfo info = null;
+        String playPkg = PocketPrefs.prefs(context).getString(KEY_PLAY_PKG + InfoParsers.normalize(name), null);
         if (steamId > 0) {
             info = steamDetails(steamId, lang[0]);
             if (info != null && !info.hasText() && !"english".equals(lang[0])) {
@@ -202,6 +261,21 @@ public final class GameInfoService {
                 if (english != null) {
                     info = english;
                 }
+            }
+        }
+        // An Android app: its Google Play page
+        if ((info == null || info.screenshots.isEmpty()) && playPkg != null) {
+            ExtraParsers.PlayApp play = playApp(playPkg);
+            if (play != null) {
+                info = merge(info, ExtraParsers.playInfo(play));
+            }
+        }
+        // IGDB (when set up): any game, Steam or not, with screenshots and trailers
+        if ((info == null || info.screenshots.isEmpty() || !info.hasText()) && Igdb.configured(context)) {
+            try {
+                info = merge(info, ExtraParsers.parseIgdb(Igdb.search(context, name), name));
+            } catch (IOException ignored) {
+                // IGDB unreachable: the other sources still count
             }
         }
         if (info == null || !info.hasText()) {
@@ -253,6 +327,27 @@ public final class GameInfoService {
             return URLEncoder.encode(s, "UTF-8");
         } catch (java.io.UnsupportedEncodingException e) {
             return s;
+        }
+    }
+
+    /** A web page (HTML), as a desktop browser would get it. */
+    static String httpHtml(String url) throws IOException {
+        Request request = new Request.Builder().url(url)
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+                        + "Chrome/124.0 Safari/537.36")
+                .header("Accept", "text/html")
+                .header("Accept-Language", "en-US,en;q=0.8")
+                .build();
+        try (Response response = CLIENT.newCall(request).execute()) {
+            ResponseBody body = response.body();
+            if (!response.isSuccessful() || body == null) {
+                throw new IOException("HTTP " + response.code());
+            }
+            byte[] bytes = body.bytes();
+            if (bytes.length > 6 * MAX_BYTES) {
+                throw new IOException("Too big");
+            }
+            return new String(bytes, StandardCharsets.UTF_8);
         }
     }
 

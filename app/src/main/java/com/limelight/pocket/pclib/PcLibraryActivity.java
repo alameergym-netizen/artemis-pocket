@@ -92,6 +92,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
     private boolean loaded;
     private boolean loading;
     private boolean resumed;
+    private int artVersion = com.limelight.pocket.PocketArt.version();
     private KeyArtStage keyArt;
     private int heroPos = -1;
     private String heroKey;
@@ -167,6 +168,8 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
             }
         }, R.id.appFragmentContainer);
 
+        // Nothing to tell about yet: no empty buttons in the hero
+        heroIdle(getString(R.string.pocket_pclib_loading));
         setHints(hintA(this, R.string.pocket_hint_play),
                 hintX(this, R.string.pocket_hint_details),
                 hintY(this, R.string.pocket_hint_options),
@@ -184,6 +187,29 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         load(false);
     }
 
+    /** The hero with just a line of text (no Play, no chips). */
+    private void heroIdle(String text) {
+        TextView title = findViewById(R.id.pocketHeroTitle);
+        if (title != null) {
+            title.setVisibility(View.VISIBLE);
+            title.setText(text);
+        }
+        hide(R.id.pocketHeroPlay);
+        hide(R.id.pocketHeroSubtitle);
+        hide(R.id.pocketHeroPlaytime);
+        hide(R.id.pocketHeroLogo);
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        // Back on this screen with nothing focused (a dialog, a refresh): the hero's game again
+        if (hasFocus && carousel != null && !carousel.hasFocus() && adapter.getCount() > 0
+                && !isConsolePanelShowing()) {
+            focusAt(heroPos >= 0 && heroPos < adapter.getCount() ? heroPos : 0);
+        }
+    }
+
     private void hide(int id) {
         View v = findViewById(id);
         if (v != null) {
@@ -195,6 +221,11 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
     protected void onResume() {
         super.onResume();
         resumed = true;
+        if (artVersion != com.limelight.pocket.PocketArt.version()) {
+            // Art picked on the art screen
+            artVersion = com.limelight.pocket.PocketArt.version();
+            refreshArt();
+        }
         if (loaded && anyBusy()) {
             handler.removeCallbacks(poll);
             handler.postDelayed(poll, 800);
@@ -322,13 +353,15 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
                 return;
             }
             RecyclerView.ViewHolder holder = carousel.findViewHolderForAdapterPosition(position);
-            if (holder != null) {
-                holder.itemView.requestFocus();
+            if (holder != null && holder.itemView.requestFocus()) {
+                return;
             }
-            else if (attempt < 4) {
-                focusWhenLaidOut(position, attempt + 1);
+            if (attempt < 6) {
+                // Not laid out (or not focusable) yet: again a little later
+                carousel.postDelayed(() -> focusWhenLaidOut(position, attempt + 1), attempt < 2 ? 16 : 120);
             }
-            else {
+            // The hero tells about the game meanwhile, whether the card has the focus or not
+            if (heroPos != position) {
                 updateHero(position, true);
             }
         });
@@ -491,6 +524,21 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         if (logo == null || title == null) {
             return;
         }
+        // A logo picked or found for it (any store) comes first
+        if (com.limelight.pocket.PocketArt.has(this, uuid, pageId(g), com.limelight.pocket.PocketArt.LOGO)) {
+            final String key = g.key();
+            com.limelight.pocket.PocketArt.load(this, uuid, pageId(g), com.limelight.pocket.PocketArt.LOGO, bitmap -> {
+                if (!key.equals(heroKey) || isFinishing()) {
+                    return;
+                }
+                if (bitmap != null) {
+                    logo.setImageBitmap(bitmap);
+                    logo.setVisibility(View.VISIBLE);
+                    title.setVisibility(View.GONE);
+                }
+            });
+            return;
+        }
         if (g.artSteamId.isEmpty()) {
             logo.setVisibility(View.GONE);
             title.setVisibility(View.VISIBLE);
@@ -536,9 +584,19 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         if (keyArt == null) {
             return;
         }
+        if (com.limelight.pocket.PocketArt.has(this, uuid, pageId(g), com.limelight.pocket.PocketArt.HERO)) {
+            final String key = g.key();
+            com.limelight.pocket.PocketArt.load(this, uuid, pageId(g), com.limelight.pocket.PocketArt.HERO, bitmap -> {
+                if (key.equals(heroKey) && !isFinishing()) {
+                    keyArt.show(bitmap);
+                }
+            });
+            return;
+        }
         if (g.artSteamId.isEmpty()) {
             keyArt.show(null);
             findArtId(g);
+            scrape(g, false);
             return;
         }
         final String key = g.key();
@@ -614,6 +672,14 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
             items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_pclib_install_on, pcName), () -> install(g)));
         }
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_hint_details), () -> openPage(g)));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_art_change), () -> {
+            hideConsolePanel();
+            com.limelight.pocket.ArtPickerActivity.open(this, uuid, pageId(g), g.name);
+        }));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_art_find_again), () -> {
+            showToast(R.string.pocket_art_finding);
+            scrape(g, true);
+        }));
         items.add(StreamMenuView.Item.submenu(getString(R.string.pocket_gs_title),
                 () -> pushConsolePage(getString(R.string.pocket_gs_title), com.limelight.pocket.GameSettingsPage.build(this,
                         uuid, profileId(g), g.name, null))));
@@ -832,6 +898,36 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
                         }))
                 .setNegativeButton(android.R.string.cancel, null)
                 .show();
+    }
+
+    /** Art from SteamGridDB, Steam and IGDB for a game that has none (in the background). */
+    private void scrape(final PcGame g, boolean force) {
+        com.limelight.pocket.ArtScraper.Item item = new com.limelight.pocket.ArtScraper.Item(uuid, pageId(g), g.name);
+        try {
+            item.steamAppId = g.artSteamId.isEmpty() ? 0 : Integer.parseInt(g.artSteamId);
+        } catch (NumberFormatException ignored) {
+        }
+        com.limelight.pocket.ArtScraper.scrape(this, item, force, changed -> {
+            if (isFinishing()) {
+                return;
+            }
+            if (changed) {
+                refreshArt();
+            }
+            else if (force) {
+                showToast(R.string.pocket_art_found_nothing);
+            }
+        });
+    }
+
+    /** New art (found, or picked): the cards and the hero show it. */
+    private void refreshArt() {
+        adapter.notifyDataSetChanged();
+        PcGame g = gameAt(heroPos);
+        if (g != null) {
+            heroKey = null;
+            updateHero(heroPos, false);
+        }
     }
 
     /** "Tool", "App", "Demo" (nothing for games). */
@@ -1081,16 +1177,39 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
                 image.setColorFilter(new ColorMatrixColorFilter(grey));
                 image.setImageAlpha(150);
             }
-            final String tag = g.key() + "|" + g.artSteamId;
+            final String tag = g.key() + "|" + g.artSteamId + "|" + com.limelight.pocket.PocketArt.version();
             if (tag.equals(image.getTag()) && image.getDrawable() != null) {
                 return card;
             }
             image.setTag(tag);
-            image.setImageDrawable(null);
             text.setVisibility(View.VISIBLE);
-            if (g.artSteamId.isEmpty()) {
+            // A cover picked or found for it (any store) first, then Steam's
+            Bitmap own = com.limelight.pocket.ui.HeroArt.cachedCard(PcLibraryActivity.this, uuid, pageId(g), g.name);
+            if (own != null) {
+                image.setImageBitmap(own);
+                text.setVisibility(View.GONE);
                 return card;
             }
+            image.setImageDrawable(null);
+            com.limelight.pocket.ui.HeroArt.loadCardAsync(PcLibraryActivity.this, uuid, pageId(g), g.name, ownArt -> {
+                if (!tag.equals(image.getTag())) {
+                    return;
+                }
+                if (ownArt != null) {
+                    setCover(image, text, ownArt);
+                }
+                else if (!g.artSteamId.isEmpty()) {
+                    steamCover(g, image, text, tag);
+                }
+                else {
+                    // Nothing yet: SteamGridDB, Steam, IGDB are asked in the background
+                    scrape(g, false);
+                }
+            });
+            return card;
+        }
+
+        private void steamCover(final PcGame g, final ImageView image, final TextView text, final String tag) {
             final int width = Math.round(150 * getResources().getDisplayMetrics().density);
             RemoteImages.load(PcLibraryActivity.this, SteamParsers.coverUrl(g.artSteamId), width, bitmap -> {
                 if (!tag.equals(image.getTag())) {
@@ -1107,7 +1226,6 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
                     }
                 });
             });
-            return card;
         }
 
         private void setCover(ImageView image, TextView text, Bitmap bitmap) {

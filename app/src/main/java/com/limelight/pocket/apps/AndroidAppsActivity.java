@@ -4,13 +4,13 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Shader;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Build;
@@ -27,23 +27,30 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.Nullable;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.limelight.R;
+import com.limelight.pocket.ArtPickerActivity;
+import com.limelight.pocket.ArtScraper;
 import com.limelight.pocket.ConsoleActivity;
+import com.limelight.pocket.GamePageActivity;
+import com.limelight.pocket.PocketArt;
 import com.limelight.pocket.PocketPrefs;
 import com.limelight.pocket.PocketSounds;
+import com.limelight.pocket.info.GameInfoService;
 import com.limelight.pocket.ui.AnchoredLayoutManager;
 import com.limelight.pocket.ui.CarouselAdapter;
+import com.limelight.pocket.ui.HeroArt;
 import com.limelight.pocket.ui.HeroFocus;
 import com.limelight.pocket.ui.KeyArtStage;
 import com.limelight.pocket.ui.PocketMotion;
 import com.limelight.pocket.ui.PocketUi;
+import com.limelight.pocket.ui.SectionBar;
 import com.limelight.pocket.ui.StreamMenuView;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -51,13 +58,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * The handheld's own apps, console style (the same screen as the library): games and emulators
- * first, every other app after them, and the device's settings at the end. L1 / R1 filter
- * (all, games, emulators, settings), A opens, Y has app info, hide and uninstall.
+ * The Android section: the games and apps picked for it (not every app on the handheld), with
+ * their art and pages like the PC's games, and the device's settings. "+ Add apps" picks them
+ * (several at once); their art and information are looked up by themselves. L1 / R1 go to the
+ * other section, L2 / R2 filter (all, games, emulators, settings).
  */
 public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdapter.Listener {
 
-    private static final String KEY_HIDDEN = "pocket_apps_hidden";
     private static final String KEY_USED = "pocket_apps_used_";
 
     private static final int FILTER_ALL = 0;
@@ -94,6 +101,10 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
             this.settingsAction = settingsAction;
             this.settingsIcon = settingsIcon;
         }
+
+        int id() {
+            return packageName != null ? AndroidLibrary.idFor(packageName) : 0;
+        }
     }
 
     private RecyclerView carousel;
@@ -103,6 +114,8 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
     private int heroPos = -1;
     private String heroKey;
     private KeyArtStage keyArt;
+    private int artVersion = PocketArt.version();
+    private boolean pickerShown;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService work = Executors.newSingleThreadExecutor();
     private static final LruCache<String, Bitmap> ICONS = new LruCache<String, Bitmap>(16 * 1024 * 1024) {
@@ -125,8 +138,13 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
         if (title != null) {
             title.setText(R.string.pocket_apps_title);
         }
+        SectionBar.attach(this, SectionBar.ANDROID);
         hide(R.id.profilesButton);
-        hide(R.id.pocketPcLibraryButton);
+        TextView add = findViewById(R.id.pocketPcLibraryButton);
+        if (add != null) {
+            add.setText(R.string.pocket_apps_add_short);
+            add.setOnClickListener(v -> AppPickerActivity.open(this));
+        }
 
         carousel = findViewById(R.id.pocketAppCarousel);
         carousel.setLayoutManager(new AnchoredLayoutManager(this));
@@ -148,9 +166,11 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
             }
         }, R.id.appFragmentContainer);
 
+        heroIdle(getString(R.string.pocket_apps_loading));
         setHints(hintA(this, R.string.pocket_apps_open),
+                hintX(this, R.string.pocket_hint_details),
                 hintY(this, R.string.pocket_hint_options),
-                hintShoulders(this, R.string.pocket_pclib_hint_filter),
+                new Hint("L2 R2", 0xFFFFFFFF, getString(R.string.pocket_pclib_hint_filter)),
                 hintStart(this, R.string.pocket_hint_settings));
         load();
     }
@@ -162,41 +182,49 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
         }
     }
 
+    /** The hero with just a line of text (no buttons, no chips). */
+    private void heroIdle(String text) {
+        TextView t = findViewById(R.id.pocketHeroTitle);
+        if (t != null) {
+            t.setVisibility(View.VISIBLE);
+            t.setText(text);
+        }
+        hide(R.id.pocketHeroPlay);
+        hide(R.id.pocketHeroSubtitle);
+        hide(R.id.pocketHeroPlaytime);
+        hide(R.id.pocketHeroLogo);
+        if (keyArt != null) {
+            keyArt.show(null);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (artVersion != PocketArt.version()) {
+            artVersion = PocketArt.version();
+            refreshArt();
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         work.shutdownNow();
     }
 
-    // ---- What's installed -------------------------------------------------------------------
+    // ---- What's in the library ----------------------------------------------------------------
 
     private void load() {
-        final PackageManager pm = getPackageManager();
-        final String self = getPackageName();
-        final Set<String> hidden = new HashSet<>(PocketPrefs.prefs(this).getStringSet(KEY_HIDDEN, new HashSet<String>()));
+        final Set<String> library = AndroidLibrary.packages(this);
         work.execute(() -> {
             List<Entry> apps = new ArrayList<>();
-            Intent launcher = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER);
-            List<ResolveInfo> found;
-            try {
-                found = pm.queryIntentActivities(launcher, 0);
-            } catch (RuntimeException e) {
-                found = new ArrayList<>();
-            }
-            Set<String> seen = new HashSet<>();
-            for (ResolveInfo ri : found) {
-                if (ri.activityInfo == null) {
+            for (AndroidLibrary.InstalledApp a : AndroidLibrary.installed(this)) {
+                if (!library.contains(a.packageName)) {
                     continue;
                 }
-                String pkg = ri.activityInfo.packageName;
-                if (pkg.equals(self) || hidden.contains(pkg) || !seen.add(pkg)) {
-                    continue;
-                }
-                CharSequence label = ri.loadLabel(pm);
-                ApplicationInfo ai = ri.activityInfo.applicationInfo;
-                Entry e = new Entry("app:" + pkg, label != null ? label.toString() : pkg, typeOf(pkg, label, ai),
-                        pkg, null, 0);
-                e.used = PocketPrefs.prefs(this).getLong(KEY_USED + pkg, 0);
+                Entry e = new Entry("app:" + a.packageName, a.label, a.type, a.packageName, null, 0);
+                e.used = PocketPrefs.prefs(this).getLong(KEY_USED + a.packageName, 0);
                 apps.add(e);
             }
             // Played from here last first, then games, emulators, apps, each by name
@@ -218,6 +246,11 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
                 }
                 all = apps;
                 show();
+                if (!AndroidLibrary.isSetUp(this) && !pickerShown) {
+                    // The first time: pick the games and apps that belong here
+                    pickerShown = true;
+                    AppPickerActivity.open(this);
+                }
             });
         });
     }
@@ -293,7 +326,8 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
             case FILTER_SETTINGS:
                 return e.type == TYPE_SETTING;
             default:
-                return true;
+                // Everything picked for the library (the settings have their own filter)
+                return e.type != TYPE_SETTING;
         }
     }
 
@@ -310,11 +344,7 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
         if (shown.isEmpty()) {
             heroPos = -1;
             heroKey = null;
-            TextView t = findViewById(R.id.pocketHeroTitle);
-            if (t != null) {
-                t.setText(R.string.pocket_apps_empty);
-            }
-            hide(R.id.pocketHeroPlay);
+            heroIdle(getString(filter == FILTER_ALL ? R.string.pocket_apps_none_yet : R.string.pocket_apps_empty));
             return;
         }
         int target = 0;
@@ -324,6 +354,7 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
             }
         }
         heroPos = -1;
+        heroKey = null;
         focusAt(target, 0);
     }
 
@@ -336,16 +367,24 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
                 return;
             }
             RecyclerView.ViewHolder holder = carousel.findViewHolderForAdapterPosition(position);
-            if (holder != null) {
-                holder.itemView.requestFocus();
+            if (holder != null && holder.itemView.requestFocus()) {
+                return;
             }
-            else if (attempt < 4) {
-                focusAt(position, attempt + 1);
+            if (attempt < 6) {
+                carousel.postDelayed(() -> focusAt(position, attempt + 1), attempt < 2 ? 16 : 120);
             }
-            else {
+            if (heroPos != position) {
                 updateHero(position);
             }
         });
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && carousel != null && !carousel.hasFocus() && adapter.getCount() > 0 && !isConsolePanelShowing()) {
+            focusAt(heroPos >= 0 && heroPos < adapter.getCount() ? heroPos : 0, 0);
+        }
     }
 
     private Entry entryAt(int position) {
@@ -355,7 +394,7 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
     private void updateSection() {
         TextView section = findViewById(R.id.pocketSectionTitle);
         if (section != null) {
-            section.setText(getString(filterLabel(filter)) + "  ·  " + adapter.getCount());
+            section.setText(getString(filterLabel(filter)) + "  \u00b7  " + adapter.getCount());
         }
     }
 
@@ -372,6 +411,8 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
         }
     }
 
+    // ---- The hero -------------------------------------------------------------------------------
+
     private void updateHero(int position) {
         Entry e = entryAt(position);
         if (e == null) {
@@ -385,33 +426,60 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
         boolean changed = !e.key.equals(heroKey);
         heroPos = position;
         heroKey = e.key;
-        if (title != null) {
+        if (title != null && changed) {
             title.setVisibility(View.VISIBLE);
-            if (changed) {
-                PocketMotion.swapText(title, e.label, dir);
-            }
+            PocketMotion.swapText(title, e.label, dir);
         }
-        hide(R.id.pocketHeroLogo);
         TextView subtitle = findViewById(R.id.pocketHeroSubtitle);
         if (subtitle != null) {
             subtitle.setVisibility(View.VISIBLE);
             subtitle.setText(typeLabel(e.type));
         }
-        TextView line = findViewById(R.id.pocketHeroPlaytime);
-        if (line != null) {
-            line.setVisibility(View.GONE);
-        }
+        hide(R.id.pocketHeroPlaytime);
         TextView play = findViewById(R.id.pocketHeroPlay);
         if (play != null) {
             PocketUi.stylePlayPill(play);
             play.setVisibility(View.VISIBLE);
-            String label = "▶  " + getString(e.type == TYPE_GAME ? R.string.pocket_hero_play : R.string.pocket_apps_open);
+            String label = "\u25B6  " + getString(e.type == TYPE_GAME || e.type == TYPE_EMULATOR
+                    ? R.string.pocket_hero_play : R.string.pocket_apps_open);
             if (!label.contentEquals(play.getText())) {
                 play.setText(label);
             }
         }
-        if (keyArt != null) {
-            keyArt.show(null);
+        if (changed) {
+            showArt(e);
+        }
+    }
+
+    /** Its logo and background, picked or found (none for settings). */
+    private void showArt(final Entry e) {
+        final ImageView logo = findViewById(R.id.pocketHeroLogo);
+        final TextView title = findViewById(R.id.pocketHeroTitle);
+        if (logo != null) {
+            logo.setVisibility(View.GONE);
+        }
+        if (e.packageName == null) {
+            if (keyArt != null) {
+                keyArt.show(null);
+            }
+            return;
+        }
+        final String key = e.key;
+        PocketArt.load(this, AndroidLibrary.UUID, e.id(), PocketArt.HERO, bitmap -> {
+            if (key.equals(heroKey) && keyArt != null) {
+                keyArt.show(bitmap);
+            }
+        });
+        PocketArt.load(this, AndroidLibrary.UUID, e.id(), PocketArt.LOGO, bitmap -> {
+            if (key.equals(heroKey) && bitmap != null && logo != null && title != null) {
+                logo.setImageBitmap(bitmap);
+                logo.setVisibility(View.VISIBLE);
+                title.setVisibility(View.GONE);
+            }
+        });
+        if (!PocketArt.has(this, AndroidLibrary.UUID, e.id(), PocketArt.COVER)
+                || !PocketArt.has(this, AndroidLibrary.UUID, e.id(), PocketArt.HERO)) {
+            scrape(e, false);
         }
     }
 
@@ -426,6 +494,98 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
             default:
                 return R.string.pocket_apps_type_app;
         }
+    }
+
+    // ---- Art and information ------------------------------------------------------------------
+
+    private ArtScraper.Item itemFor(Entry e) {
+        ArtScraper.Item item = new ArtScraper.Item(AndroidLibrary.UUID, e.id(), e.label);
+        item.playPackage = e.packageName;
+        return item;
+    }
+
+    /** SteamGridDB, Steam, IGDB and Google Play, for what an app is missing (in the background). */
+    private void scrape(final Entry e, final boolean force) {
+        if (e.packageName == null) {
+            return;
+        }
+        ArtScraper.scrape(this, itemFor(e), force, changed -> {
+            if (isFinishing()) {
+                return;
+            }
+            if (changed) {
+                refreshArt();
+            }
+            else if (force) {
+                Toast.makeText(this, R.string.pocket_art_found_nothing, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void refreshArt() {
+        adapter.notifyDataSetChanged();
+        if (heroPos >= 0) {
+            heroKey = null;
+            updateHero(heroPos);
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == AppPickerActivity.REQUEST) {
+            if (resultCode == RESULT_OK && data != null) {
+                String[] added = data.getStringArrayExtra(AppPickerActivity.RESULT_ADDED);
+                if (added != null && added.length > 0) {
+                    Toast.makeText(this, getString(R.string.pocket_apps_added, added.length), Toast.LENGTH_LONG).show();
+                    PackageManager pm = getPackageManager();
+                    for (String pkg : added) {
+                        // Art and information for each new one, by itself
+                        String label = pkg;
+                        try {
+                            label = pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
+                        } catch (PackageManager.NameNotFoundException ignored) {
+                        }
+                        Entry e = new Entry("app:" + pkg, label, TYPE_APP, pkg, null, 0);
+                        scrape(e, true);
+                    }
+                }
+            }
+            load();
+            return;
+        }
+        if (requestCode == GamePageActivity.REQUEST && data != null
+                && GamePageActivity.ACTION_PLAY.equals(data.getStringExtra(GamePageActivity.RESULT_ACTION))) {
+            int id = data.getIntExtra(GamePageActivity.RESULT_APP_ID, 0);
+            for (Entry e : all) {
+                if (e.packageName != null && e.id() == id) {
+                    open(e);
+                    return;
+                }
+            }
+        }
+    }
+
+    private void openPage(Entry e) {
+        if (e == null || e.packageName == null) {
+            return;
+        }
+        GameInfoService.setPlayPackage(this, e.label, e.packageName);
+        View card = null;
+        Bitmap cover = null;
+        int pos = heroPos;
+        RecyclerView.LayoutManager lm = carousel.getLayoutManager();
+        View frame = lm != null && pos >= 0 ? lm.findViewByPosition(pos) : null;
+        if (frame instanceof ViewGroup && ((ViewGroup) frame).getChildCount() > 0) {
+            card = ((ViewGroup) frame).getChildAt(0);
+            ImageView image = card.findViewById(R.id.grid_image);
+            if (image != null && image.getDrawable() instanceof BitmapDrawable) {
+                cover = ((BitmapDrawable) image.getDrawable()).getBitmap();
+                card = image;
+            }
+        }
+        GamePageActivity.open(this, card, AndroidLibrary.UUID, e.id(), e.label, getString(R.string.pocket_section_android),
+                false, false, cover);
     }
 
     // ---- Buttons ----------------------------------------------------------------------------
@@ -457,10 +617,26 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             PocketPrefs.prefs(this).edit().putLong(KEY_USED + e.packageName, System.currentTimeMillis()).apply();
             e.used = System.currentTimeMillis();
+            PocketSounds.play(this, PocketSounds.SELECT);
             startActivity(launch);
         } catch (RuntimeException ex) {
             Toast.makeText(this, R.string.pocket_apps_cant_open, Toast.LENGTH_SHORT).show();
         }
+    }
+
+    @Override
+    protected boolean onButtonX() {
+        Entry e = entryAt(heroPos);
+        if (e == null || e.packageName == null) {
+            return false;
+        }
+        openPage(e);
+        return true;
+    }
+
+    @Override
+    protected boolean onGamePageShortcut() {
+        return onButtonX();
     }
 
     @Override
@@ -470,7 +646,28 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
             return;
         }
         List<StreamMenuView.Item> items = new ArrayList<>();
-        items.add(StreamMenuView.Item.action(getString(R.string.pocket_apps_open), () -> open(e)));
+        items.add(StreamMenuView.Item.action(getString(e.type == TYPE_APP ? R.string.pocket_apps_open
+                : R.string.pocket_hero_play), () -> open(e)));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_hint_details), () -> {
+            hideConsolePanel();
+            openPage(e);
+        }));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_art_change), () -> {
+            hideConsolePanel();
+            ArtPickerActivity.open(this, AndroidLibrary.UUID, e.id(), e.label);
+        }));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_art_find_again), () -> {
+            Toast.makeText(this, R.string.pocket_art_finding, Toast.LENGTH_SHORT).show();
+            scrape(e, true);
+        }));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_apps_add), () -> {
+            hideConsolePanel();
+            AppPickerActivity.open(this);
+        }));
+        items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_apps_remove), () -> {
+            AndroidLibrary.remove(this, e.packageName);
+            load();
+        }));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_apps_info), () -> {
             try {
                 startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
@@ -478,47 +675,32 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
             } catch (RuntimeException ignored) {
             }
         }));
-        items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_apps_hide), () -> {
-            Set<String> hidden = new HashSet<>(PocketPrefs.prefs(this).getStringSet(KEY_HIDDEN, new HashSet<String>()));
-            hidden.add(e.packageName);
-            PocketPrefs.prefs(this).edit().putStringSet(KEY_HIDDEN, hidden).apply();
-            load();
-        }));
         items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_apps_uninstall), () -> {
             try {
                 startActivity(new Intent(Intent.ACTION_DELETE, Uri.parse("package:" + e.packageName)));
             } catch (RuntimeException ignored) {
             }
         }));
-        if (!PocketPrefs.prefs(this).getStringSet(KEY_HIDDEN, new HashSet<String>()).isEmpty()) {
-            items.add(StreamMenuView.Item.action(getString(R.string.pocket_apps_unhide_all), () -> {
-                PocketPrefs.prefs(this).edit().remove(KEY_HIDDEN).apply();
-                load();
-            }));
-        }
         PocketSounds.play(this, PocketSounds.OPEN);
         showConsolePanel(e.label, getString(typeLabel(e.type)), null, items);
     }
 
+    /** L1 / R1: the other section. */
     @Override
     protected boolean onShoulder(int direction) {
+        return SectionBar.step(this, SectionBar.ANDROID, direction);
+    }
+
+    /** L2 / R2: what the row shows (all, games, emulators, the device's settings). */
+    @Override
+    protected boolean onTrigger(int direction) {
         filter = (filter + direction + FILTER_COUNT) % FILTER_COUNT;
         PocketSounds.play(this, PocketSounds.NAV);
-        heroKey = null;
         show();
         TextView section = findViewById(R.id.pocketSectionTitle);
         if (section != null) {
             PocketMotion.bump(section);
         }
-        return true;
-    }
-
-    @Override
-    protected boolean onTrigger(int direction) {
-        if (adapter.getCount() == 0) {
-            return false;
-        }
-        focusAt(direction < 0 ? 0 : adapter.getCount() - 1, 0);
         return true;
     }
 
@@ -618,27 +800,34 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
                 overlay.setVisibility(View.GONE);
             }
             text.setText(e.label);
-            text.setVisibility(View.VISIBLE);
             card.setContentDescription(e.label);
-            if (e.key.equals(image.getTag()) && image.getDrawable() != null) {
+            final String tag = e.key + "|" + PocketArt.version();
+            if (tag.equals(image.getTag()) && image.getDrawable() != null) {
                 return card;
             }
-            image.setTag(e.key);
-            Bitmap hit = ICONS.get(e.key);
-            if (hit != null) {
-                image.setImageBitmap(hit);
+            image.setTag(tag);
+            // A cover picked or found for it first; its icon on a card of its colour otherwise
+            Bitmap own = e.packageName != null ? HeroArt.cachedCard(AndroidAppsActivity.this, AndroidLibrary.UUID, e.id(), e.label) : null;
+            if (own != null) {
+                image.setImageBitmap(own);
+                text.setVisibility(View.GONE);
                 return card;
             }
-            image.setImageDrawable(null);
+            text.setVisibility(View.VISIBLE);
+            Bitmap icon = ICONS.get(e.key);
+            image.setImageBitmap(icon);
             final float d = getResources().getDisplayMetrics().density;
             final int w = Math.round(108 * d);
             final int h = Math.round(162 * d);
             work.execute(() -> {
-                final Bitmap made = cardFor(e, w, h);
+                final Bitmap cover = e.packageName != null ? HeroArt.loadCard(AndroidAppsActivity.this, AndroidLibrary.UUID, e.id(), e.label) : null;
+                final Bitmap made = cover != null ? cover : cardFor(e, w, h);
                 main.post(() -> {
-                    if (made != null && e.key.equals(image.getTag())) {
+                    if (made != null && tag.equals(image.getTag())) {
+                        boolean fresh = image.getDrawable() == null;
                         image.setImageBitmap(made);
-                        if (PocketPrefs.animationsEnabled(AndroidAppsActivity.this)) {
+                        text.setVisibility(cover != null ? View.GONE : View.VISIBLE);
+                        if (fresh && PocketPrefs.animationsEnabled(AndroidAppsActivity.this)) {
                             image.setAlpha(0f);
                             image.animate().alpha(1f).setDuration(200).start();
                         }

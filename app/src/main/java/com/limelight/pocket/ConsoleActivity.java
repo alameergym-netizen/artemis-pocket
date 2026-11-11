@@ -140,7 +140,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
         com.limelight.pocket.ui.LiveGlass.Backdrop backdrop = null;
         if (source != null && com.limelight.pocket.ui.LiveGlass.supported() && PocketPrefs.liveGlass(this)) {
-            backdrop = new com.limelight.pocket.ui.LiveGlass.Backdrop(source, 22f);
+            boolean frost = PocketPrefs.frost(this);
+            backdrop = new com.limelight.pocket.ui.LiveGlass.Backdrop(source, frost ? 34f : 22f, frost);
         }
         liveGlassBackdrop = backdrop;
         com.limelight.pocket.ui.LiveGlass.attachTagged(main, backdrop);
@@ -645,6 +646,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
 
     private String lookSignature() {
         return PocketPrefs.accentColor(this) + "|" + PocketPrefs.backdrop(this) + "|" + PocketPrefs.liveGlass(this)
+                + "|" + PocketPrefs.frost(this) + "|" + PocketPrefs.viewMode(this) + "|" + PocketPrefs.cardStyle(this)
                 + "|" + PocketPrefs.focusStyle(this);
     }
 
@@ -1178,7 +1180,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         if (battery != null && batteryPct >= 0) {
             battery.setText(batteryPct + "%");
             int color = ContextCompat.getColor(this,
-                    batteryPct <= 15 && !charging ? R.color.pocket_off : R.color.pocket_text_dim);
+                    batteryPct <= 15 && !charging ? R.color.pocket_off : R.color.pocket_text);
             battery.setTextColor(color);
             // A drawn battery next to the number (fill to the level, a bolt while charging)
             com.limelight.pocket.ui.BatteryGlyph glyph;
@@ -1237,18 +1239,27 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             bg = R.drawable.pocket_chip_bg;
             color = R.color.pocket_text_dim;
         }
-        chip.setText(text);
-        chip.setBackgroundResource(bg);
+        // Frameless, like a console's status corner: just the icon (and "USB" when that's the link)
+        boolean usb = icon == R.drawable.ic_usb;
+        chip.setText(usb ? getString(text) : "");
+        chip.setContentDescription(getString(text));
+        chip.setBackground(null);
+        if (usb) {
+            color = R.color.pocket_accent;
+        }
+        else if (color == R.color.pocket_bg) {
+            color = R.color.pocket_text;
+        }
         int tint = ContextCompat.getColor(this, color);
         chip.setTextColor(tint);
         Drawable d = ContextCompat.getDrawable(this, icon);
         if (d != null) {
             d = d.mutate();
-            int size = dp(13);
+            int size = dp(17);
             d.setBounds(0, 0, size, size);
             d.setTint(tint);
             chip.setCompoundDrawablesRelative(d, null, null, null);
-            chip.setCompoundDrawablePadding(dp(5));
+            chip.setCompoundDrawablePadding(usb ? dp(5) : 0);
         }
     }
 

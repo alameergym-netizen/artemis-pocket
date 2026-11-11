@@ -831,6 +831,7 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         appCarousel.setItemAnimator(null);
         carouselAdapter = new CarouselAdapter(appGridAdapter, this, 14);
         appCarousel.setAdapter(carouselAdapter);
+        com.limelight.pocket.ui.LibraryLayout.apply(this, appCarousel);
         if (heroFocus == null) {
             // UP from the row lifts the hero: big Play, the art and the logo take the screen
             heroFocus = com.limelight.pocket.ui.HeroFocus.install(this, new com.limelight.pocket.ui.HeroFocus.Host() {
@@ -999,6 +1000,9 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
             extra.add(com.limelight.pocket.ui.StreamMenuView.Item.submenu(title,
                     () -> pushConsolePage(title, pocketGameSettings(appId, gameName)))
                     .withValue(summary.isEmpty() ? null : getString(R.string.pocket_gs_custom)));
+            // On Home (pinned, like a console's home screen)
+            extra.add(com.limelight.pocket.home.HomePins.item(this, new com.limelight.pocket.home.HomeItem(
+                    com.limelight.pocket.home.HomeItem.PC, gameName, computer.uuid, "", "", appId)));
             // Cover, background and logo from SteamGridDB
             final String uuid = computer.uuid;
             extra.add(com.limelight.pocket.ui.StreamMenuView.Item.action(getString(R.string.pocket_art_change), () -> {
@@ -1038,6 +1042,7 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
                 }));
             }
         }
+        com.limelight.pocket.ui.LibraryLayout.addSettings(this, extra);
         showOptionsFor(itemView, pocketHeroDetails(appId), extra);
     }
 
@@ -1616,7 +1621,7 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
             pocketLetter.setGravity(android.view.Gravity.CENTER);
             pocketLetter.setTextColor(0xFFFFFFFF);
             pocketLetter.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 38);
-            pocketLetter.setTypeface(android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL));
+            pocketLetter.setTypeface(com.limelight.pocket.ui.PocketFonts.regular());
             pocketLetter.setBackgroundResource(R.drawable.pocket_letter_bg);
             pocketLetter.setAlpha(0f);
             int size = Math.round(96 * d);

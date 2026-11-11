@@ -107,7 +107,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
             tab.setPaddingRelative(dp(14), 0, dp(10), 0);
             tab.setText(tabNames[i]);
             tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-            tab.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+            tab.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
             tab.setTextColor(ContextCompat.getColorStateList(this, R.color.pocket_tab_text));
             tab.setBackground(com.limelight.pocket.ui.PocketTheme.tabGlide(this));
             tab.setFocusable(true);
@@ -834,6 +834,31 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     });
         }
 
+        if (com.limelight.pocket.ui.LiveGlass.supported()) {
+            addToggle(getString(R.string.pocket_set_frost), getString(R.string.pocket_set_frost_sub),
+                    () -> PocketPrefs.frost(this),
+                    value -> {
+                        PocketPrefs.setFrost(this, value);
+                        getIntent().putExtra("tab", TAB_SYSTEM);
+                        rowsContainer.postDelayed(this::recreate, 300);
+                    });
+        }
+
+        addToggle(getString(R.string.pocket_set_console_home), getString(R.string.pocket_set_console_home_sub),
+                () -> PocketPrefs.consoleHome(this),
+                value -> PocketPrefs.setConsoleHome(this, value));
+
+        final String[] modeLabels = {getString(R.string.pocket_view_carousel), getString(R.string.pocket_view_grid),
+                getString(R.string.pocket_view_xmb)};
+        addChoice(getString(R.string.pocket_view_mode), getString(R.string.pocket_view_mode_sub), modeLabels,
+                () -> java.util.Arrays.asList(com.limelight.pocket.ui.LibraryLayout.MODES).indexOf(PocketPrefs.viewMode(this)),
+                index -> PocketPrefs.setViewMode(this, com.limelight.pocket.ui.LibraryLayout.MODES[index]), null);
+        final String[] styleLabels = {getString(R.string.pocket_cards_cover), getString(R.string.pocket_cards_wide),
+                getString(R.string.pocket_cards_icon)};
+        addChoice(getString(R.string.pocket_cards_style), getString(R.string.pocket_cards_style_sub), styleLabels,
+                () -> java.util.Arrays.asList(com.limelight.pocket.ui.LibraryLayout.STYLES).indexOf(PocketPrefs.cardStyle(this)),
+                index -> PocketPrefs.setCardStyle(this, com.limelight.pocket.ui.LibraryLayout.STYLES[index]), null);
+
         // Game pages: the trailer plays muted behind the page after a moment
         addToggle(getString(R.string.pocket_set_trailer_autoplay), getString(R.string.pocket_set_trailer_autoplay_sub),
                 () -> PocketPrefs.trailerAutoplay(this),
@@ -1079,7 +1104,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
         header.setAllCaps(true);
         header.setLetterSpacing(0.18f);
         header.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f);
-        header.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        header.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         header.setTextColor(ContextCompat.getColor(this, R.color.pocket_text_dim));
         rowsContainer.addView(header);
     }
@@ -1131,7 +1156,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
     private TextView valueText() {
         TextView value = new TextView(this);
         value.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
-        value.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        value.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         value.setTextColor(ContextCompat.getColorStateList(this, R.color.pocket_row_text));
         value.setDuplicateParentStateEnabled(true);
         value.setGravity(Gravity.CENTER);
@@ -1271,7 +1296,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
         LinearLayout row = newRow(title, subtitle);
         final TextView pill = new TextView(this);
         pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f);
-        pill.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        pill.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         pill.setGravity(Gravity.CENTER);
         pill.setMinWidth(dp(52));
         pill.setPadding(dp(10), dp(4), dp(10), dp(4));

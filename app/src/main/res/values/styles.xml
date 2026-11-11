@@ -16,6 +16,8 @@
 
     <!-- Application theme. -->
     <style name="AppTheme" parent="AppBaseTheme">
+        <item name="android:fontFamily">@font/pocket_inter</item>
+        <item name="fontFamily">@font/pocket_inter</item>
         <!-- All customizations that are NOT specific to a particular API-level can go here. -->
         <item name="android:windowActionBar">false</item>
         <item name="android:windowNoTitle">true</item>
@@ -41,6 +43,7 @@
 
     <!-- Artemis Pocket: dark rounded dialogs (context menus, the in-stream quick menu, prompts) -->
     <style name="PocketDialog" parent="@android:style/Theme.Material.Dialog.Alert">
+        <item name="android:fontFamily">@font/pocket_inter</item>
         <item name="android:windowBackground">@drawable/pocket_dialog_bg</item>
         <item name="android:textColorPrimary">@color/pocket_text</item>
         <item name="android:textColorSecondary">@color/pocket_text_dim</item>
@@ -51,6 +54,8 @@
     </style>
 
     <style name="PocketDialogCompat" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="android:fontFamily">@font/pocket_inter</item>
+        <item name="fontFamily">@font/pocket_inter</item>
         <item name="android:windowBackground">@drawable/pocket_dialog_bg</item>
         <item name="colorAccent">@color/pocket_accent</item>
         <item name="colorPrimary">@color/pocket_accent</item>
@@ -64,6 +69,8 @@
     </style>
 
     <style name="StreamBaseTheme" parent="AppBaseTheme">
+        <item name="android:fontFamily">@font/pocket_inter</item>
+        <item name="fontFamily">@font/pocket_inter</item>
         <!-- Transparent streaming background to avoid extra overdraw -->
         <item name="android:windowBackground">@android:color/transparent</item>
     </style>
@@ -88,6 +95,8 @@
     </style>
 
     <style name="SettingsTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:fontFamily">@font/pocket_inter</item>
+        <item name="fontFamily">@font/pocket_inter</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:colorBackground">@android:color/transparent</item>

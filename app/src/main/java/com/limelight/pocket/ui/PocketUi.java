@@ -39,26 +39,34 @@ public final class PocketUi {
         play.setTag(com.limelight.R.id.pocketHeroPlay, Boolean.TRUE);
         Context c = play.getContext();
         float d = c.getResources().getDisplayMetrics().density;
-        int accent = PocketTheme.accent(c);
-        float lum = (0.299f * android.graphics.Color.red(accent) + 0.587f * android.graphics.Color.green(accent)
-                + 0.114f * android.graphics.Color.blue(accent)) / 255f;
-        // The accent is part of the glass (under the text), never laid over it
-        LiveGlass.setFace(play, PocketTheme.withAlpha(accent, 0xF0), PocketTheme.withAlpha(accent, 0xC4));
+        // Like the new consoles' and streaming apps' Play: solid white, black label, a soft
+        // rounded rectangle (not a glass pill), the one bright thing on the screen
+        android.graphics.drawable.GradientDrawable face = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFFFFFFFF, 0xFFF1F1F4});
+        face.setCornerRadius(PLAY_RADIUS_DP * d);
+        play.setBackground(face);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             play.setForeground(null);
         }
-        boolean darkText = lum > 0.62f;
-        play.setShadowLayer(darkText ? 0f : 3 * d, 0f, darkText ? 0f : 0.5f * d, 0x66000000);
+        play.setTypeface(PocketFonts.semibold());
+        play.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13.5f);
+        play.setLetterSpacing(-0.005f);
+        play.setPadding(Math.round(16 * d), Math.round(7 * d), Math.round(20 * d), Math.round(7 * d));
+        play.setShadowLayer(0f, 0f, 0f, 0);
         // Touch presses it; with buttons, the hero takes "focus" without stealing it from the row
         play.setFocusable(false);
         play.setClickable(true);
-        play.setTextColor(darkText ? 0xFF000000 : 0xFFFFFFFF);
-        play.setElevation(7 * d);
+        play.setTextColor(0xFF0B0B0F);
+        play.setElevation(6 * d);
+        play.setClipToOutline(false);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-            play.setOutlineSpotShadowColor(accent);
-            play.setOutlineAmbientShadowColor(accent);
+            play.setOutlineSpotShadowColor(0xFF000000);
+            play.setOutlineAmbientShadowColor(0xFF000000);
         }
     }
+
+    /** The corner of Play and the hero's buttons (dp). */
+    public static final float PLAY_RADIUS_DP = 9f;
 
     public static Context wrapWithUiScale(Context base) {
         int percent;

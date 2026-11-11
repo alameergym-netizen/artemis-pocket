@@ -161,6 +161,13 @@ public final class SteamGridDb {
             case LOGO:
                 path = "/logos/game/" + gameId + "?types=static&nsfw=false&humor=false";
                 break;
+            case PocketArt.WIDE:
+                // Wide capsules, the shape of Steam's library cards
+                path = "/grids/game/" + gameId + "?dimensions=920x430,460x215&types=static&nsfw=false&humor=false";
+                break;
+            case PocketArt.ICON:
+                path = "/icons/game/" + gameId + "?types=static&nsfw=false&humor=false";
+                break;
             default:
                 // Portrait covers, the shape of the library's cards
                 path = "/grids/game/" + gameId + "?dimensions=600x900,342x482,660x930&types=static&nsfw=false&humor=false";

@@ -75,14 +75,14 @@ public final class CoachMark extends FrameLayout {
         caption.setLetterSpacing(0.2f);
         caption.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f);
         caption.setTextColor(accent);
-        caption.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        caption.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         card.addView(caption);
 
         TextView head = new TextView(context);
         head.setText(title);
         head.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         head.setTextColor(ContextCompat.getColor(context, R.color.pocket_text));
-        head.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        head.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         head.setPadding(0, Math.round(3 * d), 0, Math.round(3 * d));
         card.addView(head);
 

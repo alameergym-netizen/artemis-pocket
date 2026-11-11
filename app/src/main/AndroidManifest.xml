@@ -220,6 +220,24 @@
             android:screenOrientation="sensorLandscape"
             android:enableOnBackInvokedCallback="false"
             android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
+        <!-- Pocket Nexus: Home (pinned and recent games from everywhere, widgets) -->
+        <activity
+            android:name=".pocket.home.HomeActivity"
+            android:resizeableActivity="true"
+            android:screenOrientation="sensorLandscape"
+            android:enableOnBackInvokedCallback="false"
+            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
+        <!-- Other apps' "Add to home screen" (Winlator, GameHub ...) while Pocket Nexus is the home app -->
+        <activity
+            android:name=".pocket.home.PinShortcutActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.content.pm.action.CONFIRM_PIN_SHORTCUT" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".pocket.retro.RetroActivity"
             android:resizeableActivity="true"

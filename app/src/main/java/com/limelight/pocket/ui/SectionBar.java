@@ -2,37 +2,40 @@ package com.limelight.pocket.ui;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.limelight.PcView;
 import com.limelight.R;
+import com.limelight.pocket.PocketPrefs;
 import com.limelight.pocket.PocketSounds;
 
 /**
- * The sections at the top of the main screens, console style: Streaming (the PCs and their
- * games), Cloud (Xbox Cloud Gaming, GeForce NOW ...), Android (the handheld's own games and
- * apps) and Retro (the emulated systems, like ES-DE). L1 / R1 go from one to the next; the one
- * you're in is lit, so it's always clear where each kind of game is.
+ * The sections across the top of the main screens, console style: Home (everything you pinned
+ * or played, and widgets), Streaming (the PCs and their games), Cloud (Xbox Cloud Gaming,
+ * GeForce NOW ...), Android (the handheld's own games and apps) and Retro (the emulated systems,
+ * like ES-DE). Plain words, no frame: the one you're in is bright with a short bar under it.
+ * L1 / R1 go from one to the next; B in any section goes Home.
  */
 public final class SectionBar {
     private SectionBar() {}
 
-    public static final int STREAMING = 0;
-    public static final int CLOUD = 1;
-    public static final int ANDROID = 2;
-    public static final int RETRO = 3;
-    private static final int COUNT = 4;
-    private static final int[] LABELS = {R.string.pocket_section_streaming, R.string.pocket_section_cloud,
-            R.string.pocket_section_android, R.string.pocket_section_retro};
+    public static final int HOME = 0;
+    public static final int STREAMING = 1;
+    public static final int CLOUD = 2;
+    public static final int ANDROID = 3;
+    public static final int RETRO = 4;
+    private static final int COUNT = 5;
+    private static final int[] LABELS = {R.string.pocket_section_home, R.string.pocket_section_streaming,
+            R.string.pocket_section_cloud, R.string.pocket_section_android, R.string.pocket_section_retro};
 
-    /** Puts the bar in the screen's status bar, right after its title. */
+    /** Puts the bar at the top left of the screen (in place of the screen's own title). */
     public static void attach(final Activity activity, final int active) {
         ViewGroup row = null;
         int index = 0;
@@ -47,6 +50,8 @@ public final class SectionBar {
                 View pill = (View) title.getParent();
                 row = (ViewGroup) pill.getParent();
                 index = row.indexOfChild(pill) + 1;
+                // The tabs say where you are: the screen's own "< Title" isn't needed
+                pill.setVisibility(View.GONE);
             }
         }
         if (row == null || row.findViewWithTag("pocket_sections") != null) {
@@ -58,64 +63,74 @@ public final class SectionBar {
         bar.setTag("pocket_sections");
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setBackgroundResource(R.drawable.pocket_glass_pill);
-        int p = Math.round(4 * d);
-        bar.setPadding(p, p, p, p);
+        bar.setClipChildren(false);
+        bar.setClipToPadding(false);
 
         bar.addView(glyph(activity, "L1", d));
         for (int s = 0; s < COUNT; s++) {
             final int section = s;
+            boolean on = s == active;
+            FrameLayout cell = new FrameLayout(activity);
+            cell.setClipChildren(false);
             TextView tab = new TextView(activity);
             tab.setText(LABELS[s]);
-            tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-            tab.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
-            tab.setPadding(Math.round(12 * d), Math.round(5 * d), Math.round(12 * d), Math.round(5 * d));
-            boolean on = s == active;
-            if (on) {
-                GradientDrawable bg = new GradientDrawable();
-                bg.setCornerRadius(100 * d);
-                bg.setColor(accent);
-                tab.setBackground(bg);
-                float lum = (0.299f * android.graphics.Color.red(accent) + 0.587f * android.graphics.Color.green(accent)
-                        + 0.114f * android.graphics.Color.blue(accent)) / 255f;
-                tab.setTextColor(lum > 0.62f ? 0xFF000000 : 0xFFFFFFFF);
-            }
-            else {
-                tab.setTextColor(0xB3FFFFFF);
-            }
+            tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, on ? 15.5f : 14f);
+            tab.setTypeface(on ? PocketFonts.bold() : PocketFonts.medium());
+            tab.setLetterSpacing(-0.01f);
+            tab.setTextColor(on ? 0xFFFFFFFF : 0x8CFFFFFF);
+            tab.setShadowLayer(8 * d, 0, 0, 0x99000000);
+            tab.setPadding(Math.round(11 * d), Math.round(6 * d), Math.round(11 * d), Math.round(8 * d));
             tab.setOnClickListener(v -> go(activity, active, section));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT);
-            lp.setMarginStart(Math.round(3 * d));
-            bar.addView(tab, lp);
+            cell.addView(tab, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
+            if (on) {
+                // A short bar under the section you're in, in the accent
+                View underline = new View(activity);
+                GradientDrawable u = new GradientDrawable();
+                u.setCornerRadius(2 * d);
+                u.setColor(accent == 0xFFFFFFFF ? 0xFFFFFFFF : accent);
+                underline.setBackground(u);
+                FrameLayout.LayoutParams ulp = new FrameLayout.LayoutParams(Math.round(18 * d), Math.round(3 * d),
+                        Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+                cell.addView(underline, ulp);
+                if (PocketPrefs.animationsEnabled(activity)) {
+                    underline.setScaleX(0.2f);
+                    underline.animate().scaleX(1f).setDuration(320).setInterpolator(PocketMotion.DECELERATE).start();
+                }
+            }
+            bar.addView(cell, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT));
         }
-        LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        glp.setMarginStart(Math.round(3 * d));
-        bar.addView(glyph(activity, "R1", d), glp);
+        bar.addView(glyph(activity, "R1", d));
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMarginStart(Math.round(14 * d));
+        lp.setMarginStart(Math.round(brand != null ? 12 * d : 0));
         lp.gravity = Gravity.CENTER_VERTICAL;
         row.addView(bar, index, lp);
     }
 
+    /** The shoulder button, drawn as a small outlined key. */
     private static TextView glyph(Activity a, String text, float d) {
         TextView g = new TextView(a);
         g.setText(text);
-        g.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8.5f);
-        g.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
-        g.setTextColor(0xFF000000);
+        g.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f);
+        g.setTypeface(PocketFonts.bold());
+        g.setTextColor(0xD9FFFFFF);
         GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(100 * d);
-        bg.setColor(0xD9FFFFFF);
+        bg.setCornerRadius(5 * d);
+        bg.setColor(0x1FFFFFFF);
+        bg.setStroke(Math.max(1, Math.round(d)), 0x40FFFFFF);
         g.setBackground(bg);
-        g.setPadding(Math.round(7 * d), Math.round(2 * d), Math.round(7 * d), Math.round(2 * d));
+        g.setPadding(Math.round(6 * d), Math.round(1.5f * d), Math.round(6 * d), Math.round(1.5f * d));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(Math.round(4 * d), 0, Math.round(4 * d), 0);
+        g.setLayoutParams(lp);
         return g;
     }
 
-    /** L1 / R1 on a section screen: the next section that way (false when there's none). */
+    /** L1 / R1 on a section screen: the next section that way (true: used). */
     public static boolean step(Activity activity, int active, int direction) {
         int next = active + (direction > 0 ? 1 : -1);
         if (next < 0 || next >= COUNT) {
@@ -129,6 +144,11 @@ public final class SectionBar {
         return true;
     }
 
+    /** B in a section: back to Home. */
+    public static void goHome(Activity activity, int from) {
+        go(activity, from, HOME);
+    }
+
     /** Opens a section (a quick cross-fade, like switching tabs). */
     public static void go(Activity activity, int from, int to) {
         if (from == to) {
@@ -137,6 +157,9 @@ public final class SectionBar {
         PocketSounds.play(activity, PocketSounds.NAV);
         Class<?> target;
         switch (to) {
+            case HOME:
+                target = com.limelight.pocket.home.HomeActivity.class;
+                break;
             case CLOUD:
                 target = com.limelight.pocket.cloud.CloudActivity.class;
                 break;
@@ -154,13 +177,14 @@ public final class SectionBar {
             activity.startActivity(new Intent(activity, target));
         }
         else {
+            // Streaming is the screen under all the others: going there closes what's above it
             activity.startActivity(new Intent(activity, PcView.class)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
         }
-        // Only the home screen stays under a section (B from any section goes home)
+        // Only Streaming stays under a section
         if (from != STREAMING) {
             activity.finish();
         }
-        activity.overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+        activity.overridePendingTransition(R.anim.pocket_section_in, R.anim.pocket_section_out);
     }
 }

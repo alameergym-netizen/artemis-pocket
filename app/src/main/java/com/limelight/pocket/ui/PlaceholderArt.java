@@ -96,7 +96,7 @@ public final class PlaceholderArt {
         else {
             TextPaint big = new TextPaint(Paint.ANTI_ALIAS_FLAG);
             big.setColor(0xF2FFFFFF);
-            big.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
+            big.setTypeface(com.limelight.pocket.ui.PocketFonts.regular());
             big.setTextSize(w * 0.42f);
             big.setTextAlign(Paint.Align.CENTER);
             String letter = label.substring(0, 1).toUpperCase(Locale.ROOT);
@@ -106,7 +106,7 @@ public final class PlaceholderArt {
         // The name
         TextPaint text = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         text.setColor(0xFFFFFFFF);
-        text.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        text.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         text.setTextSize(w * 0.088f);
         text.setTextAlign(Paint.Align.CENTER);
         CharSequence fitted = TextUtils.ellipsize(label, text, w * 0.84f, TextUtils.TruncateAt.END);

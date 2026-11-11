@@ -148,6 +148,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
         carousel.setLayoutManager(new AnchoredLayoutManager(this));
         carousel.setItemAnimator(null);
         carousel.setAdapter(new CarouselAdapter(adapter, this, 14));
+        com.limelight.pocket.ui.LibraryLayout.apply(this, carousel);
         keyArt = KeyArtStage.find(this);
         heroFocus = HeroFocus.install(this, new HeroFocus.Host() {
             @Override
@@ -781,11 +782,52 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
 
     @Override
     public void onBackPressed() {
-        if (inSystem != null && !isConsolePanelShowing()) {
+        if (isConsolePanelShowing()) {
+            super.onBackPressed();
+            return;
+        }
+        if (inSystem != null) {
             leaveSystem();
             return;
         }
-        super.onBackPressed();
+        SectionBar.goHome(this, SectionBar.RETRO);
+    }
+
+    private com.limelight.pocket.home.HomeItem homeItem(RomScanner.Rom rom) {
+        return new com.limelight.pocket.home.HomeItem(com.limelight.pocket.home.HomeItem.RETRO,
+                RomScanner.searchName(rom.name), rom.system, rom.relPath, "", 0);
+    }
+
+    /** A name of your own for the game (its details are looked up by it). */
+    private void rename(final RomScanner.Rom rom) {
+        final android.widget.EditText field = new android.widget.EditText(this);
+        field.setSingleLine(true);
+        field.setText(rom.name);
+        field.setSelectAllOnFocus(true);
+        new android.app.AlertDialog.Builder(this, R.style.PocketDialog)
+                .setTitle(R.string.pocket_rename)
+                .setView(field)
+                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                    com.limelight.pocket.PocketPrefs.setCustomName(this, RetroLibrary.UUID, rom.id(), field.getText().toString());
+                    applyCustomName(rom);
+                    heroKey = null;
+                    showEntries();
+                })
+                .setNeutralButton(R.string.pocket_rename_reset, (d, w) -> {
+                    com.limelight.pocket.PocketPrefs.setCustomName(this, RetroLibrary.UUID, rom.id(), null);
+                    rom.name = RomScanner.cleanName(rom.file.getName(), rom.directory);
+                    heroKey = null;
+                    showEntries();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
+    }
+
+    private void applyCustomName(RomScanner.Rom rom) {
+        String n = com.limelight.pocket.PocketPrefs.customName(this, RetroLibrary.UUID, rom.id());
+        if (n != null) {
+            rom.name = n;
+        }
     }
 
     /** Starts the game with its emulator (or this one, once). */
@@ -800,6 +842,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
             case RetroLauncher.OK:
                 PocketSounds.play(this, PocketSounds.SELECT);
                 RetroLibrary.markPlayed(this, rom);
+                com.limelight.pocket.home.HomeStore.record(this, homeItem(rom));
                 break;
             case RetroLauncher.NOT_INSTALLED: {
                 final String pkg = r.packageName;
@@ -962,6 +1005,11 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                 hideConsolePanel();
                 openPage(e);
             }));
+            items.add(com.limelight.pocket.home.HomePins.item(this, homeItem(rom)));
+            items.add(StreamMenuView.Item.action(getString(R.string.pocket_rename), () -> {
+                hideConsolePanel();
+                rename(rom);
+            }));
             final boolean fav = RetroLibrary.isFavorite(this, lib, rom);
             items.add(StreamMenuView.Item.action(getString(fav ? R.string.pocket_retro_unfavorite : R.string.pocket_retro_favorite), () -> {
                 RetroLibrary.setFavorite(this, rom, !fav);
@@ -1033,6 +1081,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                     showEntries();
                     return getString(now ? R.string.pocket_on : R.string.pocket_off);
                 }));
+        com.limelight.pocket.ui.LibraryLayout.addSettings(this, items);
         items.add(StreamMenuView.Item.header(getString(R.string.pocket_retro_tip)));
     }
 
@@ -1110,7 +1159,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
         }
     }
 
-    static String shortName(String system, String fullName) {
+    public static String shortName(String system, String fullName) {
         String s = SHORT.get(system);
         if (s != null) {
             return s;
@@ -1148,7 +1197,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
 
         Paint text = new Paint(Paint.ANTI_ALIAS_FLAG);
         text.setColor(0xFFFFFFFF);
-        text.setTypeface(Typeface.create("sans-serif-black", Typeface.BOLD));
+        text.setTypeface(com.limelight.pocket.ui.PocketFonts.bold());
         text.setTextAlign(Paint.Align.CENTER);
         float size = h * 0.2f;
         text.setTextSize(size);
@@ -1162,7 +1211,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
         if (small != null) {
             Paint sp = new Paint(Paint.ANTI_ALIAS_FLAG);
             sp.setColor(0xD9FFFFFF);
-            sp.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            sp.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
             sp.setTextAlign(Paint.Align.CENTER);
             sp.setTextSize(h * 0.062f);
             drawWrapped(c, small, sp, w / 2f, h * 0.72f, w * 0.84f, 2);
@@ -1170,7 +1219,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
         if (corner != null) {
             Paint cp = new Paint(Paint.ANTI_ALIAS_FLAG);
             cp.setTextSize(h * 0.062f);
-            cp.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+            cp.setTypeface(com.limelight.pocket.ui.PocketFonts.semibold());
             float tw = cp.measureText(corner);
             float pad = h * 0.03f;
             RectF pill = new RectF(w - tw - pad * 4, pad * 2, w - pad * 2, pad * 2 + cp.getTextSize() + pad * 1.6f);

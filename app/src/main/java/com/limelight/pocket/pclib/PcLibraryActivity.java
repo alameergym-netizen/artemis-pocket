@@ -152,6 +152,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         carousel.setItemAnimator(null);
         carouselAdapter = new CarouselAdapter(adapter, this, 14);
         carousel.setAdapter(carouselAdapter);
+        com.limelight.pocket.ui.LibraryLayout.apply(this, carousel);
         keyArt = KeyArtStage.find(this);
         heroFocus = HeroFocus.install(this, new HeroFocus.Host() {
             @Override
@@ -672,6 +673,10 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
             items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_pclib_install_on, pcName), () -> install(g)));
         }
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_hint_details), () -> openPage(g)));
+        if (g.isInstalled()) {
+            items.add(com.limelight.pocket.home.HomePins.item(this, new com.limelight.pocket.home.HomeItem(
+                    com.limelight.pocket.home.HomeItem.PC_LIBRARY_GAME, g.name, uuid, g.launchCommand(), pcName, pageId(g))));
+        }
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_art_change), () -> {
             hideConsolePanel();
             com.limelight.pocket.ArtPickerActivity.open(this, uuid, pageId(g), g.name);
@@ -698,6 +703,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         if (status != PcLibrary.OK) {
             items.add(StreamMenuView.Item.action(getString(R.string.pocket_pclib_helper_help), this::explainHelper));
         }
+        com.limelight.pocket.ui.LibraryLayout.addSettings(this, items);
         PocketSounds.play(this, PocketSounds.OPEN);
         showConsolePanel(g.name, g.storeLabel(), null, items);
     }
@@ -1240,38 +1246,15 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         /** The store, and how far an install is (top corner). */
         private void badge(View card, PcGame g) {
             ViewGroup mask = card.findViewById(R.id.grid_mask);
-            if (!(mask instanceof RelativeLayout)) {
-                return;
-            }
-            TextView badge = mask.findViewWithTag("pclib_badge");
-            if (badge == null) {
-                float d = getResources().getDisplayMetrics().density;
-                badge = new TextView(PcLibraryActivity.this);
-                badge.setTag("pclib_badge");
-                badge.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8.5f);
-                badge.setTextColor(0xFFFFFFFF);
-                badge.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
-                badge.setBackgroundResource(R.drawable.pocket_badge_bg);
-                badge.setPadding(Math.round(7 * d), Math.round(2 * d), Math.round(7 * d), Math.round(2 * d));
-                RelativeLayout.LayoutParams lp = new RelativeLayout.LayoutParams(
-                        ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-                lp.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-                lp.addRule(RelativeLayout.ALIGN_PARENT_START);
-                lp.topMargin = Math.round(7 * d);
-                lp.setMarginStart(Math.round(7 * d));
-                mask.addView(badge, lp);
-            }
-            String text;
+            String state = null;
             if (g.isBusy()) {
-                text = "⬇ " + Math.max(0, g.progress) + "%";
+                state = "\u2193 " + Math.max(0, g.progress) + "%";
             }
             else if (!g.isInstalled()) {
-                text = "⬇ " + g.storeLabel();
+                state = "\u2193";
             }
-            else {
-                text = g.storeLabel();
-            }
-            badge.setText(text);
+            com.limelight.pocket.ui.CardTag.apply(mask, g.storeLabel(),
+                    com.limelight.pocket.ui.CardTag.colorFor(g.storeLabel()), state);
         }
     }
 }

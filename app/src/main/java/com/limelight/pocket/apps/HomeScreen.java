@@ -54,9 +54,10 @@ public class HomeScreen extends Activity {
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
         }
         else {
-            // Home: the home screen itself, whatever screen was open above it
+            // Home: Pocket Nexus's Home, whatever screen was open above it
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
                     | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            intent.putExtra(PcView.EXTRA_SHOW_HOME, true);
         }
         try {
             startActivity(intent);

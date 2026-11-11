@@ -125,6 +125,9 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
 
     /** How far a card steps aside for the focused one (signed, in px). */
     private float makeRoomShift(int position, View content) {
+        if (list != null && LibraryLayout.isVertical(list.getContext())) {
+            return 0f; // grid and list: the cards stay in their cells
+        }
         if (list == null || focusedPosition == RecyclerView.NO_POSITION || position == focusedPosition
                 || position == RecyclerView.NO_POSITION || !list.hasFocus() || !zoomStyle()) {
             return 0f;
@@ -217,6 +220,8 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
                 content.setTranslationX(makeRoomShift(position, content));
             }
             content.setActivated(holder.frame.hasFocus());
+            LibraryLayout.sizeCard(holder.frame.getContext(), content);
+            LibraryLayout.label(holder.frame, content);
             return;
         }
         onBindViewHolder(holder, position);
@@ -236,6 +241,8 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         }
         holder.boundGeneration = generation;
         content.setDuplicateParentStateEnabled(false);
+        LibraryLayout.sizeCard(holder.frame.getContext(), content);
+        LibraryLayout.label(holder.frame, content);
 
         final FrameLayout frame = holder.frame;
         frame.setOnClickListener(v -> {
@@ -276,6 +283,7 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
                 frame.post(() -> {
                     if (!frame.hasFocus()) {
                         applyFocus(holder, false, true);
+                        LibraryLayout.label(frame, frame.getChildCount() > 0 ? frame.getChildAt(0) : null);
                     }
                 });
             }
@@ -285,6 +293,7 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
                 boolean regained = pos == focusedPosition
                         && android.os.SystemClock.uptimeMillis() - lastBlurAt < 400;
                 applyFocus(holder, true, !regained);
+                LibraryLayout.label(frame, frame.getChildAt(0));
                 if (pos != RecyclerView.NO_POSITION) {
                     focusedPosition = pos;
                     updateMakeRoom(!regained);

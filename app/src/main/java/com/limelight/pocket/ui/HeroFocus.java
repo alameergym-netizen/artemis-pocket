@@ -76,9 +76,9 @@ public final class HeroFocus {
         this.bottomScrim = activity.findViewById(R.id.pocketBottomScrim);
         this.hintBar = activity.findViewById(R.id.pocketHintBar);
         this.d = activity.getResources().getDisplayMetrics().density;
-        ring.setCornerRadius(100 * d);
+        ring.setCornerRadius(PocketUi.PLAY_RADIUS_DP * d);
         ring.setColor(0x00000000);
-        ring.setStroke(Math.max(2, Math.round(2 * d)), 0xF2FFFFFF);
+        ring.setStroke(Math.max(2, Math.round(2 * d)), 0x730B0B0F); // Play is white: a dark inner edge
         ring.setAlpha(0);
         play.setClickable(true);
         play.setOnClickListener(v -> {
@@ -197,6 +197,9 @@ public final class HeroFocus {
     }
 
     private boolean canLift() {
+        if (LibraryLayout.isVertical(activity)) {
+            return false; // grid and list: UP moves in the library
+        }
         return play.getVisibility() == View.VISIBLE && play.isShown() && row.isShown() && row.getHeight() > 0
                 && host.heroCanLift();
     }
@@ -339,6 +342,17 @@ public final class HeroFocus {
         }
         if (section != null) {
             section.setAlpha(1f - c);
+        }
+        // The buttons beside the hints (PC games, profiles ...) step away with the row
+        if (hintBar != null && hintBar.getParent() instanceof ViewGroup) {
+            ViewGroup bottom = (ViewGroup) hintBar.getParent();
+            for (int i = 0; i < bottom.getChildCount(); i++) {
+                View child = bottom.getChildAt(i);
+                if (child != hintBar) {
+                    child.setAlpha(1f - c);
+                    child.setTranslationY(row.getHeight() * 0.2f * c);
+                }
+            }
         }
 
         // The shades over the art clear, so the art shows

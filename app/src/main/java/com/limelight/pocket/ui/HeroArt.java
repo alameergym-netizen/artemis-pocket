@@ -178,6 +178,23 @@ public final class HeroArt {
      * designed cover with its name. Null when there is no art on disk yet.
      */
     public static Bitmap loadCard(Context context, String pcUuid, int appId, String name) {
+        // Wide or icon cards: their own art when there is some (a background makes a fine wide card)
+        String style = LibraryLayout.cardStyle(context);
+        if (LibraryLayout.STYLE_WIDE.equals(style)) {
+            Bitmap w = styled(context, pcUuid, appId, com.limelight.pocket.PocketArt.WIDE, 520);
+            if (w == null) {
+                w = styled(context, pcUuid, appId, com.limelight.pocket.PocketArt.HERO, 520);
+            }
+            if (w != null) {
+                return w;
+            }
+        }
+        else if (LibraryLayout.STYLE_ICON.equals(style)) {
+            Bitmap i = styled(context, pcUuid, appId, com.limelight.pocket.PocketArt.ICON, 256);
+            if (i != null) {
+                return i;
+            }
+        }
         Bitmap b = load(context, pcUuid, appId);
         if (b != null && isPlaceholder(b)) {
             return PlaceholderArt.render(name, 300);
@@ -187,6 +204,22 @@ public final class HeroArt {
 
     /** The card art if it is already in memory (null otherwise: use loadCardAsync). */
     public static Bitmap cachedCard(Context context, String pcUuid, int appId, String name) {
+        String style = LibraryLayout.cardStyle(context);
+        if (!LibraryLayout.STYLE_COVER.equals(style)) {
+            int[] kinds = LibraryLayout.STYLE_WIDE.equals(style)
+                    ? new int[] {com.limelight.pocket.PocketArt.WIDE, com.limelight.pocket.PocketArt.HERO}
+                    : new int[] {com.limelight.pocket.PocketArt.ICON};
+            for (int k : kinds) {
+                if (pcUuid == null) {
+                    break;
+                }
+                File f = com.limelight.pocket.PocketArt.file(context, pcUuid, appId, k);
+                if (f.exists()) {
+                    // Decoded off the main thread by loadCard
+                    return CACHE.get(f.getPath() + "@" + f.lastModified() + "#" + k);
+                }
+            }
+        }
         File file = coverFile(context, pcUuid, appId);
         if (file == null) {
             return null;
@@ -196,6 +229,40 @@ public final class HeroArt {
             return PlaceholderArt.render(name, 300);
         }
         return b;
+    }
+
+    /** A wide or icon card's own art (scaled to about the card's size), or null. Blocking. */
+    private static Bitmap styled(Context context, String uuid, int appId, int kind, int width) {
+        if (uuid == null || appId == 0) {
+            return null;
+        }
+        File f = com.limelight.pocket.PocketArt.file(context, uuid, appId, kind);
+        if (!f.exists()) {
+            return null;
+        }
+        String key = f.getPath() + "@" + f.lastModified() + "#" + kind;
+        Bitmap cached = CACHE.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        try {
+            BitmapFactory.Options bounds = new BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(f.getPath(), bounds);
+            int sample = 1;
+            while (bounds.outWidth / (sample * 2) >= width) {
+                sample *= 2;
+            }
+            BitmapFactory.Options opts = new BitmapFactory.Options();
+            opts.inSampleSize = sample;
+            Bitmap b = BitmapFactory.decodeFile(f.getPath(), opts);
+            if (b != null) {
+                CACHE.put(key, b);
+            }
+            return b;
+        } catch (RuntimeException | OutOfMemoryError e) {
+            return null;
+        }
     }
 
     /** Loads the card art off the main thread (decoding a cover there makes scrolling stutter). */

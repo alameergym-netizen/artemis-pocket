@@ -15,6 +15,8 @@ public class ArtemisApplication extends Application {
         super.onCreate();
         // Artemis Pocket: keep the stack trace of any crash so the next launch can show it
         com.limelight.pocket.CrashReporter.install(this);
+        // Pocket Nexus: the interface typeface (Inter)
+        com.limelight.pocket.ui.PocketFonts.init(this);
         ProfilesManager profilesManager = ProfilesManager.getInstance();
         if (!profilesManager.load(this)) {
             Toast.makeText(this, R.string.profile_manager_failed_to_load, Toast.LENGTH_LONG).show();

@@ -238,7 +238,7 @@ public class RadialMenuView extends FrameLayout {
             pointer.setColor(accent);
             center.setColor(0x9E08080A);
             flashPaint.setPathEffect(new CornerPathEffect(7 * d));
-            Typeface medium = Typeface.create("sans-serif-medium", Typeface.NORMAL);
+            Typeface medium = com.limelight.pocket.ui.PocketFonts.medium();
             label.setTypeface(medium);
             label.setTextSize(10.5f * sp);
             label.setTextAlign(Paint.Align.CENTER);

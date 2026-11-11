@@ -108,7 +108,7 @@ public class ButtonTestActivity extends ConsoleActivity implements KeyboardAcces
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         t.setTextColor(ContextCompat.getColor(this, color));
         if (medium) {
-            t.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+            t.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         }
         return t;
     }

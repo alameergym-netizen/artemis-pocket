@@ -137,7 +137,7 @@ public class MacroRecordActivity extends ConsoleActivity {
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         t.setTextColor(ContextCompat.getColor(this, color));
         if (font != null) {
-            t.setTypeface(android.graphics.Typeface.create(font, android.graphics.Typeface.NORMAL));
+            t.setTypeface(com.limelight.pocket.ui.PocketFonts.of(font));
         }
         return t;
     }

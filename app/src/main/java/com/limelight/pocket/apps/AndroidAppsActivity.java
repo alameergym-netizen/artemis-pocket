@@ -151,6 +151,7 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
         carousel.setLayoutManager(new AnchoredLayoutManager(this));
         carousel.setItemAnimator(null);
         carousel.setAdapter(new CarouselAdapter(adapter, this, 14));
+        com.limelight.pocket.ui.LibraryLayout.apply(this, carousel);
         keyArt = KeyArtStage.find(this);
         heroFocus = HeroFocus.install(this, new HeroFocus.Host() {
             @Override
@@ -626,6 +627,8 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
             PocketPrefs.prefs(this).edit().putLong(KEY_USED + e.packageName, System.currentTimeMillis()).apply();
             e.used = System.currentTimeMillis();
             PocketSounds.play(this, PocketSounds.SELECT);
+            com.limelight.pocket.home.HomeStore.record(this, new com.limelight.pocket.home.HomeItem(
+                    com.limelight.pocket.home.HomeItem.ANDROID, e.label, e.packageName, "", "", 0));
             startActivity(launch);
         } catch (RuntimeException ex) {
             Toast.makeText(this, R.string.pocket_apps_cant_open, Toast.LENGTH_SHORT).show();
@@ -660,6 +663,8 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
             hideConsolePanel();
             openPage(e);
         }));
+        items.add(com.limelight.pocket.home.HomePins.item(this, new com.limelight.pocket.home.HomeItem(
+                com.limelight.pocket.home.HomeItem.ANDROID, e.label, e.packageName, "", "", 0)));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_art_change), () -> {
             hideConsolePanel();
             ArtPickerActivity.open(this, AndroidLibrary.UUID, e.id(), e.label);
@@ -689,8 +694,18 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
             } catch (RuntimeException ignored) {
             }
         }));
+        com.limelight.pocket.ui.LibraryLayout.addSettings(this, items);
         PocketSounds.play(this, PocketSounds.OPEN);
         showConsolePanel(e.label, getString(typeLabel(e.type)), null, items);
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (isConsolePanelShowing()) {
+            super.onBackPressed();
+            return;
+        }
+        SectionBar.goHome(this, SectionBar.ANDROID);
     }
 
     /** L1 / R1: the other section. */

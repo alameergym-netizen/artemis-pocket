@@ -27,9 +27,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Real glass for the console screens (Android 12+): panels show a live, blurred and slightly
- * more saturated copy of whatever is behind them (the backdrop art and lights), under a thin
- * tint, a top sheen and a bright rim, like frosted glass catching light at its edge.
+ * Real glass for the console screens (Android 12+): panels show a live, blurred copy of whatever
+ * is behind them (the backdrop art and lights). Two materials: Frost (the default: a deep blur,
+ * a milky veil and a fine grain, like frosted glass) and Glass (a lighter blur, more colour, a
+ * top sheen and a bright rim, like clear glass catching light at its edge).
  *
  * The backdrop is recorded each frame into a small RenderNode (a quarter of the size, so the
  * blur costs next to nothing) and every glass panel draws that one node through its own
@@ -62,13 +63,20 @@ public final class LiveGlass {
             return true;
         };
 
+        final boolean frost;
+
         public Backdrop(View source, float blurDp) {
+            this(source, blurDp, false);
+        }
+
+        public Backdrop(View source, float blurDp, boolean frost) {
             this.source = source;
+            this.frost = frost;
             if (!supported()) {
                 return;
             }
             float px = blurDp * source.getResources().getDisplayMetrics().density * SCALE;
-            node = Api31.createNode(px);
+            node = Api31.createNode(px, frost);
             source.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener() {
                 @Override
                 public void onViewAttachedToWindow(@NonNull View v) {
@@ -177,6 +185,25 @@ public final class LiveGlass {
 
     // ---- The glass surface --------------------------------------------------------------
 
+    private static android.graphics.BitmapShader grain;
+
+    /** A fine, static grain (frosted glass isn't perfectly smooth). */
+    static synchronized android.graphics.BitmapShader grain() {
+        if (grain == null) {
+            int n = 96;
+            int[] px = new int[n * n];
+            java.util.Random r = new java.util.Random(0x5EED);
+            for (int i = 0; i < px.length; i++) {
+                int v = r.nextInt(256);
+                int a = 10 + r.nextInt(14);
+                px[i] = (a << 24) | (v << 16) | (v << 8) | v;
+            }
+            android.graphics.Bitmap b = android.graphics.Bitmap.createBitmap(px, n, n, android.graphics.Bitmap.Config.ARGB_8888);
+            grain = new android.graphics.BitmapShader(b, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT);
+        }
+        return grain;
+    }
+
     static final class GlassDrawable extends Drawable {
         final View host;
         private final Backdrop backdrop;
@@ -186,6 +213,10 @@ public final class LiveGlass {
         private final Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint face = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint veil = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint noise = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final boolean frost;
+        private int veilBase = 0x47;
         private int faceTop;
         private int faceBottom;
         private boolean hasFace;
@@ -202,6 +233,8 @@ public final class LiveGlass {
             this.backdrop = backdrop;
             this.style = style;
             this.d = host.getResources().getDisplayMetrics().density;
+            this.frost = backdrop != null ? backdrop.frost : com.limelight.pocket.PocketPrefs.frost(host.getContext());
+            noise.setShader(grain());
             rim.setStyle(Paint.Style.STROKE);
             rim.setStrokeWidth(Math.max(1f, d));
             Object f = host.getTag(com.limelight.R.id.pocket_glass_face);
@@ -238,6 +271,23 @@ public final class LiveGlass {
             float inset = rim.getStrokeWidth() / 2f;
             rimRect.set(rect.left + inset, rect.top + inset, rect.right - inset, rect.bottom - inset);
             boolean live = backdrop != null && supported();
+            if (frost) {
+                // Frost: a dark base for legibility under a milky veil, a hairline edge, no sheen
+                veilBase = live ? 0x47 : 0x99;
+                veil.setColor(live ? 0x47121218 : 0x99141419);
+                veil.setAlpha(Math.round(veilBase * alpha / 255f));
+                tint.setShader(new LinearGradient(0, rect.top, 0, rect.bottom,
+                        style == STYLE_PILL ? 0x2EFFFFFF : 0x21FFFFFF,
+                        style == STYLE_PILL ? 0x1FFFFFFF : 0x14FFFFFF, Shader.TileMode.CLAMP));
+                sheen.setShader(null);
+                sheen.setColor(0x00000000);
+                rim.setShader(new LinearGradient(0, rect.top, 0, rect.bottom,
+                        new int[]{0x33FFFFFF, 0x14FFFFFF, 0x1AFFFFFF}, new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+                if (hasFace) {
+                    face.setShader(new LinearGradient(0, rect.top, 0, rect.bottom, faceTop, faceBottom, Shader.TileMode.CLAMP));
+                }
+                return;
+            }
             // Body: darker when there's no real blur, so text stays readable on anything
             tint.setShader(new LinearGradient(0, rect.top, 0, rect.bottom,
                     live ? (style == STYLE_PILL ? 0x26FFFFFF : 0x1AFFFFFF) : 0x2EFFFFFF,
@@ -275,6 +325,15 @@ public final class LiveGlass {
                     canvas.drawColor(0x33000000);
                 }
             }
+            if (frost) {
+                if (!hasFace) {
+                    canvas.drawRoundRect(rect, radius, radius, veil);
+                }
+                canvas.drawRoundRect(rect, radius, radius, hasFace ? face : tint);
+                canvas.drawRoundRect(rect, radius, radius, noise);
+                canvas.drawRoundRect(rimRect, radius, radius, rim);
+                return;
+            }
             canvas.drawRoundRect(rect, radius, radius, hasFace ? face : tint);
             canvas.drawRoundRect(rect, radius, radius, sheen);
             canvas.drawRoundRect(rimRect, radius, radius, rim);
@@ -292,6 +351,8 @@ public final class LiveGlass {
             face.setAlpha(alpha);
             sheen.setAlpha(alpha);
             rim.setAlpha(alpha);
+            veil.setAlpha(Math.round(veilBase * alpha / 255f));
+            noise.setAlpha(alpha);
             invalidateSelf();
         }
 
@@ -312,12 +373,13 @@ public final class LiveGlass {
 
     @RequiresApi(api = Build.VERSION_CODES.S)
     private static final class Api31 {
-        static Object createNode(float blurPx) {
+        static Object createNode(float blurPx, boolean frost) {
             RenderNode node = new RenderNode("PocketGlass");
             ColorMatrix vibrancy = new ColorMatrix();
-            vibrancy.setSaturation(1.45f);
+            vibrancy.setSaturation(frost ? 1.12f : 1.45f);
             ColorMatrix lift = new ColorMatrix();
-            lift.setScale(1.08f, 1.08f, 1.08f, 1f);
+            float l = frost ? 1.02f : 1.08f;
+            lift.setScale(l, l, l, 1f);
             vibrancy.postConcat(lift);
             node.setRenderEffect(RenderEffect.createChainEffect(
                     RenderEffect.createColorFilterEffect(new ColorMatrixColorFilter(vibrancy)),

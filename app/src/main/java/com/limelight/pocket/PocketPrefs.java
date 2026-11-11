@@ -439,6 +439,79 @@ public final class PocketPrefs {
     }
 
     /** Real frosted glass (live blur) on the console screens. */
+    /** The app opens on Home (pinned and recent games from everywhere, widgets). */
+    public static final String KEY_CONSOLE_HOME = "pocket_console_home";
+
+    public static boolean consoleHome(Context context) {
+        return prefs(context).getBoolean(KEY_CONSOLE_HOME, true);
+    }
+
+    public static void setConsoleHome(Context context, boolean on) {
+        prefs(context).edit().putBoolean(KEY_CONSOLE_HOME, on).apply();
+    }
+
+    // ---- Library layout and names ------------------------------------------------------------
+
+    public static final String KEY_VIEW_MODE = "pocket_view_mode";
+    public static final String KEY_CARD_STYLE = "pocket_card_style";
+    private static final String KEY_NAME = "pocket_name_";
+
+    /** carousel, grid or xmb (see LibraryLayout). */
+    public static String viewMode(Context context) {
+        return prefs(context).getString(KEY_VIEW_MODE, "carousel");
+    }
+
+    public static void setViewMode(Context context, String mode) {
+        prefs(context).edit().putString(KEY_VIEW_MODE, mode).apply();
+    }
+
+    /** cover, wide or icon (see LibraryLayout). */
+    public static String cardStyle(Context context) {
+        return prefs(context).getString(KEY_CARD_STYLE, "cover");
+    }
+
+    public static void setCardStyle(Context context, String style) {
+        prefs(context).edit().putString(KEY_CARD_STYLE, style).apply();
+    }
+
+    /** The name given to a game or app here (null: its own name). */
+    public static String customName(Context context, String uuid, int id) {
+        if (uuid == null) {
+            return null;
+        }
+        String n = prefs(context).getString(KEY_NAME + uuid + "_" + id, null);
+        return n != null && !n.trim().isEmpty() ? n : null;
+    }
+
+    /** The name given here, else this one. */
+    public static String customName(Context context, String uuid, int id, String fallback) {
+        String n = customName(context, uuid, id);
+        return n != null ? n : fallback;
+    }
+
+    /** Renames it (null: back to its own name). Its details are then looked up by the new name. */
+    public static void setCustomName(Context context, String uuid, int id, String name) {
+        if (name == null || name.trim().isEmpty()) {
+            prefs(context).edit().remove(KEY_NAME + uuid + "_" + id).apply();
+        }
+        else {
+            prefs(context).edit().putString(KEY_NAME + uuid + "_" + id, name.trim()).apply();
+        }
+    }
+
+    /** The panels' material: frosted (milky, deep blur, a fine grain) or clear glass. */
+    public static final String KEY_MATERIAL = "pocket_material";
+    public static final String MATERIAL_FROST = "frost";
+    public static final String MATERIAL_GLASS = "glass";
+
+    public static boolean frost(Context context) {
+        return !MATERIAL_GLASS.equals(prefs(context).getString(KEY_MATERIAL, MATERIAL_FROST));
+    }
+
+    public static void setFrost(Context context, boolean on) {
+        prefs(context).edit().putString(KEY_MATERIAL, on ? MATERIAL_FROST : MATERIAL_GLASS).apply();
+    }
+
     public static boolean liveGlass(Context context) {
         return prefs(context).getBoolean(KEY_LIVE_GLASS, true);
     }

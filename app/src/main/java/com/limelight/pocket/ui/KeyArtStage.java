@@ -5,7 +5,6 @@ import android.graphics.Bitmap;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.view.View;
-import android.widget.ImageView;
 
 import com.limelight.R;
 import com.limelight.pocket.PocketPrefs;
@@ -14,21 +13,25 @@ import com.limelight.pocket.PocketPrefs;
  * A game's key art, sharp across the top of the screen (console style), cross-faded between two
  * layers with a slow settle in size. Used by the home screen and the library alike.
  *
- * Layout: pocketKeyArtUnderlay (black, hides the blurred art while key art shows),
- * pocketKeyArtFrame holding pocketKeyArtA / pocketKeyArtB and a fade to the background.
+ * Layout: pocketKeyArtUnderlay (dims the blurred art while key art shows, so its colours still
+ * glow through where the key art fades out), pocketKeyArtFrame holding pocketKeyArtA / B
+ * (full screen; each fades itself out, see {@link KeyArtView}).
  */
 public final class KeyArtStage {
+
+    /** How much the underlay dims the blurred art while key art shows. */
+    private static final float UNDER = 0.78f;
 
     private final Activity activity;
     private final View frame;
     private final View under;
-    private final ImageView a;
-    private final ImageView b;
+    private final KeyArtView a;
+    private final KeyArtView b;
     private boolean onA;
     private Bitmap shown;
     private android.animation.ObjectAnimator drift;
 
-    private KeyArtStage(Activity activity, View frame, View under, ImageView a, ImageView b) {
+    private KeyArtStage(Activity activity, View frame, View under, KeyArtView a, KeyArtView b) {
         this.activity = activity;
         this.frame = frame;
         this.under = under;
@@ -40,8 +43,8 @@ public final class KeyArtStage {
     public static KeyArtStage find(Activity activity) {
         View frame = activity.findViewById(R.id.pocketKeyArtFrame);
         View under = activity.findViewById(R.id.pocketKeyArtUnderlay);
-        ImageView a = activity.findViewById(R.id.pocketKeyArtA);
-        ImageView b = activity.findViewById(R.id.pocketKeyArtB);
+        KeyArtView a = activity.findViewById(R.id.pocketKeyArtA);
+        KeyArtView b = activity.findViewById(R.id.pocketKeyArtB);
         if (frame == null || under == null || a == null || b == null) {
             return null;
         }
@@ -49,7 +52,7 @@ public final class KeyArtStage {
     }
 
     /** Once settled, the art drifts very slowly (a living backdrop, like a console's). */
-    private void startDrift(ImageView view) {
+    private void startDrift(KeyArtView view) {
         stopDrift();
         if (shown == null || !PocketPrefs.animationsEnabled(activity) || view.getAlpha() < 0.99f) {
             return;
@@ -113,8 +116,8 @@ public final class KeyArtStage {
             }
             return;
         }
-        ImageView incoming = onA ? b : a;
-        ImageView outgoing = onA ? a : b;
+        KeyArtView incoming = onA ? b : a;
+        KeyArtView outgoing = onA ? a : b;
         onA = !onA;
         incoming.setImageBitmap(bitmap);
         if (PocketPrefs.colorBackgroundArt(activity)) {
@@ -135,13 +138,13 @@ public final class KeyArtStage {
             incoming.setScaleX(1.05f);
             incoming.setScaleY(1.05f);
             incoming.setAlpha(0f);
-            final ImageView settled = incoming;
+            final KeyArtView settled = incoming;
             incoming.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(900)
                     .setInterpolator(PocketMotion.DECELERATE)
                     .withEndAction(() -> startDrift(settled)).start();
             outgoing.animate().alpha(0f).setDuration(420).start();
             frame.animate().alpha(1f).setDuration(420).start();
-            under.animate().alpha(1f).setDuration(420).start();
+            under.animate().alpha(UNDER).setDuration(420).start();
         }
         else {
             incoming.setAlpha(1f);
@@ -149,7 +152,7 @@ public final class KeyArtStage {
             incoming.setScaleY(1f);
             outgoing.setAlpha(0f);
             frame.setAlpha(1f);
-            under.setAlpha(1f);
+            under.setAlpha(UNDER);
         }
     }
 }

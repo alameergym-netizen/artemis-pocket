@@ -206,7 +206,7 @@ public class LaunchOverlay extends FrameLayout {
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         t.setTextColor(color);
         if (medium) {
-            t.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            t.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         }
         return t;
     }

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pocket Nexus: switching sections, the new one fades in with a slight settle -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shareInterpolator="false"
+    android:zAdjustment="top">
+    <alpha android:interpolator="@interpolator/pocket_emphasized"
+        android:fromAlpha="0.0" android:toAlpha="1.0" android:duration="240" />
+    <scale android:interpolator="@interpolator/pocket_emphasized"
+        android:fromXScale="1.015" android:toXScale="1.0"
+        android:fromYScale="1.015" android:toYScale="1.0"
+        android:pivotX="50%" android:pivotY="40%" android:duration="380" />
+</set>

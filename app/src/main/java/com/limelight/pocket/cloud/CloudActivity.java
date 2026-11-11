@@ -173,6 +173,7 @@ public class CloudActivity extends ConsoleActivity implements CarouselAdapter.Li
 
     private void play(CloudService s) {
         PocketSounds.play(this, PocketSounds.SELECT);
+        com.limelight.pocket.home.HomeStore.record(this, homeItem(s));
         try {
             startActivity(s.playerIntent(this));
         } catch (RuntimeException e) {
@@ -220,6 +221,7 @@ public class CloudActivity extends ConsoleActivity implements CarouselAdapter.Li
                 }
             }));
         }
+        items.add(com.limelight.pocket.home.HomePins.item(this, homeItem(s)));
         if (s.isRunning(this)) {
             items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_cloud_close, getString(s.name)), () -> {
                 s.stop(this);
@@ -241,6 +243,19 @@ public class CloudActivity extends ConsoleActivity implements CarouselAdapter.Li
         return SectionBar.step(this, SectionBar.CLOUD, direction);
     }
 
+    @Override
+    public void onBackPressed() {
+        if (isConsolePanelShowing()) {
+            super.onBackPressed();
+            return;
+        }
+        SectionBar.goHome(this, SectionBar.CLOUD);
+    }
+
+    private com.limelight.pocket.home.HomeItem homeItem(CloudService s) {
+        return new com.limelight.pocket.home.HomeItem(com.limelight.pocket.home.HomeItem.CLOUD, getString(s.name), s.id, "", "", 0);
+    }
+
     // ---- Cards ------------------------------------------------------------------------------
 
     private static int darker(int color, float f) {
@@ -259,7 +274,7 @@ public class CloudActivity extends ConsoleActivity implements CarouselAdapter.Li
         c.drawRect(0, 0, w, h, glow);
         Paint t = new Paint(Paint.ANTI_ALIAS_FLAG);
         t.setColor(0xFFFFFFFF);
-        t.setTypeface(Typeface.create("sans-serif-black", Typeface.BOLD));
+        t.setTypeface(com.limelight.pocket.ui.PocketFonts.bold());
         t.setTextAlign(Paint.Align.CENTER);
         String[] words = getString(s.name).split(" ");
         float size = h * 0.11f;

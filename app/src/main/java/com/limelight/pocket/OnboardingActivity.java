@@ -217,7 +217,7 @@ public class OnboardingActivity extends ConsoleActivity {
         brand.setLetterSpacing(0.22f);
         brand.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f);
         brand.setTextColor(ContextCompat.getColor(this, R.color.pocket_text));
-        brand.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        brand.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         LinearLayout.LayoutParams brandLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         brandLp.setMarginStart(dp(9));
@@ -254,12 +254,12 @@ public class OnboardingActivity extends ConsoleActivity {
         kicker.setAllCaps(true);
         kicker.setLetterSpacing(0.2f);
         kicker.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10);
-        kicker.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        kicker.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         words.addView(kicker);
 
         title = new TextView(this);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30);
-        title.setTypeface(android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL));
+        title.setTypeface(com.limelight.pocket.ui.PocketFonts.regular());
         title.setLetterSpacing(-0.01f);
         title.setTextColor(ContextCompat.getColor(this, R.color.pocket_text));
         title.setPadding(0, dp(6), 0, dp(8));
@@ -273,7 +273,7 @@ public class OnboardingActivity extends ConsoleActivity {
 
         next = new TextView(this);
         next.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        next.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        next.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         next.setTextColor(0xFF000000);
         next.setGravity(Gravity.CENTER);
         next.setMinHeight(dp(40));
@@ -523,7 +523,7 @@ public class OnboardingActivity extends ConsoleActivity {
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         t.setTextColor(ContextCompat.getColor(this, color));
         if (medium) {
-            t.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+            t.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         }
         return t;
     }
@@ -679,7 +679,7 @@ public class OnboardingActivity extends ConsoleActivity {
         LinearLayout row = addRow(label, sub, option);
         TextView value = new TextView(this);
         value.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
-        value.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        value.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         value.setTextColor(ContextCompat.getColorStateList(this, R.color.pocket_row_text));
         value.setDuplicateParentStateEnabled(true);
         value.setGravity(Gravity.CENTER);
@@ -693,7 +693,7 @@ public class OnboardingActivity extends ConsoleActivity {
         LinearLayout row = addRow(label, sub, option);
         TextView pill = new TextView(this);
         pill.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f);
-        pill.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        pill.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         pill.setGravity(Gravity.CENTER);
         pill.setMinWidth(dp(52));
         pill.setPadding(dp(10), dp(4), dp(10), dp(4));

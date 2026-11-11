@@ -32,9 +32,13 @@ public final class PocketArt {
     public static final int COVER = 0;
     public static final int HERO = 1;
     public static final int LOGO = 2;
+    /** A wide card (SteamGridDB's 920x430 grids, like Steam's own library capsules). */
+    public static final int WIDE = 3;
+    /** A square icon (SteamGridDB's icons), for the small icon cards. */
+    public static final int ICON = 4;
 
-    private static final String[] FILES = {"cover.jpg", "hero.jpg", "logo.png"};
-    private static final int[] MAX_WIDTH = {600, 1920, 800};
+    private static final String[] FILES = {"cover.jpg", "hero.jpg", "logo.png", "wide.jpg", "icon.png"};
+    private static final int[] MAX_WIDTH = {600, 1920, 800, 920, 512};
     private static final int MAX_DOWNLOAD = 12 * 1024 * 1024;
 
     public static final String KEY_SGDB_KEY = "pocket_sgdb_key";
@@ -148,7 +152,7 @@ public final class PocketArt {
         }
         File tmp = new File(target.getPath() + ".tmp");
         try (FileOutputStream out = new FileOutputStream(tmp)) {
-            if (kind == LOGO) {
+            if (kind == LOGO || kind == ICON) {
                 bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
             }
             else {
@@ -376,7 +380,11 @@ public final class PocketArt {
         boolean wantHero = !has(app, uuid, appId, HERO);
         boolean wantLogo = !has(app, uuid, appId, LOGO);
         boolean wantCover = needsCover && !has(app, uuid, appId, COVER);
-        if (!wantHero && !wantLogo && !wantCover) {
+        // The card style in use: its art too (wide capsules, icons)
+        String style = com.limelight.pocket.ui.LibraryLayout.cardStyle(app);
+        boolean wantWide = com.limelight.pocket.ui.LibraryLayout.STYLE_WIDE.equals(style) && !has(app, uuid, appId, WIDE);
+        boolean wantIcon = com.limelight.pocket.ui.LibraryLayout.STYLE_ICON.equals(style) && !has(app, uuid, appId, ICON);
+        if (!wantHero && !wantLogo && !wantCover && !wantWide && !wantIcon) {
             return false;
         }
         boolean got = false;
@@ -405,6 +413,12 @@ public final class PocketArt {
         }
         if (wantCover) {
             got |= fetchFirst(app, key, uuid, appId, gameId, COVER);
+        }
+        if (wantWide) {
+            got |= fetchFirst(app, key, uuid, appId, gameId, WIDE);
+        }
+        if (wantIcon) {
+            got |= fetchFirst(app, key, uuid, appId, gameId, ICON);
         }
         return got;
     }

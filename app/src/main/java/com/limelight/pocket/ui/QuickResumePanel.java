@@ -139,7 +139,7 @@ public final class QuickResumePanel extends FrameLayout {
         t.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
         t.setTextColor(ContextCompat.getColor(c, color));
         if (font != null) {
-            t.setTypeface(android.graphics.Typeface.create(font, android.graphics.Typeface.NORMAL));
+            t.setTypeface(com.limelight.pocket.ui.PocketFonts.of(font));
         }
         t.setMaxLines(1);
         t.setEllipsize(TextUtils.TruncateAt.END);

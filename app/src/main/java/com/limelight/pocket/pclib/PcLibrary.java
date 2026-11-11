@@ -258,7 +258,12 @@ public final class PcLibrary {
 
     /** The Apollo app that is this game (same name), else null. */
     public static NvApp apolloAppFor(Context context, String uuid, PcGame game) {
-        String want = PcGame.normalize(game.name);
+        return apolloAppFor(context, uuid, game.name);
+    }
+
+    /** The Apollo app with this name, else null. */
+    public static NvApp apolloAppFor(Context context, String uuid, String name) {
+        String want = PcGame.normalize(name);
         if (want.isEmpty()) {
             return null;
         }

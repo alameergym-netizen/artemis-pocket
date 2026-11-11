@@ -459,7 +459,7 @@ public final class BootOverlay extends FrameLayout {
             fill.setStyle(Paint.Style.FILL);
             text.setColor(0xFFFFFFFF);
             text.setTextSize(16 * getResources().getDisplayMetrics().scaledDensity);
-            text.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            text.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
             small.setColor(0xFFFFFFFF);
             small.setTextSize(10.5f * getResources().getDisplayMetrics().scaledDensity);
             small.setLetterSpacing(0.22f);
@@ -467,7 +467,7 @@ public final class BootOverlay extends FrameLayout {
             line.setStrokeWidth(1.6f * d);
             line.setStrokeCap(Paint.Cap.ROUND);
             word.setColor(0xFFFFFFFF);
-            word.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+            word.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
             wave.setStyle(Paint.Style.FILL);
         }
 

@@ -63,9 +63,10 @@ public class ArtPickerActivity extends ConsoleActivity {
     public static final String EXTRA_NAME = "pocket_art_name";
 
     private static final String KEY_APPLIED = "pocket_art_applied_";
-    private static final int[] TAB_LABELS = {R.string.pocket_art_cover, R.string.pocket_art_background, R.string.pocket_art_logo};
-    private static final int[] SPANS = {6, 2, 3};
-    private static final float[] RATIOS = {1.5f, 620f / 1920f, 9f / 16f};
+    private static final int[] TAB_LABELS = {R.string.pocket_art_cover, R.string.pocket_art_background, R.string.pocket_art_logo,
+            R.string.pocket_art_wide, R.string.pocket_art_icon};
+    private static final int[] SPANS = {6, 2, 3, 3, 6};
+    private static final float[] RATIOS = {1.5f, 620f / 1920f, 9f / 16f, 430f / 920f, 1f};
 
     public static void open(Activity from, String uuid, int appId, String name) {
         Intent i = new Intent(from, ArtPickerActivity.class);
@@ -158,7 +159,7 @@ public class ArtPickerActivity extends ConsoleActivity {
     private ImageView backdrop;
     private TextView title;
     private TextView matchLine;
-    private final TextView[] tabs = new TextView[3];
+    private final TextView[] tabs = new TextView[5];
     private RecyclerView grid;
     private GridLayoutManager layout;
     private TextView status;
@@ -207,7 +208,7 @@ public class ArtPickerActivity extends ConsoleActivity {
         root.addView(column, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // Header: what you are changing, and the three kinds of art
+        // Header: what you are changing, and the kinds of art
         LinearLayout header = new LinearLayout(this);
         header.setOrientation(LinearLayout.HORIZONTAL);
         header.setGravity(Gravity.CENTER_VERTICAL);
@@ -223,14 +224,14 @@ public class ArtPickerActivity extends ConsoleActivity {
         kicker.setLetterSpacing(0.2f);
         kicker.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f);
         kicker.setTextColor(PocketTheme.accent(this));
-        kicker.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        kicker.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         words.addView(kicker);
         title = new TextView(this);
         title.setText(name);
         title.setSingleLine(true);
         title.setEllipsize(android.text.TextUtils.TruncateAt.END);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 24);
-        title.setTypeface(android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL));
+        title.setTypeface(com.limelight.pocket.ui.PocketFonts.regular());
         title.setTextColor(ContextCompat.getColor(this, R.color.pocket_text));
         words.addView(title);
         matchLine = new TextView(this);
@@ -247,13 +248,13 @@ public class ArtPickerActivity extends ConsoleActivity {
         tabRow.setPadding(dp(4), dp(4), dp(4), dp(4));
         TextView l1 = glyph("L1");
         tabRow.addView(l1);
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < tabs.length; i++) {
             final int k = i;
             TextView tab = new TextView(this);
             tab.setText(TAB_LABELS[i]);
             tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-            tab.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
-            tab.setPadding(dp(14), dp(5), dp(14), dp(5));
+            tab.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
+            tab.setPadding(dp(11), dp(5), dp(11), dp(5));
             tab.setOnClickListener(v -> switchKind(k));
             tabs[i] = tab;
             tabRow.addView(tab);
@@ -315,7 +316,7 @@ public class ArtPickerActivity extends ConsoleActivity {
         TextView g = new TextView(this);
         g.setText(label);
         g.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f);
-        g.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+        g.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         g.setTextColor(ContextCompat.getColor(this, R.color.pocket_text_dim));
         g.setPadding(dp(8), 0, dp(8), 0);
         return g;
@@ -323,7 +324,7 @@ public class ArtPickerActivity extends ConsoleActivity {
 
     private void updateTabs() {
         int accent = PocketTheme.accent(this);
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < tabs.length; i++) {
             boolean on = i == kind;
             GradientDrawable bg = new GradientDrawable();
             bg.setCornerRadius(dp(100));
@@ -504,7 +505,7 @@ public class ArtPickerActivity extends ConsoleActivity {
     }
 
     private void switchKind(int next) {
-        if (next < 0 || next > 2 || next == kind) {
+        if (next < 0 || next >= tabs.length || next == kind) {
             return;
         }
         kind = next;
@@ -832,7 +833,7 @@ public class ArtPickerActivity extends ConsoleActivity {
             final SteamGridDb.Image item = images.get(position);
             holder.card.ratio = RATIOS[kind];
             holder.card.setTag(item);
-            holder.image.setScaleType(kind == PocketArt.LOGO ? ImageView.ScaleType.FIT_CENTER : ImageView.ScaleType.CENTER_CROP);
+            holder.image.setScaleType(kind == PocketArt.LOGO || kind == PocketArt.ICON ? ImageView.ScaleType.FIT_CENTER : ImageView.ScaleType.CENTER_CROP);
             int pad = kind == PocketArt.LOGO ? dp(12) : 0;
             holder.image.setPadding(pad, pad, pad, pad);
             holder.check.setVisibility(item.id == applied() && PocketArt.has(ArtPickerActivity.this, uuid, appId, kind)
@@ -842,7 +843,7 @@ public class ArtPickerActivity extends ConsoleActivity {
             holder.image.setImageBitmap(hit);
             if (hit == null) {
                 final ImageView target = holder.image;
-                final int width = kind == PocketArt.HERO ? 480 : 240;
+                final int width = kind == PocketArt.HERO || kind == PocketArt.WIDE ? 480 : 240;
                 thumbs.execute(() -> {
                     Bitmap bitmap = null;
                     try {

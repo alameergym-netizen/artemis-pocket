@@ -182,6 +182,17 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
     private final static int POCKET_POWER_BASE_ID = 100;
     private final static int POCKET_COMPANION_PIN_ID = 130;
     private final static int POCKET_PC_LIBRARY_ID = 131;
+
+    // Pocket Nexus: Home starts a streamed game through here (this screen knows the PCs' state)
+    public static final String EXTRA_HOME_UUID = "pocket.home.uuid";
+    public static final String EXTRA_HOME_APP = "pocket.home.appId";
+    /** Set by the device's Home button: Pocket Nexus's Home comes up. */
+    public static final String EXTRA_SHOW_HOME = "pocket.home.show";
+    private String pocketHomeUuid;
+    private int pocketHomeApp;
+    private long pocketHomeAt;
+    private boolean pocketHomeReturn;
+    private boolean pocketStoppedSinceLaunch;
     private final static int PAIR_ID_OTP = 21;
 
     private void initializeViews() {
@@ -354,6 +365,87 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
             pendingPairingPin = null;
             pendingPairingPassphrase = null;
         }
+
+        // Pocket Nexus: the app opens on Home (this screen, Streaming, stays under it)
+        if (savedInstanceState == null && hostname == null && com.limelight.pocket.PocketPrefs.consoleHome(this)
+                && (Intent.ACTION_MAIN.equals(intent.getAction()) || intent.getBooleanExtra(EXTRA_SHOW_HOME, false))) {
+            intent.removeExtra(EXTRA_SHOW_HOME);
+            pocketOpenHome(false);
+        }
+        pocketTakeHomeLaunch(intent);
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (intent.getBooleanExtra(EXTRA_SHOW_HOME, false)) {
+            intent.removeExtra(EXTRA_SHOW_HOME);
+            if (com.limelight.pocket.PocketPrefs.consoleHome(this)) {
+                pocketOpenHome(false);
+                return;
+            }
+        }
+        pocketTakeHomeLaunch(intent);
+    }
+
+    /** Pocket Nexus's Home, over this screen. */
+    private void pocketOpenHome(boolean animate) {
+        startActivity(new Intent(this, com.limelight.pocket.home.HomeActivity.class));
+        if (animate) {
+            overridePendingTransition(R.anim.pocket_section_in, R.anim.pocket_section_out);
+        }
+        else {
+            overridePendingTransition(0, 0);
+        }
+    }
+
+    /** A game Home asked to start: it starts once its PC's state is known. */
+    private void pocketTakeHomeLaunch(Intent intent) {
+        String uuid = intent != null ? intent.getStringExtra(EXTRA_HOME_UUID) : null;
+        if (uuid == null) {
+            return;
+        }
+        intent.removeExtra(EXTRA_HOME_UUID);
+        pocketHomeUuid = uuid;
+        pocketHomeApp = intent.getIntExtra(EXTRA_HOME_APP, 0);
+        pocketHomeAt = android.os.SystemClock.uptimeMillis();
+        pocketTryHomeLaunch();
+    }
+
+    private void pocketTryHomeLaunch() {
+        if (pocketHomeUuid == null || pcGridAdapter == null) {
+            return;
+        }
+        if (android.os.SystemClock.uptimeMillis() - pocketHomeAt > 30000) {
+            pocketHomeUuid = null;
+            return;
+        }
+        for (int i = 0; i < pcGridAdapter.getCount(); i++) {
+            ComputerDetails pc = ((ComputerObject) pcGridAdapter.getItem(i)).details;
+            if (pc == null || !pocketHomeUuid.equals(pc.uuid)) {
+                continue;
+            }
+            if (pc.state == ComputerDetails.State.UNKNOWN) {
+                return; // its first check isn't back yet
+            }
+            NvApp app = null;
+            for (com.limelight.pocket.RecentGames.Game g : com.limelight.pocket.RecentGames.forPc(this, pc.uuid, 100000)) {
+                if (g.app.getAppId() == pocketHomeApp) {
+                    app = g.app;
+                }
+            }
+            pocketHomeUuid = null;
+            if (app == null) {
+                Toast.makeText(this, R.string.pocket_pclib_app_missing, Toast.LENGTH_LONG).show();
+                return;
+            }
+            // Back to Home after the game, like a console
+            pocketHomeReturn = true;
+            pocketStoppedSinceLaunch = false;
+            pocketLaunch(pc, app);
+            return;
+        }
     }
 
     private void completeOnCreate() {
@@ -456,6 +548,11 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
 
         inForeground = true;
         startComputerUpdates();
+        // A game started from Home is over: Home again
+        if (pocketHomeReturn && pocketStoppedSinceLaunch && !com.limelight.pocket.apps.HomeScreen.streaming) {
+            pocketHomeReturn = false;
+            pocketOpenHome(false);
+        }
     }
 
     @Override
@@ -474,6 +571,7 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
     @Override
     protected void onStop() {
         super.onStop();
+        pocketStoppedSinceLaunch = true;
 
         Dialog.closeDialogs();
     }
@@ -1098,6 +1196,7 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
         if (pcCarousel != null) {
             pcCarousel.post(this::focusFirstPcIfNeeded);
         }
+        pocketTryHomeLaunch();
     }
 
     // ---- Console carousel ------------------------------------------------------------
@@ -2000,6 +2099,11 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
 
     @Override
     public void onBackPressed() {
+        // B in Streaming: back to Home (it's the hub)
+        if (com.limelight.pocket.PocketPrefs.consoleHome(this) && !isConsolePanelShowing()) {
+            pocketOpenHome(true);
+            return;
+        }
         // Pocket Nexus as the device's home screen: Back has nowhere to go from here
         if (com.limelight.pocket.apps.HomeScreen.isDefault(this) && isTaskRoot()) {
             return;

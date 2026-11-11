@@ -353,6 +353,7 @@ public final class RetroLibrary {
             }
         }
         applyGamelists(lib);
+        applyCustomNames(context, lib);
         saveCache(context, lib);
         return lib;
     }
@@ -399,6 +400,7 @@ public final class RetroLibrary {
         }
         if (lib != null) {
             applyGamelists(lib);
+            applyCustomNames(context, lib);
         }
         return lib;
     }
@@ -416,6 +418,18 @@ public final class RetroLibrary {
                 }
             }
         } catch (IOException ignored) {
+        }
+    }
+
+    /** Names given here win over the file's and ES-DE's. */
+    private static void applyCustomNames(Context context, Library lib) {
+        for (List<RomScanner.Rom> l : lib.games.values()) {
+            for (RomScanner.Rom r : l) {
+                String n = PocketPrefs.customName(context, UUID, r.id());
+                if (n != null) {
+                    r.name = n;
+                }
+            }
         }
     }
 
@@ -483,6 +497,16 @@ public final class RetroLibrary {
             if (l.indexOf('\t') > 0) {
                 out.add(l);
             }
+        }
+        return out;
+    }
+
+    /** The games played last as {time, "system/path"}, newest first (for Home). */
+    public static List<String[]> recentEntries(Context context) {
+        List<String[]> out = new ArrayList<>();
+        for (String l : recentLines(context)) {
+            int tab = l.indexOf('\t');
+            out.add(new String[] {l.substring(0, tab), l.substring(tab + 1)});
         }
         return out;
     }

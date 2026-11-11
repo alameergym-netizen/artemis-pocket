@@ -58,10 +58,10 @@ public class PerfGraphView extends View {
         label.setColor(0x8CFFFFFF);
         label.setTextSize(8.5f * sd);
         label.setLetterSpacing(0.14f);
-        label.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        label.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         value.setColor(0xFFFFFFFF);
         value.setTextSize(14f * sd);
-        value.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
+        value.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
         divider.setColor(0x14FFFFFF);
         divider.setStrokeWidth(Math.max(1f, d));
     }

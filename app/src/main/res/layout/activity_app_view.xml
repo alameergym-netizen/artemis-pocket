@@ -46,33 +46,23 @@
             android:alpha="0"
             android:background="#FF000000" />
 
+        <!-- Key art across the whole screen; each layer fades itself out (KeyArtView) -->
         <FrameLayout
             android:id="@+id/pocketKeyArtFrame"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:alpha="0">
 
-            <ImageView
+            <com.limelight.pocket.ui.KeyArtView
                 android:id="@+id/pocketKeyArtA"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:adjustViewBounds="true"
-                android:importantForAccessibility="no"
-                android:scaleType="fitCenter" />
+                android:layout_height="match_parent" />
 
-            <ImageView
+            <com.limelight.pocket.ui.KeyArtView
                 android:id="@+id/pocketKeyArtB"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:adjustViewBounds="true"
-                android:alpha="0"
-                android:importantForAccessibility="no"
-                android:scaleType="fitCenter" />
-
-            <View
-                android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:background="@drawable/pocket_keyart_fade" />
+                android:alpha="0" />
         </FrameLayout>
 
         <View
@@ -108,8 +98,6 @@
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/pocket_glass_pill"
-                android:tag="glass"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
                 android:paddingStart="6dp"
@@ -130,11 +118,13 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="4dp"
                     android:ellipsize="end"
-                    android:fontFamily="sans-serif-medium"
+                    android:fontFamily="@font/inter_semibold"
                     android:maxLines="1"
-                    android:maxWidth="220dp"
+                    android:maxWidth="300dp"
                     android:textColor="@color/pocket_text"
-                    android:textSize="11.5sp" />
+                    android:textSize="14sp"
+                    android:shadowColor="#99000000"
+                    android:shadowRadius="8" />
             </LinearLayout>
 
             <Space
@@ -145,11 +135,9 @@
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/pocket_glass_pill"
-                android:tag="glass"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="4dp"
+                android:paddingStart="6dp"
                 android:paddingTop="3dp"
                 android:paddingEnd="12dp"
                 android:paddingBottom="3dp">
@@ -158,32 +146,35 @@
                     android:id="@+id/pocketLinkChip"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/pocket_chip_bg"
-                    android:fontFamily="sans-serif-medium"
+                    android:fontFamily="@font/inter_medium"
                     android:gravity="center_vertical"
-                    android:paddingStart="8dp"
-                    android:paddingTop="2dp"
-                    android:paddingEnd="9dp"
-                    android:paddingBottom="2dp"
                     android:textColor="@color/pocket_text"
-                    android:textSize="10sp" />
+                    android:textSize="11sp"
+                    android:shadowColor="#99000000"
+                    android:shadowRadius="8" />
 
                 <TextView
                     android:id="@+id/pocketBattery"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
+                    android:layout_marginStart="16dp"
                     android:textColor="@color/pocket_text_dim"
-                    android:textSize="11sp" />
+                    android:textSize="12.5sp"
+                    android:fontFamily="@font/inter_medium"
+                    android:shadowColor="#99000000"
+                    android:shadowRadius="8" />
 
                 <TextView
                     android:id="@+id/pocketClock"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:fontFamily="sans-serif-medium"
+                    android:layout_marginStart="16dp"
+                    android:fontFamily="@font/inter_semibold"
                     android:textColor="@color/pocket_text"
-                    android:textSize="12sp" />
+                    android:textSize="15.5sp"
+                    android:letterSpacing="-0.01"
+                    android:shadowColor="#99000000"
+                    android:shadowRadius="8" />
             </LinearLayout>
         </LinearLayout>
 
@@ -201,7 +192,7 @@
                 android:id="@+id/pocketSectionTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-medium"
+                android:fontFamily="@font/inter_medium"
                 android:letterSpacing="0.2"
                 android:text="@string/pocket_library"
                 android:textAllCaps="true"
@@ -227,7 +218,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
-                android:fontFamily="sans-serif-medium"
+                android:fontFamily="@font/inter_medium"
                 android:letterSpacing="-0.025"
                 android:maxWidth="520dp"
                 android:maxLines="1"
@@ -254,12 +245,11 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginEnd="10dp"
-                    android:fontFamily="sans-serif-medium"
+                    android:fontFamily="@font/inter_medium"
                     android:paddingStart="14dp"
                     android:paddingTop="5dp"
                     android:paddingEnd="18dp"
                     android:paddingBottom="5dp"
-                    android:tag="glass"
                     android:textColor="#FF000000"
                     android:textSize="12.5sp" />
 
@@ -268,7 +258,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/pocket_chip_bg"
-                    android:fontFamily="sans-serif-medium"
+                    android:fontFamily="@font/inter_medium"
                     android:paddingStart="9dp"
                     android:paddingTop="2dp"
                     android:paddingEnd="9dp"
@@ -348,7 +338,7 @@
                 android:clickable="true"
                 android:contentDescription="@string/profile_manager_choose_profile"
                 android:focusable="true"
-                android:fontFamily="sans-serif-medium"
+                android:fontFamily="@font/inter_medium"
                 android:gravity="center"
                 android:maxLines="1"
                 android:minWidth="34dp"
@@ -361,19 +351,19 @@
             <TextView
                 android:id="@+id/pocketPcLibraryButton"
                 android:layout_width="wrap_content"
-                android:layout_height="34dp"
+                android:layout_height="38dp"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/pocket_pill_button_bg"
                 android:clickable="true"
                 android:focusable="true"
-                android:fontFamily="sans-serif-medium"
+                android:fontFamily="@font/inter_semibold"
                 android:gravity="center"
                 android:maxLines="1"
-                android:paddingStart="12dp"
-                android:paddingEnd="13dp"
+                android:paddingStart="14dp"
+                android:paddingEnd="16dp"
                 android:text="@string/pocket_pclib_button"
                 android:textColor="@color/pocket_row_text"
-                android:textSize="11sp" />
+                android:textSize="12.5sp" />
 
             <Space
                 android:layout_width="0dp"

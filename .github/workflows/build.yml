@@ -158,7 +158,7 @@ jobs:
           ram-size: 2560M
           heap-size: 512M
           disk-size: 6000M
-          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -feature -Vulkan -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: false
           script: bash .github/shots/run_shots.sh
 

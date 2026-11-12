@@ -66,6 +66,9 @@ public final class PreviewSeed {
                             if ("bool".equals(p[1])) {
                                 e.putBoolean(p[2], Boolean.parseBoolean(p[3]));
                             }
+                            else if ("set".equals(p[1])) {
+                                e.putStringSet(p[2], new java.util.HashSet<>(java.util.Arrays.asList(p[3].split(","))));
+                            }
                             else if ("int".equals(p[1])) {
                                 e.putInt(p[2], Integer.parseInt(p[3]));
                             }

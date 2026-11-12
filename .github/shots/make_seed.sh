@@ -48,5 +48,8 @@ for g in "${games[@]}"; do
 done
 # One more app with no art at all
 [ $i -lt ${#avail[@]} ] && echo "pin${T}android${T}Phone${T}${avail[$i]}${T}${T}${T}0" >> "$seed"
+# The Android section holds the same apps
+used=$(grep -P "^pin\tandroid\t" "$seed" | cut -f4 | paste -sd, -)
+[ -n "$used" ] && { pref set pocket_android_library "$used"; pref bool pocket_android_library_set true; }
 cat "$seed"
 ls -la "$out"

@@ -6,7 +6,7 @@ set -u
 APK=$(ls "$GITHUB_WORKSPACE"/out/*.apk | head -n 1)
 PKG=com.artemispocket
 SHOTS="$GITHUB_WORKSPACE/shots"
-EMU_OPTS=${EMU_OPTS:-"-no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none"}
+EMU_OPTS=${EMU_OPTS:-"-no-window -no-snapshot -gpu swiftshader_indirect -feature -Vulkan -noaudio -no-boot-anim -camera-back none -camera-front none"}
 mkdir -p "$SHOTS"
 log() { echo "== $*"; }
 alive() { timeout 10 adb shell echo ok > /dev/null 2>&1; }

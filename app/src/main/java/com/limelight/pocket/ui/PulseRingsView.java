@@ -16,11 +16,12 @@ public class PulseRingsView extends View {
     private static final int RINGS = 3;
 
     private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
-    private final Paint core = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint corePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final int accent;
     private final boolean animated;
     private final long start = SystemClock.uptimeMillis();
+    private boolean core = true;
 
     public PulseRingsView(Context context) {
         this(context, null);
@@ -34,9 +35,16 @@ public class PulseRingsView extends View {
         ring.setStyle(Paint.Style.STROKE);
         ring.setStrokeWidth(1.5f * d);
         ring.setColor(accent);
-        core.setColor(accent);
+        corePaint.setColor(accent);
         halo.setColor(accent);
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_NO);
+    }
+
+    /** Off: only the rings (something else, like the logo, sits in the middle). */
+    public PulseRingsView setCore(boolean on) {
+        core = on;
+        invalidate();
+        return this;
     }
 
     @Override
@@ -52,11 +60,13 @@ public class PulseRingsView extends View {
             ring.setAlpha(Math.round(200 * (1 - p) * (1 - p)));
             canvas.drawCircle(cx, cy, r, ring);
         }
-        float breathe = 0.5f + 0.5f * (float) Math.sin(t * 2 * Math.PI / PERIOD);
-        halo.setAlpha(Math.round(40 + 40 * breathe));
-        canvas.drawCircle(cx, cy, max * (0.2f + 0.05f * breathe), halo);
-        core.setAlpha(255);
-        canvas.drawCircle(cx, cy, max * 0.09f, core);
+        if (core) {
+            float breathe = 0.5f + 0.5f * (float) Math.sin(t * 2 * Math.PI / PERIOD);
+            halo.setAlpha(Math.round(40 + 40 * breathe));
+            canvas.drawCircle(cx, cy, max * (0.2f + 0.05f * breathe), halo);
+            corePaint.setAlpha(255);
+            canvas.drawCircle(cx, cy, max * 0.09f, corePaint);
+        }
         if (animated && isShown()) {
             postInvalidateOnAnimation();
         }

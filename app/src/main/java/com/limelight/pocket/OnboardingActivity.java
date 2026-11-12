@@ -539,7 +539,7 @@ public class OnboardingActivity extends ConsoleActivity {
     // Welcome: the logo, alive, and three things to know
     private void buildWelcomeStage() {
         FrameLayout hero = new FrameLayout(this);
-        hero.addView(new PulseRingsView(this), new FrameLayout.LayoutParams(dp(230), dp(230), Gravity.CENTER));
+        hero.addView(new PulseRingsView(this).setCore(false), new FrameLayout.LayoutParams(dp(230), dp(230), Gravity.CENTER));
         ImageView big = new ImageView(this);
         big.setImageResource(R.drawable.ic_pocket_mark);
         big.setColorFilter(PocketTheme.accent(this));

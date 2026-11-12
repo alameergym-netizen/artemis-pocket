@@ -758,9 +758,9 @@ public class HomeActivity extends ConsoleActivity {
         chip.setMaxLines(1);
         chip.setPadding(Math.round(9 * d), Math.round(5 * d), Math.round(10 * d), Math.round(5 * d));
         GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(100 * d);
-        bg.setColor(0x33FFFFFF);
-        bg.setStroke(Math.max(1, Math.round(0.75f * d)), 0x24FFFFFF);
+        // A small badge, not a ring (console style: no outline)
+        bg.setCornerRadius(6 * d);
+        bg.setColor(0x40FFFFFF);
         chip.setBackground(bg);
         if (icon != 0) {
             Drawable dr = getDrawable(icon);
@@ -787,9 +787,9 @@ public class HomeActivity extends ConsoleActivity {
         chip.setGravity(Gravity.CENTER_VERTICAL);
         chip.setPadding(Math.round(3 * d), Math.round(3 * d), Math.round(10 * d), Math.round(3 * d));
         GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(100 * d);
-        bg.setColor(0x33FFFFFF);
-        bg.setStroke(Math.max(1, Math.round(0.75f * d)), 0x24FFFFFF);
+        // A small badge, not a ring (console style: no outline)
+        bg.setCornerRadius(6 * d);
+        bg.setColor(0x40FFFFFF);
         chip.setBackground(bg);
         TextView box = new TextView(this);
         box.setText(String.valueOf(score));
@@ -800,7 +800,7 @@ public class HomeActivity extends ConsoleActivity {
         int color = score >= 75 ? 0xFF66CC33 : (score >= 50 ? 0xFFFFCC33 : 0xFFFF3B30);
         box.setTextColor(score >= 50 && score < 75 ? 0xFF1A1A1A : 0xFFFFFFFF);
         GradientDrawable sq = new GradientDrawable();
-        sq.setCornerRadius(100 * d);
+        sq.setCornerRadius(4 * d);
         sq.setColor(color);
         box.setBackground(sq);
         box.setPadding(Math.round(6 * d), Math.round(3 * d), Math.round(6 * d), Math.round(3 * d));

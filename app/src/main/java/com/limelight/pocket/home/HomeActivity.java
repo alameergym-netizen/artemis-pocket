@@ -512,6 +512,9 @@ public class HomeActivity extends ConsoleActivity {
             desc.setVisibility(View.GONE);
             return;
         }
+        // Two lines under a one-line name, one under a long name or a logo (the row stays clear)
+        boolean tall = logo.getVisibility() == View.VISIBLE || title.getLineCount() > 1;
+        desc.setMaxLines(tall ? 1 : 2);
         desc.setText(text.trim());
         if (desc.getVisibility() != View.VISIBLE) {
             desc.setVisibility(View.VISIBLE);

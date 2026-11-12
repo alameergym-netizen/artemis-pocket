@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   apk:
-    if: github.ref_name != 'ci-logs'
+    if: github.ref_name != 'ci-logs' && github.ref_name != 'ci-shots'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -107,3 +107,54 @@ jobs:
           git add -A
           git commit -q -m "CI log for ${GITHUB_SHA::7} (${STATUS})"
           git push -q --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/ci-logs
+
+  # The app on an Android emulator: every main screen photographed with games in it, so the
+  # design can be checked without a handheld. Pushed to the ci-shots branch (plain git to read).
+  shots:
+    needs: apk
+    if: github.ref_name != 'ci-logs' && github.ref_name != 'ci-shots'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Get the APK
+        uses: actions/download-artifact@v4
+        with:
+          name: PocketNexus-apk
+          path: out
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Screenshots on the emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 33
+          target: google_apis
+          arch: x86_64
+          ram-size: 4096M
+          disk-size: 6000M
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          disable-animations: false
+          script: bash .github/shots/run_shots.sh
+
+      - name: Push screenshots
+        if: always()
+        run: |
+          mkdir -p shots
+          cd shots
+          echo "commit: ${GITHUB_SHA}" > status.txt
+          echo "status: ${{ job.status }}" >> status.txt
+          git init -q
+          git config user.name "ci-bot"
+          git config user.email "ci-bot@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Screenshots for ${GITHUB_SHA::7}"
+          git push -q --force "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/ci-shots

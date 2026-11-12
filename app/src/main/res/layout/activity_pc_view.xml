@@ -410,7 +410,7 @@
             <TextView
                 android:id="@+id/profilesButton"
                 android:layout_width="wrap_content"
-                android:layout_height="34dp"
+                android:layout_height="30dp"
                 android:layout_marginStart="8dp"
                 android:background="@drawable/pocket_pill_button_bg"
                 android:clickable="true"

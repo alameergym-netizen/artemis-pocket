@@ -17,6 +17,8 @@ public class ArtemisApplication extends Application {
         com.limelight.pocket.CrashReporter.install(this);
         // Pocket Nexus: the interface typeface (Inter)
         com.limelight.pocket.ui.PocketFonts.init(this);
+        // Screenshots on the build's emulator: games and art to show (never runs on a handheld)
+        com.limelight.pocket.PreviewSeed.apply(this);
         ProfilesManager profilesManager = ProfilesManager.getInstance();
         if (!profilesManager.load(this)) {
             Toast.makeText(this, R.string.profile_manager_failed_to_load, Toast.LENGTH_LONG).show();

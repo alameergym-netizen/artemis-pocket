@@ -43,7 +43,21 @@ ensure_emulator() {
   done
   sleep 5
   setup_device
-  alive
+  alive || return 1
+  # A restarted emulator can come back without the app (and its seed)
+  timeout 20 adb shell pm path $PKG > /dev/null 2>&1 || prepare_app
+  return 0
+}
+
+prepare_app() {
+  log "install"
+  timeout 180 adb install -r -g "$APK" 2>&1 | tail -3
+  # First start creates the app's folders, then the seed goes in
+  timeout 60 adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null; sleep 6
+  push_seed /tmp/seed
+  # ...and is read by the next start
+  timeout 60 adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null; sleep 6
+  adb shell am force-stop $PKG
 }
 
 push_seed() {
@@ -68,16 +82,10 @@ scene() { # name
 
 setup_device
 adb shell getprop ro.product.cpu.abilist
-log "install"
-adb install -r -g "$APK" 2>&1 | tail -3
-
 adb shell pm list packages | sed 's/^package://' | sort > /tmp/pkgs.txt
 bash "$GITHUB_WORKSPACE/.github/shots/make_seed.sh" /tmp/seed /tmp/pkgs.txt > /tmp/seed.log 2>&1
 cat /tmp/seed.log
-
-# First start creates the app's folders, then the seed goes in
-timeout 60 adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null; sleep 6
-push_seed /tmp/seed
+prepare_app
 adb logcat -c
 
 if scene home; then

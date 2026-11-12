@@ -88,6 +88,17 @@ public final class PcCompanion {
         }
     }
 
+    /**
+     * The port to reach the helper at: over the cable always 47110 (the PC maps it to its own
+     * port), over Wi-Fi the one set for that PC (Pocket Nexus PC's "Wi-Fi port").
+     */
+    public static int portFor(Context context, String host, String pcUuid) {
+        if (host == null || UsbBridge.HOST_IP.equals(host) || host.startsWith("127.")) {
+            return PORT;
+        }
+        return PocketPrefs.getCompanionPort(context, pcUuid);
+    }
+
     /** Opens a session (blocking; never on the main thread). Null when the helper isn't there. */
     public static Session open(Context context, String host, String pcUuid) {
         if (host == null) {
@@ -96,7 +107,7 @@ public final class PcCompanion {
         Socket socket = new Socket();
         try {
             socket.setTcpNoDelay(true);
-            socket.connect(new InetSocketAddress(host, PORT), CONNECT_TIMEOUT_MS);
+            socket.connect(new InetSocketAddress(host, portFor(context, host, pcUuid)), CONNECT_TIMEOUT_MS);
             socket.setSoTimeout(READ_TIMEOUT_MS);
             String token = PocketPrefs.getCompanionToken(context, pcUuid);
             OutputStream out = socket.getOutputStream();
@@ -131,7 +142,7 @@ public final class PcCompanion {
         Socket socket = new Socket();
         try {
             socket.setTcpNoDelay(true);
-            socket.connect(new InetSocketAddress(host, PORT), 800);
+            socket.connect(new InetSocketAddress(host, portFor(context, host, pcUuid)), 800);
             socket.setSoTimeout(800);
             String token = PocketPrefs.getCompanionToken(context, pcUuid);
             OutputStream out = socket.getOutputStream();
@@ -201,7 +212,78 @@ public final class PcCompanion {
         new Thread(() -> {
             String reply = run(app, UsbBridge.HOST_IP, pcUuid, "TOKEN");
             LimeLog.info("Artemis Pocket PC over USB: " + (reply == null ? "not running" : "token synced"));
+            // Its Wi-Fi port too (changed on the PC): the handheld finds it there from now on
+            String port = reply != null ? run(app, UsbBridge.HOST_IP, pcUuid, "WIFIPORT") : null;
+            if (port != null && port.startsWith("WIFIPORT ")) {
+                try {
+                    PocketPrefs.setCompanionPort(app, pcUuid, Integer.parseInt(port.substring(9).trim()));
+                } catch (NumberFormatException ignored) {
+                }
+            }
         }, "PocketCompanionSync").start();
+    }
+
+    /**
+     * Asks which port Pocket Nexus PC listens on over Wi-Fi on this PC (set in its icon next to
+     * the clock > Wi-Fi port), keeps it, then checks the helper answers there.
+     */
+    public static void askWifiPort(final android.app.Activity a, final String host, final String pcUuid, String pcName) {
+        if (pcUuid == null) {
+            return;
+        }
+        final android.widget.EditText input = new android.widget.EditText(a);
+        input.setInputType(android.text.InputType.TYPE_CLASS_NUMBER);
+        input.setText(String.valueOf(PocketPrefs.getCompanionPort(a, pcUuid)));
+        input.setSelectAllOnFocus(true);
+        input.setTextSize(22);
+        input.setGravity(android.view.Gravity.CENTER);
+        input.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(5)});
+        android.widget.FrameLayout box = new android.widget.FrameLayout(a);
+        int pad = Math.round(20 * a.getResources().getDisplayMetrics().density);
+        box.setPadding(pad, pad / 2, pad, 0);
+        box.addView(input);
+        ConsoleActivity.showImmersive(new android.app.AlertDialog.Builder(a, com.limelight.R.style.PocketDialog)
+                .setTitle(a.getString(com.limelight.R.string.pocket_companion_port_title, pcName != null ? pcName : ""))
+                .setMessage(com.limelight.R.string.pocket_companion_port_body)
+                .setView(box)
+                .setPositiveButton(android.R.string.ok, (d, w) -> {
+                    int port;
+                    try {
+                        port = Integer.parseInt(input.getText().toString().trim());
+                    } catch (NumberFormatException e) {
+                        port = -1;
+                    }
+                    if (port < 1024 || port > 65535) {
+                        android.widget.Toast.makeText(a, com.limelight.R.string.pocket_companion_port_bad,
+                                android.widget.Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    savePortAndCheck(a, host, pcUuid, port);
+                })
+                .setNeutralButton(com.limelight.R.string.pocket_companion_port_default,
+                        (d, w) -> savePortAndCheck(a, host, pcUuid, PORT))
+                .setNegativeButton(android.R.string.cancel, null)
+                .create());
+    }
+
+    private static void savePortAndCheck(final android.app.Activity a, String host, String pcUuid, final int port) {
+        PocketPrefs.setCompanionPort(a, pcUuid, port);
+        if (host == null) {
+            android.widget.Toast.makeText(a, a.getString(com.limelight.R.string.pocket_companion_port_saved, port),
+                    android.widget.Toast.LENGTH_LONG).show();
+            return;
+        }
+        runAsync(a, host, pcUuid, "PING", reply -> {
+            if (a.isFinishing()) {
+                return;
+            }
+            boolean ok = reply != null && reply.startsWith("PONG");
+            if (ok) {
+                PocketSounds.play(a, PocketSounds.TOGGLE_ON);
+            }
+            android.widget.Toast.makeText(a, a.getString(ok ? com.limelight.R.string.pocket_companion_port_ok
+                    : com.limelight.R.string.pocket_companion_port_missing, port), android.widget.Toast.LENGTH_LONG).show();
+        });
     }
 
     /** Where to find the helper for a stream host: the same address (127.0.0.1 over USB). */

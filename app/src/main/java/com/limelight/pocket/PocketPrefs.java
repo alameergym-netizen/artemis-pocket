@@ -653,6 +653,27 @@ public final class PocketPrefs {
         return seen > 0 && System.currentTimeMillis() - seen < 14L * 24 * 3600 * 1000;
     }
 
+    private static final String KEY_COMPANION_PORT_PREFIX = "pocket_companion_port_";
+
+    /** The port Pocket Nexus PC listens on over Wi-Fi on this PC (47110 unless it was changed there). */
+    public static int getCompanionPort(Context context, String pcUuid) {
+        int p = pcUuid == null ? 0 : prefs(context).getInt(KEY_COMPANION_PORT_PREFIX + pcUuid, 0);
+        return p > 0 && p < 65536 ? p : PcCompanion.PORT;
+    }
+
+    /** port 0 (or 47110): back to the usual one. */
+    public static void setCompanionPort(Context context, String pcUuid, int port) {
+        if (pcUuid == null) {
+            return;
+        }
+        if (port <= 0 || port == PcCompanion.PORT || port > 65535) {
+            prefs(context).edit().remove(KEY_COMPANION_PORT_PREFIX + pcUuid).apply();
+        }
+        else {
+            prefs(context).edit().putInt(KEY_COMPANION_PORT_PREFIX + pcUuid, port).apply();
+        }
+    }
+
     // PC companion pairing token per PC
     public static String getCompanionToken(Context context, String pcUuid) {
         return pcUuid == null ? null : prefs(context).getString(KEY_COMPANION_TOKEN_PREFIX + pcUuid, null);

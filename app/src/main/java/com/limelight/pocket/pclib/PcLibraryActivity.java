@@ -933,6 +933,11 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         if (status == PcLibrary.NOT_LINKED) {
             items.add(StreamMenuView.Item.action(getString(R.string.pocket_companion_pin_menu), this::askPin));
         }
+        // Pocket Nexus PC set to another Wi-Fi port on the PC: the same one here
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_companion_port), () -> {
+            hideConsolePanel();
+            com.limelight.pocket.PcCompanion.askWifiPort(this, host, uuid, pcName);
+        }).withValue(String.valueOf(com.limelight.pocket.PocketPrefs.getCompanionPort(this, uuid))));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_pclib_try_again), () -> load(false)));
         showConsolePanel(getString(R.string.pocket_pclib_helper_title), statusText(), null, items);
     }

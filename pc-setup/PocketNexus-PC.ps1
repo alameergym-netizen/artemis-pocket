@@ -16,23 +16,46 @@
 #                                   next to the clock: PIN, status, Start with Windows, Quit)
 #                                   and starts with Windows, hidden
 #   PocketNexus-PC.bat -Console     runs in this window instead (to watch what it does)
+#   PocketNexus-PC.bat -WifiPort N  the port the handheld reaches it on over Wi-Fi (47110 unless
+#                                   changed; also from its icon: Wi-Fi port). Kept for next time.
 #
 # How the cable part works
 #   adb reverse   handheld 127.0.0.1:47984/47989/48010 -> Apollo on this PC   (TCP)
 #   adb reverse   handheld 127.0.0.1:47100             -> the bridge (stream packets)
-#   adb reverse   handheld 127.0.0.1:47110             -> the PC helper
+#   adb reverse   handheld 127.0.0.1:47110             -> the PC helper (on its Wi-Fi port)
 
-param([switch]$Autostart, [switch]$Background, [switch]$Console, [switch]$SelfTest)
+param([switch]$Autostart, [switch]$Background, [switch]$Console, [switch]$SelfTest, [int]$WifiPort = 0)
 
 $ErrorActionPreference = "Continue"
 if ($Autostart) { $Background = $true }
 $ScriptPath = $MyInvocation.MyCommand.Path
 $here = Split-Path -Parent $ScriptPath
 $TunnelPort = 47100
-$CompanionPort = 47110
+$DefaultCompanionPort = 47110
 $TcpPorts = @(47984, 47989, 48010, 47990)
 $DataDir = "$env:LOCALAPPDATA\ArtemisPocket"
 New-Item -ItemType Directory -Force -Path $DataDir | Out-Null
+
+# The PC helper's port over Wi-Fi: 47110 unless it was changed (-WifiPort, or the icon's menu).
+# Over the cable the handheld always uses 47110 (mapped to this port), so only Wi-Fi cares.
+$PortFile = "$DataDir\wifi-port.txt"
+function Read-WifiPort {
+    try {
+        if (Test-Path $PortFile) {
+            $v = 0
+            if ([int]::TryParse(((Get-Content $PortFile -Raw) + "").Trim(), [ref]$v) -and $v -ge 1024 -and $v -le 65535) { return $v }
+        }
+    } catch { }
+    return $DefaultCompanionPort
+}
+if ($WifiPort -ne 0) {
+    if ($WifiPort -ge 1024 -and $WifiPort -le 65535) {
+        Set-Content -Path $PortFile -Value $WifiPort -NoNewline
+    } else {
+        Write-Host "  The Wi-Fi port must be between 1024 and 65535 - kept the old one" -ForegroundColor Red
+    }
+}
+$CompanionPort = Read-WifiPort
 $LogFile = "$DataDir\pocket-nexus-pc.log"
 $StatusFile = "$DataDir\status.txt"
 $Launcher = "$DataDir\PocketNexus-PC.vbs"
@@ -289,9 +312,12 @@ public static class PocketCompanion {
 
     static volatile int cpuPercent = 0;
 
+    public static int WifiPort = 47110;
+
     public static void Start(int port, string token, string pin) {
         Token = token;
         Pin = pin;
+        WifiPort = port;
         listener = new TcpListener(IPAddress.Any, port);
         listener.Start();
         Thread accept = new Thread(AcceptLoop);
@@ -339,6 +365,8 @@ public static class PocketCompanion {
                 } else if (cmd == "TOKEN") {
                     WriteLine(s, trusted ? "TOKEN " + Token : "ERR auth");
                     if (trusted) { Log("Handheld linked through the cable (Wi-Fi control is ready too)"); }
+                } else if (cmd == "WIFIPORT") {
+                    WriteLine(s, "WIFIPORT " + WifiPort);
                 } else if (cmd == "PAIR") {
                     string result = CheckPin(p.Length > 1 ? p[1] : "");
                     if (result == null) {
@@ -1675,7 +1703,7 @@ function Start-Servers {
 
     $script:companionOk = $true
     try { [PocketCompanion]::Start($CompanionPort, $token, $script:pin) }
-    catch { $script:companionOk = $false; Say "PC helper: port $CompanionPort is busy (another program uses it)" "Yellow" }
+    catch { $script:companionOk = $false; Say "PC helper: port $CompanionPort is busy (another program uses it) - pick another Wi-Fi port from the icon next to the clock" "Yellow" }
 }
 
 function Write-Status {
@@ -1683,6 +1711,7 @@ function Write-Status {
         ("started=" + [DateTime]::UtcNow.Ticks),
         ("pin=" + $script:pin),
         ("companion=" + $(if ($script:companionOk) { "ok" } else { "busy" })),
+        ("port=" + $CompanionPort),
         ("usb=" + $(if (-not $script:bridgeOk) { "port $TunnelPort busy" } elseif (-not $script:adb) { "ADB missing" } else { "ok" })),
         ("pclib=" + $(if ($script:pcLibraryError) { $script:pcLibraryError } else { "ok" }))
     )
@@ -1694,7 +1723,8 @@ function Set-Reverse {
     & $script:adb reverse --remove-all 2>$null | Out-Null
     foreach ($p in $TcpPorts) { & $script:adb reverse "tcp:$p" "tcp:$p" 2>$null | Out-Null }
     & $script:adb reverse "tcp:$TunnelPort" "tcp:$TunnelPort" 2>$null | Out-Null
-    & $script:adb reverse "tcp:$CompanionPort" "tcp:$CompanionPort" 2>$null | Out-Null
+    # The handheld always asks 47110 over the cable: it lands on this PC's Wi-Fi port
+    & $script:adb reverse "tcp:$DefaultCompanionPort" "tcp:$CompanionPort" 2>$null | Out-Null
 }
 
 function Reset-UsbMode {
@@ -1726,7 +1756,7 @@ function Invoke-Tick {
         } elseif ($state -eq "device") {
             # Keep the port rules alive (they vanish if adb restarts)
             $rules = ((& $script:adb reverse --list 2>$null) -join " ")
-            if ($rules -notmatch "tcp:$CompanionPort") { Set-Reverse }
+            if ($rules -notmatch "tcp:$DefaultCompanionPort") { Set-Reverse }
         }
     }
     $sessions = [PocketBridge]::Sessions
@@ -1781,11 +1811,57 @@ function Get-StatusText {
     $lines = @()
     $lines += "Wi-Fi link PIN: " + $script:pin
     $lines += "PC helper: " + $(if ($script:companionOk) { "ready" } else { "port $CompanionPort busy" })
+    $lines += "Wi-Fi port: " + $CompanionPort
     $lines += "PC library: " + $(if ($script:pcLibraryError) { "unavailable - " + $script:pcLibraryError } else { "ready" })
     $lines += "USB-C: " + $(if (-not $script:adb) { "ADB missing" } elseif ($script:lastState -eq "device") { "handheld connected" } else { "no handheld on the cable" })
     $apollo = Get-NetTCPConnection -LocalPort 47989 -State Listen -ErrorAction SilentlyContinue
     $lines += "Apollo: " + $(if ($apollo) { "running" } else { "not running" })
     return ($lines -join "`r`n")
+}
+
+# The firewall rule follows the port (only when there is one: it was allowed at setup)
+function Update-FirewallPort([int]$port) {
+    $rule = Get-NetFirewallRule -DisplayName "Pocket Nexus PC" -ErrorAction SilentlyContinue
+    if (-not $rule) { return $false }
+    $cmd = "Remove-NetFirewallRule -DisplayName 'Pocket Nexus PC' -ErrorAction SilentlyContinue; " +
+        "New-NetFirewallRule -DisplayName 'Pocket Nexus PC' -Direction Inbound -Protocol TCP -LocalPort $port -Action Allow -Profile Private,Domain"
+    try {
+        Start-Process powershell.exe -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList "-NoProfile -Command $cmd"
+        return $true
+    } catch {
+        Write-Log ("Firewall rule not changed: " + $_.Exception.Message)
+        return $false
+    }
+}
+
+# Icon menu > Wi-Fi port: asks for another one, keeps it and starts again on it
+function Edit-WifiPort {
+    Add-Type -AssemblyName Microsoft.VisualBasic
+    $text = "The port the handheld reaches Pocket Nexus PC on over Wi-Fi (1024 - 65535, usually 47110)." +
+        "`r`n`r`nOn the handheld, use the same one: the PC's options > Pocket Nexus PC Wi-Fi port" +
+        " (or stream once over the USB cable and it picks it up by itself)."
+    $answer = [Microsoft.VisualBasic.Interaction]::InputBox($text, "Pocket Nexus PC - Wi-Fi port", "" + $CompanionPort)
+    if (-not $answer) { return }
+    $new = 0
+    if (-not [int]::TryParse($answer.Trim(), [ref]$new) -or $new -lt 1024 -or $new -gt 65535) {
+        [void][System.Windows.Forms.MessageBox]::Show("Pick a number between 1024 and 65535.", "Pocket Nexus PC")
+        return
+    }
+    if ($new -eq $CompanionPort) { return }
+    if (Get-NetTCPConnection -LocalPort $new -State Listen -ErrorAction SilentlyContinue) {
+        [void][System.Windows.Forms.MessageBox]::Show("Port $new is already used by another program on this PC. Pick another one.", "Pocket Nexus PC")
+        return
+    }
+    Set-Content -Path $PortFile -Value $new -NoNewline
+    Write-Log "Wi-Fi port changed to $new"
+    $fw = Update-FirewallPort $new
+    $msg = "The Wi-Fi port is now $new" + $(if ($fw) { " (firewall rule updated)" } else { "" }) + "." +
+        "`r`n`r`nOn the handheld: the PC's options > Pocket Nexus PC Wi-Fi port > $new." +
+        "`r`n`r`nPocket Nexus PC starts again now."
+    [void][System.Windows.Forms.MessageBox]::Show($msg, "Pocket Nexus PC")
+    Write-Launcher
+    Start-Process wscript.exe -ArgumentList "`"$Launcher`""
+    Stop-Tray
 }
 
 function Stop-Tray {
@@ -1803,6 +1879,8 @@ function Start-Tray {
     $title.Enabled = $false
     $pinItem = $menu.Items.Add("Wi-Fi link PIN: " + $script:pin + "   (click to copy)")
     $pinItem.add_Click({ try { [System.Windows.Forms.Clipboard]::SetText($script:pin) } catch { } })
+    $portItem = $menu.Items.Add("Wi-Fi port: " + $CompanionPort + "   (change)")
+    $portItem.add_Click({ try { Edit-WifiPort } catch { Write-Log ("Wi-Fi port: " + $_.Exception.Message) } })
     [void]$menu.Items.Add((New-Object System.Windows.Forms.ToolStripSeparator))
     $statusItem = $menu.Items.Add("Status")
     $statusItem.add_Click({ [void][System.Windows.Forms.MessageBox]::Show((Get-StatusText), "Pocket Nexus PC") })
@@ -1864,6 +1942,7 @@ function Invoke-SelfTest {
     $hello = $reader.ReadLine()
     Check ($hello -like "OK 1 *") ("hello: " + $hello)
     $writer.WriteLine("PING"); Check ($reader.ReadLine() -eq "PONG") "PING"
+    $writer.WriteLine("WIFIPORT"); $wp = $reader.ReadLine(); Check ($wp -eq ("WIFIPORT " + $CompanionPort)) ("WIFIPORT: " + $wp)
     $writer.WriteLine("VERSION"); $v = $reader.ReadLine(); Check ($v -like "VERSION * games") ("VERSION: " + $v)
     $writer.WriteLine("GAMES")
     $n = 0
@@ -1966,6 +2045,11 @@ if (-not $Background -and -not $Console -and -not $SelfTest) {
         }
     }
 
+    # A new Wi-Fi port given here (-WifiPort): the firewall rule follows it
+    if ($WifiPort -ne 0) {
+        if (Update-FirewallPort $CompanionPort) { Say "Firewall rule moved to port $CompanionPort" "Green" }
+    }
+
     # Starts with Windows, hidden (the old Artemis Pocket shortcuts are replaced)
     $startupDir = [Environment]::GetFolderPath("Startup")
     foreach ($oldLink in @("$startupDir\Artemis Pocket USB bridge.lnk", "$startupDir\Artemis Pocket PC.lnk")) {
@@ -1999,8 +2083,9 @@ if (-not $Background -and -not $Console -and -not $SelfTest) {
         $map = @{}
         foreach ($l in $status) { $kv = $l -split "=", 2; if ($kv.Count -eq 2) { $map[$kv[0]] = $kv[1] } }
         Say ("Wi-Fi link PIN: " + $map["pin"]) "Green"
+        Say ("Wi-Fi port: " + $map["port"] + "   (to change it: the icon next to the clock > Wi-Fi port)") "Green"
         if ($map["companion"] -eq "ok") { Say "PC helper ready (power, status, microphone)" "Green" }
-        else { Say "PC helper: port $CompanionPort is busy - another program uses it" "Red" }
+        else { Say "PC helper: port $CompanionPort is busy - another program uses it. Pick another one: the icon next to the clock > Wi-Fi port, or PocketNexus-PC.bat -WifiPort 47120" "Red" }
         if ($map["pclib"] -eq "ok") { Say "PC library ready (Steam, non-Steam, Epic, GOG, PC apps)" "Green" }
         else { Say ("PC library unavailable: " + $map["pclib"]) "Yellow" }
         if ($map["usb"] -ne "ok") { Say ("USB-C: " + $map["usb"]) "Yellow" }

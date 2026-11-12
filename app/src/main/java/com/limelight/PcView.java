@@ -1268,6 +1268,13 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
                         com.limelight.pocket.ConnectionTest.run(this, host, port, usb != null, computer.details.name);
                     }));
         }
+        // Pocket Nexus PC's port over Wi-Fi (changed in its icon next to the clock)
+        extra.add(com.limelight.pocket.ui.StreamMenuView.Item.action(getString(R.string.pocket_companion_port),
+                () -> {
+                    hideConsolePanel();
+                    com.limelight.pocket.PcCompanion.askWifiPort(this, pocketCompanionHost(computer.details),
+                            computer.details.uuid, computer.details.name);
+                }).withValue(String.valueOf(PocketPrefs.getCompanionPort(this, computer.details.uuid))));
         // Where it's reached over Wi-Fi, and on which port (Sunshine / Apollo set to another one)
         extra.add(com.limelight.pocket.ui.StreamMenuView.Item.action(getString(R.string.pocket_pc_address),
                 () -> {

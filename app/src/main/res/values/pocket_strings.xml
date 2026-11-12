@@ -1240,4 +1240,12 @@
     <string name="pocket_pc_address_saved">%1$s is reached at %2$s now</string>
     <string name="pocket_pc_address_other">That address is another PC (%1$s): it was added</string>
     <string name="pocket_info_which">Which game is it?</string>
+    <string name="pocket_companion_port">Pocket Nexus PC Wi-Fi port</string>
+    <string name="pocket_companion_port_title">Pocket Nexus PC on %1$s</string>
+    <string name="pocket_companion_port_body">The port Pocket Nexus PC listens on over Wi-Fi (47110 unless you changed it). Use the same one as on the PC: its icon next to the clock &gt; Wi-Fi port.</string>
+    <string name="pocket_companion_port_default">Default (47110)</string>
+    <string name="pocket_companion_port_bad">Pick a port between 1024 and 65535</string>
+    <string name="pocket_companion_port_saved">Wi-Fi port set to %1$d</string>
+    <string name="pocket_companion_port_ok">Pocket Nexus PC answers on port %1$d</string>
+    <string name="pocket_companion_port_missing">Saved, but nothing answers on port %1$d yet: check the port on the PC and that Pocket Nexus PC is running</string>
 </resources>

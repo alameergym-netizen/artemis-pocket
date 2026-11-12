@@ -1245,4 +1245,12 @@
     <string name="pocket_pc_address_saved">صار الاتصال بـ %1$s على %2$s</string>
     <string name="pocket_pc_address_other">هالعنوان لجهاز ثاني (%1$s) وانضاف</string>
     <string name="pocket_info_which">أي لعبة هي؟</string>
+    <string name="pocket_companion_port">بورت الوايفاي لـ Pocket Nexus PC</string>
+    <string name="pocket_companion_port_title">Pocket Nexus PC على %1$s</string>
+    <string name="pocket_companion_port_body">البورت اللي بيسمع عليه Pocket Nexus PC على الوايفاي (‏47110 إذا ما غيرته). لازم يكون نفس اللي على الكمبيوتر: أيقونته جنب الساعة ‹ Wi-Fi port.</string>
+    <string name="pocket_companion_port_default">الافتراضي (47110)</string>
+    <string name="pocket_companion_port_bad">اختار بورت بين 1024 و 65535</string>
+    <string name="pocket_companion_port_saved">صار بورت الوايفاي %1$d</string>
+    <string name="pocket_companion_port_ok">Pocket Nexus PC بيرد على البورت %1$d</string>
+    <string name="pocket_companion_port_missing">انحفظ، بس ما في إشي بيرد على البورت %1$d لهلأ: تأكد من البورت على الكمبيوتر وإنو Pocket Nexus PC شغال</string>
 </resources>

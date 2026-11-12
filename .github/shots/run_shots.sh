@@ -44,8 +44,6 @@ shot 01_home
 key KEYCODE_DPAD_RIGHT dpad 2.5; shot 02_home_next
 key KEYCODE_BUTTON_Y gamepad 2; shot 03_home_options
 key KEYCODE_BUTTON_B gamepad 1.5
-key KEYCODE_BUTTON_X gamepad 5; shot 04_game_page
-key KEYCODE_BUTTON_B gamepad 2.5
 for n in 1 2 3 4 5 6 7 8 9; do key KEYCODE_DPAD_RIGHT dpad 0.5; done
 sleep 1.5; shot 05_home_last
 key KEYCODE_BUTTON_A gamepad 2.5; shot 06_home_add
@@ -69,6 +67,16 @@ for mode in grid xmb; do
   key KEYCODE_BUTTON_R1 gamepad 5; shot "13_android_$mode"
   key KEYCODE_DPAD_RIGHT dpad 2; shot "14_android_${mode}_next"
 done
+
+# The game page last: its videos can bring the emulator down
+rm -rf /tmp/seed3; mkdir -p /tmp/seed3
+printf 'pref\tstring\tpocket_view_mode\tcarousel\n' > /tmp/seed3/seed.txt
+push_seed /tmp/seed3
+adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null; sleep 13
+key KEYCODE_DPAD_RIGHT dpad 1.5
+key KEYCODE_DPAD_RIGHT dpad 2
+key KEYCODE_BUTTON_X gamepad 6; shot 04_game_page
+key KEYCODE_DPAD_DOWN dpad 3; shot 04_game_page_more
 
 adb logcat -d -b crash > "$SHOTS/crash.txt" 2>&1 || true
 adb logcat -d -v brief | grep -E "AndroidRuntime|$PKG|W/View|E/" | tail -n 400 > "$SHOTS/logcat.txt" 2>&1 || true

@@ -107,7 +107,7 @@ import java.util.concurrent.Executors;
 public class HomeActivity extends ConsoleActivity {
 
     private static final float TILE_DP = 72f;
-    private static final float FOCUS_SCALE = 1.14f;
+    private static final float FOCUS_SCALE = 1.1f;
     private static final long CHECK_TIMEOUT_MS = 12000;
     private static final long WAKE_TIMEOUT_MS = 75000;
 
@@ -1055,8 +1055,7 @@ public class HomeActivity extends ConsoleActivity {
             hideConsolePanel();
             openSection(item);
         }));
-        items.add(StreamMenuView.Item.header(getString(R.string.pocket_section_home)));
-        items.add(StreamMenuView.Item.action(getString(R.string.pocket_home_add), this::showAddPanel));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_home_add_more), this::showAddPanel));
         PocketSounds.play(this, PocketSounds.OPEN);
         showConsolePanel(displayName(item), where(e), null, items);
     }
@@ -1470,6 +1469,11 @@ public class HomeActivity extends ConsoleActivity {
                     plus.setBounds(0, 0, s, s);
                 }
                 h.label.setCompoundDrawables(null, plus, null, null);
+                // The plus and its word centred together
+                int iconPx = plus != null ? plus.getBounds().height() : 0;
+                int group = iconPx + h.label.getCompoundDrawablePadding() + h.label.getLineHeight();
+                h.label.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL);
+                h.label.setPadding(0, Math.max(0, (Math.round(TILE_DP * d) - group) / 2), 0, 0);
                 return;
             }
             final HomeItem item = e.item;

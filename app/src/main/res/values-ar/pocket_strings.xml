@@ -1114,4 +1114,5 @@
     <string name="pocket_home_loading_list">عم يجيب ألعاب الكمبيوتر…</string>
     <string name="pocket_home_list_failed">ما قدر يجيب ألعاب الكمبيوتر. هو شغال؟</string>
     <string name="pocket_home_pc_list_offline">شغّل الكمبيوتر (أو صحّيه من خانة الستريمنق) عشان تشوف ألعابه</string>
+    <string name="pocket_home_add_more">أضف لعبة أو تطبيق…</string>
 </resources>

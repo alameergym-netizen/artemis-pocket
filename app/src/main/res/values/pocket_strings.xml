@@ -1113,4 +1113,5 @@
     <string name="pocket_home_loading_list">Getting the PC\'s games…</string>
     <string name="pocket_home_list_failed">Couldn\'t get the PC\'s games. Is it on?</string>
     <string name="pocket_home_pc_list_offline">Turn the PC on (or wake it from Streaming) to see its games</string>
+    <string name="pocket_home_add_more">Add a game or app…</string>
 </resources>

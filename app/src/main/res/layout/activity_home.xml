@@ -241,7 +241,7 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|start"
             android:layout_marginStart="28dp"
-            android:layout_marginBottom="122dp"
+            android:layout_marginBottom="124dp"
             android:fontFamily="@font/inter_semibold"
             android:shadowColor="#80000000"
             android:shadowRadius="8"
@@ -252,7 +252,7 @@
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/homeRow"
             android:layout_width="match_parent"
-            android:layout_height="100dp"
+            android:layout_height="104dp"
             android:layout_gravity="bottom"
             android:layout_marginBottom="22dp"
             android:clipChildren="false"

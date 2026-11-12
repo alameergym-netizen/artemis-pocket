@@ -2,8 +2,8 @@
 <!-- One tile of Home's row: 72dp art with rounded corners, where it's from in a small badge,
      and a white ring (a little apart from the art) when focused -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="84dp"
-    android:layout_height="84dp"
+    android:layout_width="88dp"
+    android:layout_height="88dp"
     android:clipChildren="false"
     android:clipToPadding="false"
     android:focusable="true">

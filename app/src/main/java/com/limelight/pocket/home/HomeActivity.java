@@ -2077,21 +2077,58 @@ public class HomeActivity extends ConsoleActivity {
         String uuid = artUuid(item);
         if (uuid != null) {
             int id = artId(item);
+            // Art picked by hand wins over art found by itself (a cover picked for a game shows
+            // even where a square or wide capsule was fetched for it)
+            boolean pickedCover = com.limelight.pocket.ArtPickerActivity.picked(this, uuid, id, PocketArt.COVER);
+            boolean pickedHero = com.limelight.pocket.ArtPickerActivity.picked(this, uuid, id, PocketArt.HERO);
             if (!cover && !wide) {
+                boolean ownSquare = com.limelight.pocket.ArtPickerActivity.picked(this, uuid, id, PocketArt.SQUARE);
+                if (pickedCover && !ownSquare) {
+                    Bitmap own = decode(PocketArt.file(this, uuid, id, PocketArt.COVER), w);
+                    if (own != null) {
+                        return crop(own, w, h, 0.38f);
+                    }
+                }
                 Bitmap sq = decode(PocketArt.file(this, uuid, id, PocketArt.SQUARE), w);
                 if (sq != null) {
                     return crop(sq, w, h, 0.5f);
                 }
             }
             if (wide) {
+                boolean ownWide = com.limelight.pocket.ArtPickerActivity.picked(this, uuid, id, PocketArt.WIDE);
+                if (pickedHero && !ownWide) {
+                    Bitmap own = decode(PocketArt.file(this, uuid, id, PocketArt.HERO), h * 2);
+                    if (own != null) {
+                        return crop(own, w, h, 0.45f);
+                    }
+                }
                 Bitmap wd = decode(PocketArt.file(this, uuid, id, PocketArt.WIDE), h);
                 if (wd != null) {
                     return crop(wd, w, h, 0.5f);
                 }
             }
+            if (cover && pickedCover) {
+                Bitmap own = decode(PocketArt.file(this, uuid, id, PocketArt.COVER), w);
+                if (own != null) {
+                    return crop(own, w, h, 0.5f);
+                }
+            }
             // An Android app with no art of its own: its icon (never a lettered card)
             boolean appOnly = HomeItem.ANDROID.equals(item.kind) && !PocketArt.has(this, uuid, id, PocketArt.COVER)
                     && !PocketArt.has(this, uuid, id, PocketArt.HERO);
+            if (HomeItem.SHORTCUT.equals(item.kind)) {
+                // A shortcut shows its app's icon, unless a cover (or background) was picked for it
+                Bitmap picked = decode(PocketArt.file(this, uuid, id, PocketArt.COVER), w);
+                if (picked != null) {
+                    return crop(picked, w, h, cover ? 0.5f : 0.38f);
+                }
+                if (wide) {
+                    Bitmap hero = decode(PocketArt.file(this, uuid, id, PocketArt.HERO), h * 2);
+                    if (hero != null) {
+                        return crop(hero, w, h, 0.45f);
+                    }
+                }
+            }
             if (!HomeItem.SHORTCUT.equals(item.kind) && !appOnly) {
                 if (wide) {
                     Bitmap hero = decode(PocketArt.file(this, uuid, id, PocketArt.HERO), h * 2);

@@ -61,15 +61,23 @@ public class ArtPickerActivity extends ConsoleActivity {
     public static final String EXTRA_UUID = "pocket_art_uuid";
     public static final String EXTRA_APP_ID = "pocket_art_app";
     public static final String EXTRA_NAME = "pocket_art_name";
+    /** The kind of art to open on (PocketArt.COVER ... SQUARE). */
+    public static final String EXTRA_KIND = "pocket_art_kind";
 
     private static final String KEY_APPLIED = "pocket_art_applied_";
     private static final int[] TAB_LABELS = {R.string.pocket_art_cover, R.string.pocket_art_background, R.string.pocket_art_logo,
-            R.string.pocket_art_wide, R.string.pocket_art_icon};
-    private static final int[] SPANS = {6, 2, 3, 3, 6};
-    private static final float[] RATIOS = {1.5f, 620f / 1920f, 9f / 16f, 430f / 920f, 1f};
+            R.string.pocket_art_wide, R.string.pocket_art_icon, R.string.pocket_art_square};
+    private static final int[] SPANS = {6, 2, 3, 3, 6, 5};
+    private static final float[] RATIOS = {1.5f, 620f / 1920f, 9f / 16f, 430f / 920f, 1f, 1f};
 
     public static void open(Activity from, String uuid, int appId, String name) {
+        open(from, uuid, appId, name, PocketArt.COVER);
+    }
+
+    /** Opens on one kind of art (each kind is picked by itself: cover, background, logo, ...). */
+    public static void open(Activity from, String uuid, int appId, String name, int kind) {
         Intent i = new Intent(from, ArtPickerActivity.class);
+        i.putExtra(EXTRA_KIND, kind);
         i.putExtra(EXTRA_UUID, uuid);
         i.putExtra(EXTRA_APP_ID, appId);
         i.putExtra(EXTRA_NAME, name);
@@ -159,7 +167,7 @@ public class ArtPickerActivity extends ConsoleActivity {
     private ImageView backdrop;
     private TextView title;
     private TextView matchLine;
-    private final TextView[] tabs = new TextView[5];
+    private final TextView[] tabs = new TextView[TAB_LABELS.length];
     private RecyclerView grid;
     private GridLayoutManager layout;
     private TextView status;
@@ -177,6 +185,7 @@ public class ArtPickerActivity extends ConsoleActivity {
         uuid = getIntent().getStringExtra(EXTRA_UUID);
         appId = getIntent().getIntExtra(EXTRA_APP_ID, 0);
         name = getIntent().getStringExtra(EXTRA_NAME);
+        kind = Math.max(0, Math.min(TAB_LABELS.length - 1, getIntent().getIntExtra(EXTRA_KIND, PocketArt.COVER)));
         if (uuid == null || appId == 0) {
             finish();
             return;
@@ -515,6 +524,11 @@ public class ArtPickerActivity extends ConsoleActivity {
         if (PocketArt.hasKey(this) && gameId != 0) {
             loadImages();
         }
+    }
+
+    /** True when this kind of art was picked by hand for it (it wins over art found by itself). */
+    public static boolean picked(Context context, String uuid, int appId, int kind) {
+        return PocketPrefs.prefs(context).getInt(KEY_APPLIED + uuid + "_" + appId + "_" + kind, 0) != 0;
     }
 
     private int applied() {

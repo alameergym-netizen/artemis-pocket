@@ -47,6 +47,12 @@ public final class LiveGlass {
      * fully frosted at the bottom, no edge and no tint. Under a shelf of games or a menu.
      */
     public static final int STYLE_FADE = 2;
+    /** The same, the other way up: frosted at the top, clear at the bottom (over a list's top edge). */
+    public static final int STYLE_FADE_UP = 3;
+
+    static boolean fades(int style) {
+        return style == STYLE_FADE || style == STYLE_FADE_UP;
+    }
 
     private static final float SCALE = 0.25f;
 
@@ -139,7 +145,7 @@ public final class LiveGlass {
         }
         GlassDrawable glass = new GlassDrawable(host, backdrop, style);
         host.setBackground(glass);
-        host.setClipToOutline(style != STYLE_FADE);
+        host.setClipToOutline(!fades(style));
         if (backdrop != null && !backdrop.hosts.contains(host)) {
             backdrop.hosts.add(host);
             backdrop.glasses.add(glass);
@@ -278,9 +284,11 @@ public final class LiveGlass {
             super.onBoundsChange(bounds);
             rect.set(bounds);
             float h = bounds.height();
-            if (style == STYLE_FADE) {
-                // Clear at the top, frosted from 55% down (a smooth ease, no visible start)
-                fadeMask.setShader(new LinearGradient(0, rect.top, 0, rect.bottom,
+            if (fades(style)) {
+                // Clear at the top, frosted from 55% down (a smooth ease, no visible start); or
+                // the other way up
+                boolean up = style == STYLE_FADE_UP;
+                fadeMask.setShader(new LinearGradient(0, up ? rect.bottom : rect.top, 0, up ? rect.top : rect.bottom,
                         new int[]{0x00000000, 0x2E000000, 0x9E000000, 0xFF000000, 0xFF000000},
                         new float[]{0f, 0.18f, 0.38f, 0.58f, 1f}, Shader.TileMode.CLAMP));
                 fadeMask.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN));
@@ -329,7 +337,7 @@ public final class LiveGlass {
             if (rect.isEmpty()) {
                 return;
             }
-            if (style == STYLE_FADE) {
+            if (fades(style)) {
                 if (backdrop == null || !backdrop.ready || backdrop.failed || !supported()
                         || !canvas.isHardwareAccelerated()) {
                     return;

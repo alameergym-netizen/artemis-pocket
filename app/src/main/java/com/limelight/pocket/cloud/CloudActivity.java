@@ -288,6 +288,11 @@ public class CloudActivity extends ConsoleActivity implements CarouselAdapter.Li
             }));
         }
         items.add(com.limelight.pocket.home.HomePins.item(this, homeItem(s)));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_art_change), () -> {
+            hideConsolePanel();
+            // SteamGridDB: its cover, background, logo (each picked by itself)
+            com.limelight.pocket.ArtPickerActivity.open(this, artUuid(s), artId(s), getString(s.name));
+        }));
         if (s.isRunning(this)) {
             items.add(StreamMenuView.Item.confirm(getString(R.string.pocket_cloud_close, getString(s.name)), () -> {
                 s.stop(this);

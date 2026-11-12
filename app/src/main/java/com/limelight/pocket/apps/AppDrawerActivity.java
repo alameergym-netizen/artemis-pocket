@@ -216,7 +216,7 @@ public class AppDrawerActivity extends ConsoleActivity {
         backdrop.addView(glow, new FrameLayout.LayoutParams(-1, -1));
         View shade = new View(this);
         shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0x33000000, 0x8C050507, 0xE6000000}));
+                new int[]{0x26000000, 0x8C050507, 0xE6000000}));
         backdrop.addView(shade, new FrameLayout.LayoutParams(-1, -1));
         root.addView(backdrop, new FrameLayout.LayoutParams(-1, -1));
 
@@ -224,21 +224,32 @@ public class AppDrawerActivity extends ConsoleActivity {
         main.setId(R.id.pocketMain);
         main.setOrientation(LinearLayout.VERTICAL);
         main.setPadding(dp(30), dp(12), dp(30), 0);
-        main.setClipChildren(false);
-        main.setClipToPadding(false);
         root.addView(main, new FrameLayout.LayoutParams(-1, -1));
 
-        // Top: where you are, and the status
+        // Top: what this is and how many; the status on the right (plain, like a console's)
         LinearLayout top = new LinearLayout(this);
         top.setOrientation(LinearLayout.HORIZONTAL);
         top.setGravity(Gravity.CENTER_VERTICAL);
+        ImageView mark = new ImageView(this);
+        mark.setImageResource(R.drawable.ic_pocket_all_apps);
+        mark.setAlpha(0.9f);
+        top.addView(mark, new LinearLayout.LayoutParams(dp(15), dp(15)));
         TextView where = new TextView(this);
         where.setId(R.id.appListText);
-        where.setText(R.string.pocket_section_android);
-        where.setTypeface(PocketFonts.medium());
-        where.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
-        where.setTextColor(0xB3FFFFFF);
-        top.addView(where);
+        where.setText(R.string.pocket_drawer_title);
+        where.setTypeface(PocketFonts.semibold());
+        where.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
+        where.setTextColor(0xFFFFFFFF);
+        LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(-2, -2);
+        wlp.setMarginStart(dp(8));
+        top.addView(where, wlp);
+        count = new TextView(this);
+        count.setTypeface(PocketFonts.medium());
+        count.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+        count.setTextColor(0x8CFFFFFF);
+        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-2, -2);
+        clp.setMarginStart(dp(8));
+        top.addView(count, clp);
         top.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
         for (int id : new int[]{R.id.pocketLinkChip, R.id.pocketBattery, R.id.pocketClock}) {
             TextView t = new TextView(this);
@@ -253,58 +264,26 @@ public class AppDrawerActivity extends ConsoleActivity {
         }
         main.addView(top, new LinearLayout.LayoutParams(-1, dp(28)));
 
-        // The title, how many, the order; categories under it
-        LinearLayout head = new LinearLayout(this);
-        head.setOrientation(LinearLayout.HORIZONTAL);
-        head.setGravity(Gravity.BOTTOM);
-        head.setPadding(0, dp(10), 0, dp(10));
-        TextView title = new TextView(this);
-        title.setText(R.string.pocket_drawer_title);
-        title.setTypeface(PocketFonts.bold());
-        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 30f);
-        title.setLetterSpacing(-0.025f);
-        title.setTextColor(0xFFFFFFFF);
-        title.setIncludeFontPadding(false);
-        head.addView(title);
-        count = new TextView(this);
-        count.setTypeface(PocketFonts.medium());
-        count.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
-        count.setTextColor(0x99FFFFFF);
-        LinearLayout.LayoutParams clp = new LinearLayout.LayoutParams(-2, -2);
-        clp.setMarginStart(dp(12));
-        clp.bottomMargin = dp(3);
-        head.addView(count, clp);
-        head.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
-        sortView = new TextView(this);
-        sortView.setTypeface(PocketFonts.medium());
-        sortView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
-        sortView.setTextColor(0xD9FFFFFF);
-        sortView.setGravity(Gravity.CENTER);
-        sortView.setPadding(dp(12), dp(5), dp(12), dp(5));
-        GradientDrawable sortBg = new GradientDrawable();
-        sortBg.setCornerRadius(dp(100));
-        sortBg.setColor(0x33FFFFFF);
-        sortBg.setStroke(Math.max(1, dp(0.75f)), 0x1FFFFFFF);
-        sortView.setBackground(sortBg);
-        sortView.setOnClickListener(v -> onSelectButton());
-        LinearLayout.LayoutParams slp = new LinearLayout.LayoutParams(-2, -2);
-        slp.bottomMargin = dp(2);
-        head.addView(sortView, slp);
-        main.addView(head, new LinearLayout.LayoutParams(-1, -2));
-
+        // The categories as plain words (PlayStation Portal style), the order and search after them
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
         tabsView = new LinearLayout(this);
         tabsView.setOrientation(LinearLayout.HORIZONTAL);
         tabsView.setGravity(Gravity.CENTER_VERTICAL);
-        tabsView.setPadding(dp(3), 0, dp(3), 0);
-        GradientDrawable capsule = new GradientDrawable();
-        capsule.setCornerRadius(dp(15));
-        capsule.setColor(0xD91C1C1F);
-        capsule.setStroke(Math.max(1, dp(0.75f)), 0x26FFFFFF);
-        tabsView.setBackground(capsule);
-        bar.addView(tabsView, new LinearLayout.LayoutParams(-2, dp(30)));
+        bar.addView(tabsView, new LinearLayout.LayoutParams(-2, dp(36)));
+        bar.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+        sortView = plainAction("");
+        sortView.setOnClickListener(v -> onSelectButton());
+        bar.addView(sortView);
+        TextView find = plainAction("\u2315  " + getString(R.string.pocket_drawer_search));
+        find.setOnClickListener(v -> onButtonX());
+        LinearLayout.LayoutParams flp = new LinearLayout.LayoutParams(-2, -2);
+        flp.setMarginStart(dp(18));
+        bar.addView(find, flp);
+        LinearLayout.LayoutParams barLp = new LinearLayout.LayoutParams(-1, dp(36));
+        barLp.topMargin = dp(8);
+        main.addView(bar, barLp);
 
         // Search (X): a field that filters as you type
         LinearLayout box = new LinearLayout(this);
@@ -312,12 +291,11 @@ public class AppDrawerActivity extends ConsoleActivity {
         box.setGravity(Gravity.CENTER_VERTICAL);
         box.setPadding(dp(12), 0, dp(12), 0);
         GradientDrawable boxBg = new GradientDrawable();
-        boxBg.setCornerRadius(dp(15));
-        boxBg.setColor(0xD91C1C1F);
-        boxBg.setStroke(Math.max(1, dp(1f)), 0x4DFFFFFF);
+        boxBg.setCornerRadius(dp(10));
+        boxBg.setColor(0x2EFFFFFF);
         box.setBackground(boxBg);
         TextView lens = new TextView(this);
-        lens.setText("⌕");
+        lens.setText("\u2315");
         lens.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
         lens.setTextColor(0xB3FFFFFF);
         box.addView(lens);
@@ -372,34 +350,47 @@ public class AppDrawerActivity extends ConsoleActivity {
         box.addView(search, new LinearLayout.LayoutParams(0, -1, 1f));
         searchBox = box;
         searchBox.setVisibility(View.GONE);
-        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(0, dp(30), 1f);
-        blp.setMarginStart(dp(10));
-        bar.addView(box, blp);
-        main.addView(bar, new LinearLayout.LayoutParams(-1, -2));
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(-1, dp(34));
+        blp.topMargin = dp(6);
+        main.addView(box, blp);
         drawTabs();
 
-        // The grid
+        // The grid, in a box of its own: nothing scrolls over the header, and its top and bottom
+        // edges melt away (a light blur where the handheld can, a soft shade otherwise)
         FrameLayout body = new FrameLayout(this);
-        body.setClipChildren(false);
-        body.setClipToPadding(false);
         int screenW = getResources().getDisplayMetrics().widthPixels - dp(60);
-        int cell = dp(122);
-        columns = Math.max(4, Math.min(9, screenW / cell));
-        tileSize = Math.round(Math.min(dp(104), screenW / (float) columns - dp(22)));
+        columns = Math.max(5, Math.min(9, screenW / dp(118)));
+        tileSize = Math.round(Math.min(dp(98), screenW / (float) columns - dp(20)));
         grid = new RecyclerView(this);
         layout = new GridLayoutManager(this, columns);
         grid.setLayoutManager(layout);
         grid.setItemAnimator(null);
         grid.setClipToPadding(false);
         grid.setClipChildren(false);
-        grid.setPadding(0, dp(16), 0, dp(80));
-        grid.setVerticalFadingEdgeEnabled(true);
-        grid.setFadingEdgeLength(dp(28));
+        // Room for the focused tile's glow inside the box
+        grid.setPadding(dp(16), dp(18), dp(16), dp(96));
         grid.setAdapter(tiles);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             grid.setDefaultFocusHighlightEnabled(false);
         }
         body.addView(grid, new FrameLayout.LayoutParams(-1, -1));
+        View topFade = new View(this);
+        View bottomFade = new View(this);
+        body.addView(topFade, new FrameLayout.LayoutParams(-1, dp(26), Gravity.TOP));
+        body.addView(bottomFade, new FrameLayout.LayoutParams(-1, dp(120), Gravity.BOTTOM));
+        View topShade = new View(this);
+        topShade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x99000000, 0x00000000}));
+        body.addView(topShade, new FrameLayout.LayoutParams(-1, dp(22), Gravity.TOP));
+        View bottomShade = new View(this);
+        bottomShade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x00000000, 0x8C000000, 0xF2000000}));
+        body.addView(bottomShade, new FrameLayout.LayoutParams(-1, dp(110), Gravity.BOTTOM));
+        if (com.limelight.pocket.ui.LiveGlass.supported() && PocketPrefs.liveGlass(this)) {
+            com.limelight.pocket.ui.LiveGlass.Backdrop blur = new com.limelight.pocket.ui.LiveGlass.Backdrop(grid, 12f, false);
+            com.limelight.pocket.ui.LiveGlass.attach(topFade, blur, com.limelight.pocket.ui.LiveGlass.STYLE_FADE_UP);
+            com.limelight.pocket.ui.LiveGlass.attach(bottomFade, blur, com.limelight.pocket.ui.LiveGlass.STYLE_FADE);
+        }
         empty = new TextView(this);
         empty.setTypeface(PocketFonts.medium());
         empty.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f);
@@ -407,7 +398,9 @@ public class AppDrawerActivity extends ConsoleActivity {
         empty.setGravity(Gravity.CENTER);
         empty.setText(R.string.pocket_apps_loading);
         body.addView(empty, new FrameLayout.LayoutParams(dp(420), -2, Gravity.CENTER));
-        main.addView(body, new LinearLayout.LayoutParams(-1, 0, 1f));
+        LinearLayout.LayoutParams bodyLp = new LinearLayout.LayoutParams(-1, 0, 1f);
+        bodyLp.setMargins(-dp(16), dp(2), -dp(16), 0);
+        main.addView(body, bodyLp);
 
         // The letter that L2 / R2 jumped to, big in the middle for a moment
         letterToast = new TextView(this);
@@ -416,9 +409,8 @@ public class AppDrawerActivity extends ConsoleActivity {
         letterToast.setTextColor(0xFFFFFFFF);
         letterToast.setGravity(Gravity.CENTER);
         GradientDrawable toastBg = new GradientDrawable();
-        toastBg.setCornerRadius(dp(26));
-        toastBg.setColor(0xCC16161A);
-        toastBg.setStroke(Math.max(1, dp(1f)), 0x33FFFFFF);
+        toastBg.setCornerRadius(dp(18));
+        toastBg.setColor(0xD916161A);
         letterToast.setBackground(toastBg);
         letterToast.setAlpha(0f);
         letterToast.setElevation(dp(16));
@@ -435,59 +427,52 @@ public class AppDrawerActivity extends ConsoleActivity {
         return root;
     }
 
+    /** A plain action in the bar (the order, search): words, no outline. */
+    private TextView plainAction(String text) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTypeface(PocketFonts.medium());
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+        t.setTextColor(0xD9FFFFFF);
+        t.setShadowLayer(6 * d, 0, 0, 0x99000000);
+        t.setGravity(Gravity.CENTER_VERTICAL);
+        return t;
+    }
+
     private void drawTabs() {
         tabsView.removeAllViews();
-        TextView l1 = glyph("L1");
-        LinearLayout.LayoutParams g1 = new LinearLayout.LayoutParams(-2, -2);
-        g1.setMarginStart(dp(5));
-        g1.setMarginEnd(dp(4));
-        tabsView.addView(l1, g1);
+        tabsView.addView(dimKey("L1"));
         for (int i = 0; i < TABS.length; i++) {
             final int which = i;
-            boolean on = i == tab;
-            TextView t = new TextView(this);
             String text = getString(TABS[i]);
             int n = countIn(i);
             if (n > 0) {
                 text += "  " + n;
             }
-            t.setText(text);
-            t.setTypeface(on ? PocketFonts.semibold() : PocketFonts.medium());
-            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
-            t.setIncludeFontPadding(false);
-            t.setGravity(Gravity.CENTER);
-            t.setTextColor(on ? (accent == 0xFFFFFFFF ? 0xFF0B0B0D : 0xFFFFFFFF) : 0xB3FFFFFF);
-            t.setPadding(dp(13), 0, dp(13), 0);
-            if (on) {
-                GradientDrawable chip = new GradientDrawable();
-                chip.setCornerRadius(dp(12));
-                chip.setColor(accent);
-                t.setBackground(chip);
-            }
+            TextView t = com.limelight.pocket.ui.SectionBar.portalTab(this, text, i == tab, d);
+            t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
+            t.setPadding(dp(11), 0, dp(11), 0);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(36));
+            lp.gravity = Gravity.CENTER_VERTICAL;
+            t.setLayoutParams(lp);
             t.setOnClickListener(v -> setTab(which));
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, dp(24));
-            lp.setMargins(dp(0.5f), 0, dp(0.5f), 0);
-            tabsView.addView(t, lp);
+            tabsView.addView(t);
         }
-        TextView r1 = glyph("R1");
-        LinearLayout.LayoutParams g2 = new LinearLayout.LayoutParams(-2, -2);
-        g2.setMarginStart(dp(4));
-        g2.setMarginEnd(dp(5));
-        tabsView.addView(r1, g2);
+        tabsView.addView(dimKey("R1"));
     }
 
-    private TextView glyph(String text) {
+    /** The shoulder button that switches the categories: small faded words. */
+    private TextView dimKey(String text) {
         TextView g = new TextView(this);
         g.setText(text);
-        g.setTypeface(PocketFonts.semibold());
-        g.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f);
-        g.setTextColor(0xD9FFFFFF);
+        g.setTypeface(PocketFonts.bold());
+        g.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f);
+        g.setTextColor(0x73FFFFFF);
         g.setIncludeFontPadding(false);
-        g.setPadding(dp(5), dp(2), dp(5), dp(2));
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(dp(5));
-        bg.setStroke(Math.max(1, dp(1f)), 0x80FFFFFF);
-        g.setBackground(bg);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-2, -2);
+        lp.gravity = Gravity.CENTER_VERTICAL;
+        lp.setMargins(dp(2), 0, dp(2), 0);
+        g.setLayoutParams(lp);
         return g;
     }
 
@@ -573,7 +558,7 @@ public class AppDrawerActivity extends ConsoleActivity {
         }
         tiles.notifyDataSetChanged();
         count.setText(getResources().getQuantityString(R.plurals.pocket_drawer_count, shown.size(), shown.size()));
-        sortView.setText("☰  " + getString(SORTS[sort]));
+        sortView.setText("\u2261  " + getString(SORTS[sort]));
         empty.setVisibility(shown.isEmpty() ? View.VISIBLE : View.GONE);
         if (shown.isEmpty()) {
             empty.setText(all.isEmpty() ? R.string.pocket_apps_loading : R.string.pocket_drawer_nothing);
@@ -785,6 +770,12 @@ public class AppDrawerActivity extends ConsoleActivity {
                 tiles.notifyItemChanged(at);
             }
         }));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_art_change_icon), () -> {
+            hideConsolePanel();
+            // SteamGridDB: an icon, or a square picture for the whole tile (each by itself)
+            com.limelight.pocket.ArtPickerActivity.open(this, AndroidLibrary.UUID, AndroidLibrary.idFor(a.pkg), a.label,
+                    com.limelight.pocket.PocketArt.ICON);
+        }));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_apps_info), () -> {
             hideConsolePanel();
             try {
@@ -850,20 +841,69 @@ public class AppDrawerActivity extends ConsoleActivity {
     // ---- Tiles ------------------------------------------------------------------------------------
 
     private static final class Tile extends RecyclerView.ViewHolder {
-        final FrameLayout card;
-        final ImageView icon;
+        final FrameLayout frame;
+        final ImageView art;
         final TextView name;
         final TextView badge;
-        final GradientDrawable face;
         String pkg;
+        String key;
 
-        Tile(View v, FrameLayout card, ImageView icon, TextView name, TextView badge, GradientDrawable face) {
+        Tile(View v, FrameLayout frame, ImageView art, TextView name, TextView badge) {
             super(v);
-            this.card = card;
-            this.icon = icon;
+            this.frame = frame;
+            this.art = art;
             this.name = name;
             this.badge = badge;
-            this.face = face;
+        }
+    }
+
+    /**
+     * The focus: a white line just outside the tile, its edge a little soft, with a glow of light
+     * around it (no hard ring).
+     */
+    private static final class GlowRing extends Drawable {
+        private final android.graphics.Paint line = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint halo = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.RectF r = new android.graphics.RectF();
+        private final float out;
+        private final float radius;
+
+        GlowRing(float d, float tileRadius) {
+            out = 4f * d;
+            radius = tileRadius + out;
+            line.setStyle(android.graphics.Paint.Style.STROKE);
+            line.setStrokeWidth(2.4f * d);
+            line.setColor(0xF2FFFFFF);
+            halo.setStyle(android.graphics.Paint.Style.STROKE);
+            halo.setStrokeWidth(5f * d);
+            halo.setColor(0x73FFFFFF);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                line.setMaskFilter(new android.graphics.BlurMaskFilter(0.9f * d, android.graphics.BlurMaskFilter.Blur.NORMAL));
+                halo.setMaskFilter(new android.graphics.BlurMaskFilter(9f * d, android.graphics.BlurMaskFilter.Blur.NORMAL));
+            }
+        }
+
+        @Override
+        public void draw(@NonNull Canvas canvas) {
+            r.set(getBounds());
+            r.inset(-out, -out);
+            canvas.drawRoundRect(r, radius, radius, halo);
+            canvas.drawRoundRect(r, radius, radius, line);
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            line.setAlpha(Math.round(0xF2 * alpha / 255f));
+            halo.setAlpha(Math.round(0x73 * alpha / 255f));
+        }
+
+        @Override
+        public void setColorFilter(android.graphics.ColorFilter filter) {
+        }
+
+        @Override
+        public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
         }
     }
 
@@ -882,30 +922,32 @@ public class AppDrawerActivity extends ConsoleActivity {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 cell.setDefaultFocusHighlightEnabled(false);
             }
-            cell.setPadding(0, dp(8), 0, dp(6));
+            cell.setPadding(0, dp(6), 0, dp(4));
             cell.setLayoutParams(new RecyclerView.LayoutParams(-1, -2));
 
-            final FrameLayout card = new FrameLayout(c);
+            final float radius = dp(14);
+            // The frame carries the focus glow (outside the tile); the tile inside is clipped round
+            final FrameLayout frame = new FrameLayout(c);
+            frame.setClipChildren(false);
+            FrameLayout card = new FrameLayout(c);
             GradientDrawable face = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{0xFF2A2A31, 0xFF141418});
-            face.setCornerRadius(dp(22));
+            face.setCornerRadius(radius);
             card.setBackground(face);
             card.setOutlineProvider(new ViewOutlineProvider() {
                 @Override
                 public void getOutline(View view, Outline outline) {
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), dp(22));
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
                 }
             });
-            card.setElevation(dp(4));
-            // A fine light edge at the top (glass)
+            card.setClipToOutline(true);
+            card.setElevation(dp(3));
+            ImageView art = new ImageView(c);
+            art.setScaleType(ImageView.ScaleType.FIT_XY);
+            card.addView(art, new FrameLayout.LayoutParams(-1, -1));
+            // A fine light along the top edge (glass)
             View sheen = new View(c);
-            GradientDrawable sh = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x2EFFFFFF, 0x00FFFFFF});
-            sh.setCornerRadius(dp(22));
-            sheen.setBackground(sh);
-            card.addView(sheen, new FrameLayout.LayoutParams(-1, -1));
-            ImageView icon = new ImageView(c);
-            icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-            int iconSize = Math.round(tileSize * 0.6f);
-            card.addView(icon, new FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER));
+            sheen.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x26FFFFFF, 0x00FFFFFF}));
+            card.addView(sheen, new FrameLayout.LayoutParams(-1, Math.round(tileSize * 0.4f)));
             TextView badge = new TextView(c);
             badge.setText(R.string.pocket_drawer_new);
             badge.setTypeface(PocketFonts.bold());
@@ -913,51 +955,48 @@ public class AppDrawerActivity extends ConsoleActivity {
             badge.setLetterSpacing(0.08f);
             badge.setTextColor(0xFF0B0B0D);
             badge.setIncludeFontPadding(false);
-            badge.setPadding(dp(6), dp(3), dp(6), dp(3));
-            GradientDrawable pill = new GradientDrawable();
-            pill.setCornerRadius(dp(100));
-            pill.setColor(0xFFFFFFFF);
-            badge.setBackground(pill);
+            badge.setPadding(dp(5), dp(3), dp(5), dp(3));
+            GradientDrawable tag = new GradientDrawable();
+            tag.setCornerRadius(dp(4));
+            tag.setColor(0xFFFFFFFF);
+            badge.setBackground(tag);
             FrameLayout.LayoutParams blp = new FrameLayout.LayoutParams(-2, -2, Gravity.TOP | Gravity.START);
-            blp.setMargins(dp(8), dp(8), 0, 0);
+            blp.setMargins(dp(7), dp(7), 0, 0);
             card.addView(badge, blp);
-            // The focus ring, just outside the tile
-            GradientDrawable ring = new GradientDrawable();
-            ring.setCornerRadius(dp(26));
-            ring.setStroke(Math.round(dp(2.5f)), 0xFFFFFFFF);
-            final Drawable ringOutside = new InsetDrawable(ring, -dp(4.5f));
-            cell.addView(card, new LinearLayout.LayoutParams(tileSize, tileSize));
+            frame.addView(card, new FrameLayout.LayoutParams(-1, -1));
+            final Drawable ring = new GlowRing(d, radius);
+            cell.addView(frame, new LinearLayout.LayoutParams(tileSize, tileSize));
 
             TextView name = new TextView(c);
             name.setTypeface(PocketFonts.medium());
             name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
             name.setTextColor(0xFFFFFFFF);
-            name.setAlpha(0.72f);
+            name.setAlpha(0.7f);
             name.setMaxLines(1);
             name.setEllipsize(android.text.TextUtils.TruncateAt.END);
             name.setGravity(Gravity.CENTER);
+            name.setShadowLayer(6 * d, 0, 0, 0x99000000);
             LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(tileSize + dp(16), -2);
             nlp.topMargin = dp(9);
             cell.addView(name, nlp);
 
-            final Tile tile = new Tile(cell, card, icon, name, badge, face);
+            final Tile tile = new Tile(cell, frame, art, name, badge);
             cell.setOnFocusChangeListener((v, has) -> {
-                float s = has ? 1.1f : 1f;
+                float sc = has ? 1.08f : 1f;
                 if (PocketPrefs.animationsEnabled(AppDrawerActivity.this)) {
-                    card.animate().scaleX(s).scaleY(s).translationZ(has ? dp(10) : 0).setDuration(180)
+                    frame.animate().scaleX(sc).scaleY(sc).translationZ(has ? dp(10) : 0).setDuration(180)
                             .setInterpolator(PocketMotion.DECELERATE).start();
-                    tile.name.animate().alpha(has ? 1f : 0.72f).translationY(has ? dp(5) : 0).setDuration(180).start();
+                    tile.name.animate().alpha(has ? 1f : 0.7f).translationY(has ? dp(4) : 0).setDuration(180).start();
                 }
                 else {
-                    card.setScaleX(s);
-                    card.setScaleY(s);
-                    tile.name.setAlpha(has ? 1f : 0.72f);
+                    frame.setScaleX(sc);
+                    frame.setScaleY(sc);
+                    tile.name.setAlpha(has ? 1f : 0.7f);
                 }
-                card.setForeground(has ? ringOutside : null);
+                frame.setForeground(has ? ring : null);
                 tile.name.setTypeface(has ? PocketFonts.semibold() : PocketFonts.medium());
                 if (has) {
-                    int pos = tile.getBindingAdapterPosition();
-                    focusPos = pos;
+                    focusPos = tile.getBindingAdapterPosition();
                     PocketUi.tick(AppDrawerActivity.this);
                     Integer col = tile.pkg != null ? COLORS.get(tile.pkg) : null;
                     if (col != null) {
@@ -968,7 +1007,7 @@ public class AppDrawerActivity extends ConsoleActivity {
             cell.setOnClickListener(v -> {
                 int pos = tile.getBindingAdapterPosition();
                 if (pos >= 0 && pos < shown.size()) {
-                    PocketMotion.pop(card, 0.94f);
+                    PocketMotion.pop(frame, 0.94f);
                     launch(shown.get(pos));
                 }
             });
@@ -1005,34 +1044,36 @@ public class AppDrawerActivity extends ConsoleActivity {
         @Override
         public void onBindViewHolder(@NonNull final Tile h, int position) {
             final App a = shown.get(position);
+            final String key = a.pkg + "|" + com.limelight.pocket.PocketArt.version();
             h.pkg = a.pkg;
+            h.key = key;
             h.name.setText(a.label);
             h.itemView.setContentDescription(a.label);
             h.badge.setVisibility(a.installed > 0 && System.currentTimeMillis() - a.installed < NEW_FOR_MS
                     ? View.VISIBLE : View.GONE);
-            Bitmap icon = ICONS.get(a.pkg);
-            Integer col = COLORS.get(a.pkg);
-            if (icon != null && col != null) {
-                h.icon.setImageBitmap(icon);
-                paint(h, col);
+            Bitmap ready = ICONS.get(key);
+            if (ready != null) {
+                h.art.setImageBitmap(ready);
                 return;
             }
-            h.icon.setImageDrawable(null);
-            h.face.setColors(new int[]{0xFF2A2A31, 0xFF141418});
+            h.art.setImageDrawable(null);
             final String pkg = a.pkg;
-            final int px = Math.round(tileSize * 0.6f);
+            final int size = tileSize;
             iconWork.execute(() -> {
-                Bitmap b = render(pkg, px);
+                Bitmap b = render(pkg, size);
                 if (b == null) {
                     return;
                 }
                 int c = average(b);
-                ICONS.put(pkg, b);
+                ICONS.put(key, b);
                 COLORS.put(pkg, c);
                 main.post(() -> {
-                    if (pkg.equals(h.pkg)) {
-                        h.icon.setImageBitmap(b);
-                        paint(h, c);
+                    if (key.equals(h.key)) {
+                        h.art.setImageBitmap(b);
+                        if (PocketPrefs.animationsEnabled(AppDrawerActivity.this)) {
+                            h.art.setAlpha(0f);
+                            h.art.animate().alpha(1f).setDuration(160).start();
+                        }
                         if (h.itemView.hasFocus()) {
                             glowTo(c);
                         }
@@ -1047,32 +1088,100 @@ public class AppDrawerActivity extends ConsoleActivity {
         }
     }
 
-    /** The tile in the app's own colours (deep, so the icon stands out). */
-    private static void paint(Tile h, int base) {
-        float[] hsv = new float[3];
-        Color.colorToHSV(base, hsv);
-        hsv[1] = Math.min(1f, hsv[1] * 1.1f);
-        hsv[2] = Math.max(0.2f, Math.min(0.46f, hsv[2] * 0.6f));
-        int deep = Color.HSVToColor(hsv);
-        hsv[2] = Math.min(0.7f, hsv[2] * 1.65f);
-        int light = Color.HSVToColor(hsv);
-        h.face.setColors(new int[]{light, deep});
-    }
-
-    private Bitmap render(String pkg, int px) {
+    /**
+     * The whole tile for an app (size x size), like a console's: a square picture picked on
+     * SteamGridDB fills it; else the app's own icon, full bleed (its background is the tile, its
+     * mark in the middle; no circle); an older (flat) icon, or an icon picked on SteamGridDB, sits
+     * on a tile in its own colours.
+     */
+    private Bitmap render(String pkg, int size) {
         try {
-            Drawable icon = getPackageManager().getApplicationIcon(pkg);
-            Bitmap b = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);
-            Canvas c = new Canvas(b);
-            icon.setBounds(0, 0, px, px);
-            icon.draw(c);
-            return b;
+            Bitmap out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(out);
+            int id = AndroidLibrary.idFor(pkg);
+            Bitmap square = decode(com.limelight.pocket.PocketArt.file(this, AndroidLibrary.UUID, id,
+                    com.limelight.pocket.PocketArt.SQUARE), size);
+            if (square != null) {
+                float sc = Math.max(size / (float) square.getWidth(), size / (float) square.getHeight());
+                android.graphics.Matrix m = new android.graphics.Matrix();
+                m.setScale(sc, sc);
+                m.postTranslate((size - square.getWidth() * sc) / 2f, (size - square.getHeight() * sc) / 2f);
+                c.drawBitmap(square, m, new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG));
+                return out;
+            }
+            Bitmap pickedIcon = decode(com.limelight.pocket.PocketArt.file(this, AndroidLibrary.UUID, id,
+                    com.limelight.pocket.PocketArt.ICON), size);
+            Drawable icon = pickedIcon == null ? getPackageManager().getApplicationIcon(pkg) : null;
+            if (icon != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                    && icon instanceof android.graphics.drawable.AdaptiveIconDrawable) {
+                android.graphics.drawable.AdaptiveIconDrawable adaptive = (android.graphics.drawable.AdaptiveIconDrawable) icon;
+                // Its layers are drawn a quarter bigger on each side: the part a launcher shows
+                // in its circle fills the whole tile instead
+                int grow = Math.round(size * 0.25f);
+                Drawable back = adaptive.getBackground();
+                Drawable front = adaptive.getForeground();
+                if (back != null) {
+                    back.setBounds(-grow, -grow, size + grow, size + grow);
+                    back.draw(c);
+                }
+                else {
+                    c.drawColor(0xFF2A2A31);
+                }
+                if (front != null) {
+                    front.setBounds(-grow, -grow, size + grow, size + grow);
+                    front.draw(c);
+                }
+                return out;
+            }
+            Bitmap flat = pickedIcon;
+            if (flat == null && icon != null) {
+                int px = Math.round(size * 0.62f);
+                flat = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);
+                icon.setBounds(0, 0, px, px);
+                icon.draw(new Canvas(flat));
+            }
+            if (flat == null) {
+                return null;
+            }
+            int base = average(flat);
+            float[] hsv = new float[3];
+            Color.colorToHSV(base, hsv);
+            hsv[1] = Math.min(1f, hsv[1] * 1.1f);
+            hsv[2] = Math.max(0.2f, Math.min(0.46f, hsv[2] * 0.6f));
+            int deep = Color.HSVToColor(hsv);
+            hsv[2] = Math.min(0.7f, hsv[2] * 1.65f);
+            int light = Color.HSVToColor(hsv);
+            android.graphics.Paint bg = new android.graphics.Paint();
+            bg.setShader(new android.graphics.LinearGradient(0, 0, size * 0.6f, size, light, deep,
+                    android.graphics.Shader.TileMode.CLAMP));
+            c.drawRect(0, 0, size, size, bg);
+            float s = size * 0.62f;
+            float l = (size - s) / 2f;
+            c.drawBitmap(flat, null, new android.graphics.RectF(l, l, l + s, l + s),
+                    new android.graphics.Paint(android.graphics.Paint.FILTER_BITMAP_FLAG | android.graphics.Paint.ANTI_ALIAS_FLAG));
+            return out;
         } catch (PackageManager.NameNotFoundException | RuntimeException | OutOfMemoryError e) {
             return null;
         }
     }
 
-    /** The icon's main colour (its opaque pixels, the most colourful counting more). */
+    private static Bitmap decode(java.io.File f, int target) {
+        if (f == null || !f.exists()) {
+            return null;
+        }
+        android.graphics.BitmapFactory.Options o = new android.graphics.BitmapFactory.Options();
+        o.inJustDecodeBounds = true;
+        android.graphics.BitmapFactory.decodeFile(f.getPath(), o);
+        int sample = 1;
+        while (Math.min(o.outWidth, o.outHeight) / (sample * 2) >= target) {
+            sample *= 2;
+        }
+        o = new android.graphics.BitmapFactory.Options();
+        o.inSampleSize = sample;
+        return android.graphics.BitmapFactory.decodeFile(f.getPath(), o);
+    }
+
+    /** The picture's main colour (its opaque pixels, the most colourful counting more). */
     private static int average(Bitmap b) {
         Bitmap small = Bitmap.createScaledBitmap(b, 12, 12, true);
         float r = 0, g = 0, bl = 0, n = 0;

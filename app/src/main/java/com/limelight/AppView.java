@@ -340,11 +340,11 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         // Pocket Nexus: the PC's own game library (Steam, Epic, GOG)
         View pcLibrary = findViewById(R.id.pocketPcLibraryButton);
         if (pcLibrary != null) {
-            // Now a tab at the top, next to the PC's name (Apps | PC games, L1 / R1)
+            // Now a clear button at the top, next to the PC's name (R1 opens it too)
             pcLibrary.setVisibility(View.GONE);
         }
-        com.limelight.pocket.ui.SectionBar.attachTabs(this,
-                new int[]{R.string.pocket_tab_apps, R.string.pocket_tab_pc_games}, 0, i -> pocketOpenPcLibrary());
+        com.limelight.pocket.ui.SectionBar.attachAction(this, R.drawable.ic_pocket_library,
+                R.string.pocket_tab_pc_games, "R1", this::pocketOpenPcLibrary);
 
         showHiddenApps = getIntent().getBooleanExtra(SHOW_HIDDEN_APPS_EXTRA, false);
         uuidString = getIntent().getStringExtra(UUID_EXTRA);
@@ -1112,6 +1112,7 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         setHints(hintA(this, R.string.pocket_hint_play),
                 hintX(this, R.string.pocket_hint_details),
                 hintY(this, R.string.pocket_hint_options),
+                new Hint("R1", 0xFFFFFFFF, getString(R.string.pocket_tab_pc_games)),
                 hintSelect(this, R.string.pocket_layout_hint),
                 hintStart(this, R.string.pocket_hint_settings));
     }
@@ -1641,17 +1642,15 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
                 .start();
     }
 
-    /** L1 / R1: the tabs at the top (this PC's Apps, its PC games). */
+    /** R1: this PC's games (the button at the top). */
     @Override
     protected boolean onShoulder(int direction) {
+        View action = getWindow().getDecorView().findViewWithTag("pocket_action");
         if (direction > 0) {
-            pocketOpenPcLibrary();
-        }
-        else {
-            View tabs = getWindow().getDecorView().findViewWithTag("pocket_tabs");
-            if (tabs != null) {
-                com.limelight.pocket.ui.PocketMotion.pop(tabs, 0.96f);
+            if (action != null) {
+                com.limelight.pocket.ui.PocketMotion.pop(action, 0.92f);
             }
+            pocketOpenPcLibrary();
         }
         return true;
     }

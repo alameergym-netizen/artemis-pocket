@@ -350,6 +350,63 @@ public final class SystemArt {
         return 0xFF000000 | Integer.parseInt(hex, 16);
     }
 
+    // ---- Art picked by hand (SteamGridDB) ------------------------------------------------------
+
+    /** Where art picked for a console is kept (like a PC's games, under a made-up PC). */
+    public static final String PICK_UUID = "systems";
+
+    public static int pickId(String system) {
+        int h = ("sys:" + system).hashCode() & 0x3FFFFFFF;
+        return h == 0 ? 1 : h;
+    }
+
+    /** The art of this kind picked for the console (null: none), about target pixels across. Blocking. */
+    public static Bitmap picked(Context c, String system, int kind, int target) {
+        File f = com.limelight.pocket.PocketArt.file(c, PICK_UUID, pickId(system), kind);
+        if (f == null || !f.exists()) {
+            return null;
+        }
+        BitmapFactory.Options o = new BitmapFactory.Options();
+        o.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(f.getPath(), o);
+        int sample = 1;
+        while (o.outWidth / (sample * 2) >= target) {
+            sample *= 2;
+        }
+        o = new BitmapFactory.Options();
+        o.inSampleSize = sample;
+        try {
+            return BitmapFactory.decodeFile(f.getPath(), o);
+        } catch (OutOfMemoryError e) {
+            return null;
+        }
+    }
+
+    /** A picked cover as the console's card: the picture, cropped to the card, with the count. */
+    public static Bitmap pictureCard(Bitmap src, String count, int w, int h) {
+        Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(out);
+        float scale = Math.max(w / (float) src.getWidth(), h / (float) src.getHeight());
+        Matrix mx = new Matrix();
+        mx.setScale(scale, scale);
+        mx.postTranslate((w - src.getWidth() * scale) / 2f, (h - src.getHeight() * scale) / 2f);
+        cv.drawBitmap(src, mx, new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG));
+        if (count != null) {
+            Paint cp = new Paint(Paint.ANTI_ALIAS_FLAG);
+            cp.setTextSize(h * 0.058f);
+            cp.setTypeface(com.limelight.pocket.ui.PocketFonts.semibold());
+            float tw = cp.measureText(count);
+            float pad = h * 0.03f;
+            RectF pill = new RectF(w - tw - pad * 4, pad * 2, w - pad * 2, pad * 2 + cp.getTextSize() + pad * 1.6f);
+            Paint pb = new Paint(Paint.ANTI_ALIAS_FLAG);
+            pb.setColor(0x8C000000);
+            cv.drawRoundRect(pill, pad * 1.4f, pad * 1.4f, pb);
+            cp.setColor(0xFFFFFFFF);
+            cv.drawText(count, pill.left + pad, pill.bottom - pad * 1.1f, cp);
+        }
+        return out;
+    }
+
     // ---- Composed pictures ----------------------------------------------------------------------
 
     /**

@@ -1193,4 +1193,7 @@
         <item quantity="other">%1$d تطبيق</item>
     </plurals>
     <string name="pocket_drawer_sub">كل التطبيقات على هذا الجهاز</string>
+    <string name="pocket_art_square">مربّع</string>
+    <string name="pocket_art_change_icon">غيّر الأيقونة</string>
+    <string name="pocket_sysart_change">غيّر صور الجهاز</string>
 </resources>

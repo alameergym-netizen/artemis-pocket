@@ -712,18 +712,24 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
             final int bh = Math.round(bw * 9f / 16f);
             final String system = e.system;
             final int color = SYS_FAVS.equals(system) ? 0xFFF9A825 : SYS_RECENT.equals(system) ? 0xFF37474F : colorOf(system);
-            Bitmap ready = BACKDROPS.get(system);
+            Bitmap ready = BACKDROPS.get(system + "|" + PocketArt.version());
             if (keyArt != null) {
                 keyArt.show(ready);
             }
             systemWork.execute(() -> {
-                final Bitmap mark = SystemArt.logo(this, system, lw, lh);
+                // Each picked by itself on SteamGridDB (logo, background), else the theme's
+                Bitmap ownLogo = SystemArt.picked(this, system, PocketArt.LOGO, lw);
+                final Bitmap mark = ownLogo != null ? ownLogo : SystemArt.logo(this, system, lw, lh);
                 final SystemArt.Info info = SystemArt.info(this, system);
-                Bitmap back = BACKDROPS.get(system);
+                String backKey = system + "|" + PocketArt.version();
+                Bitmap back = BACKDROPS.get(backKey);
                 if (back == null) {
-                    back = SystemArt.backdrop(this, system, color, bw, bh);
+                    back = SystemArt.picked(this, system, PocketArt.HERO, bw);
+                    if (back == null) {
+                        back = SystemArt.backdrop(this, system, color, bw, bh);
+                    }
                     if (back != null) {
-                        BACKDROPS.put(system, back);
+                        BACKDROPS.put(backKey, back);
                     }
                 }
                 final Bitmap backdrop = back;
@@ -780,7 +786,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                 return;
             }
             // No background for the game: its console's
-            Bitmap known = BACKDROPS.get(system);
+            Bitmap known = BACKDROPS.get(system + "|" + PocketArt.version());
             if (known != null) {
                 keyArt.show(known);
                 return;
@@ -788,9 +794,13 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
             final int bw = Math.max(640, getResources().getDisplayMetrics().widthPixels * 2 / 3);
             final int color = colorOf(system);
             systemWork.execute(() -> {
-                final Bitmap back = SystemArt.backdrop(this, system, color, bw, Math.round(bw * 9f / 16f));
+                Bitmap made = SystemArt.picked(this, system, PocketArt.HERO, bw);
+                if (made == null) {
+                    made = SystemArt.backdrop(this, system, color, bw, Math.round(bw * 9f / 16f));
+                }
+                final Bitmap back = made;
                 if (back != null) {
-                    BACKDROPS.put(system, back);
+                    BACKDROPS.put(system + "|" + PocketArt.version(), back);
                 }
                 main.post(() -> {
                     if (!isFinishing() && key.equals(heroKey) && keyArt != null) {
@@ -1204,6 +1214,14 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
             if (e.count > 0) {
                 items.add(StreamMenuView.Item.action(getString(R.string.pocket_apps_open), () -> enterSystem(e)));
             }
+            if (!e.system.startsWith("@") || SystemArt.enabled(this)) {
+                final String searchName = s != null ? s.fullName : e.label;
+                items.add(StreamMenuView.Item.action(getString(R.string.pocket_sysart_change), () -> {
+                    hideConsolePanel();
+                    // SteamGridDB: a cover for the card, a background, a logo (each by itself)
+                    ArtPickerActivity.open(this, SystemArt.PICK_UUID, SystemArt.pickId(e.system), searchName);
+                }));
+            }
             if (s != null) {
                 items.add(StreamMenuView.Item.submenu(getString(R.string.pocket_retro_emu_this_system), () -> systemEmulatorPage(s))
                         .withValue(emulatorLabel(RetroLibrary.systemCommand(this, lib, s))));
@@ -1530,7 +1548,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                 // Drawn here (no text under it: the card says it all)
                 text.setVisibility(View.GONE);
                 final String style = SystemArt.style(RetroActivity.this);
-                final String artKey = "art|" + e.key + "#" + e.count + "|" + style;
+                final String artKey = "art|" + e.key + "#" + e.count + "|" + style + "|" + PocketArt.version();
                 Bitmap art = e.kind == KIND_SYSTEM ? CARDS.get(artKey) : null;
                 if (art != null) {
                     image.setImageBitmap(art);
@@ -1544,7 +1562,10 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                     final String count = String.valueOf(e.count);
                     final boolean ready = SystemArt.has(RetroActivity.this, system, style);
                     systemWork.execute(() -> {
-                        final Bitmap made = SystemArt.card(RetroActivity.this, system, style, color, count, w, h);
+                        // A cover picked on SteamGridDB for the console wins over its theme art
+                        Bitmap own = SystemArt.picked(RetroActivity.this, system, PocketArt.COVER, w);
+                        final Bitmap made = own != null ? SystemArt.pictureCard(own, count, w, h)
+                                : SystemArt.card(RetroActivity.this, system, style, color, count, w, h);
                         if (made == null) {
                             return;
                         }

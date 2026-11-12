@@ -1188,4 +1188,7 @@
         <item quantity="other">%1$d apps</item>
     </plurals>
     <string name="pocket_drawer_sub">Every app on this handheld</string>
+    <string name="pocket_art_square">Square</string>
+    <string name="pocket_art_change_icon">Change icon</string>
+    <string name="pocket_sysart_change">Change the console art</string>
 </resources>

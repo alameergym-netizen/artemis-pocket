@@ -136,11 +136,10 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
 
         TextView title = findViewById(R.id.appListText);
         if (title != null) {
-            // The PC's name, then the tabs (Apps | PC games) say where you are
-            title.setText(pcName.isEmpty() ? getString(R.string.pocket_pclib_button) : pcName);
+            // "< PC games · the PC's name": B (or L1) goes back to its apps
+            String games = getString(R.string.pocket_tab_pc_games);
+            title.setText(pcName.isEmpty() ? games : games + "  ·  " + pcName);
         }
-        com.limelight.pocket.ui.SectionBar.attachTabs(this,
-                new int[]{R.string.pocket_tab_apps, R.string.pocket_tab_pc_games}, 1, i -> onShoulder(-1));
         // The library's own buttons don't belong here; its PC games button adds a PC app here
         hide(R.id.profilesButton);
         TextView addApp = findViewById(R.id.pocketPcLibraryButton);

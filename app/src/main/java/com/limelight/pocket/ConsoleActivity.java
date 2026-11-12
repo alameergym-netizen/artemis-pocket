@@ -1467,7 +1467,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             glyph.setLetterSpacing(0.02f);
             GradientDrawable bg = new GradientDrawable();
             bg.setShape(GradientDrawable.RECTANGLE);
-            bg.setCornerRadius(size / 2f);
+            // A key, not a ring: a small rounded square (like the consoles' button hints)
+            bg.setCornerRadius(4 * density);
             bg.setColor(0xEBFFFFFF);
             glyph.setBackground(bg);
             glyph.setTag("hint:" + hint.glyph);

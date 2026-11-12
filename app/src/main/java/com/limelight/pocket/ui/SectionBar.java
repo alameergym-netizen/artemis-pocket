@@ -69,71 +69,60 @@ public final class SectionBar {
             return;
         }
         float d = activity.getResources().getDisplayMetrics().density;
-        int accent = PocketTheme.accent(activity);
-        // One acrylic capsule; the section you're in is a white capsule inside it
+        // Plain words, like the status on the right (PlayStation Portal style): the section
+        // you're in is white and bold, the others faded; no capsule, no border
         LinearLayout bar = new LinearLayout(activity);
         bar.setTag("pocket_sections");
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(Math.round(3 * d), 0, Math.round(3 * d), 0);
-        bar.setMinimumHeight(Math.round(26 * d));
-        GradientDrawable plain = new GradientDrawable();
-        plain.setCornerRadius(13 * d);
-        plain.setColor(0xD91C1C1F);
-        plain.setStroke(Math.max(1, Math.round(0.75f * d)), 0x26FFFFFF);
-        bar.setBackground(plain);
-
+        bar.setMinimumHeight(Math.round(28 * d));
+        bar.setClipChildren(false);
+        bar.setClipToPadding(false);
         bar.addView(glyph(activity, "L1", d));
         for (int s = 0; s < COUNT; s++) {
             final int section = s;
-            boolean on = s == active;
-            TextView tab = new TextView(activity);
-            tab.setText(LABELS[s]);
-            tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
-            tab.setTypeface(on ? PocketFonts.semibold() : PocketFonts.medium());
-            tab.setLetterSpacing(-0.005f);
-            tab.setIncludeFontPadding(false);
-            tab.setGravity(Gravity.CENTER);
-            tab.setTextColor(on ? 0xFF0B0B0D : 0xA6FFFFFF);
-            tab.setPadding(Math.round(10 * d), 0, Math.round(10 * d), 0);
-            tab.setMinHeight(Math.round(20 * d));
-            if (on) {
-                GradientDrawable chip = new GradientDrawable();
-                chip.setCornerRadius(10 * d);
-                chip.setColor(accent == 0xFFFFFFFF ? 0xFFFFFFFF : accent);
-                tab.setBackground(chip);
-                tab.setElevation(2 * d);
-                if (PocketPrefs.animationsEnabled(activity)) {
-                    tab.setScaleX(0.9f);
-                    tab.setScaleY(0.9f);
-                    tab.animate().scaleX(1f).scaleY(1f).setDuration(320).setInterpolator(PocketMotion.DECELERATE).start();
-                }
-            }
+            TextView tab = portalTab(activity, activity.getString(LABELS[s]), s == active, d);
             tab.setOnClickListener(v -> go(activity, active, section));
-            // Tapped, or switched with L1 / R1: never a stop for the d-pad (a focused tab looked
-            // like a second selected one)
+            // Tapped, or switched with L1 / R1: never a stop for the d-pad
             tab.setFocusable(false);
-            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                    Math.round(20 * d));
-            tlp.setMargins(Math.round(0.5f * d), 0, Math.round(0.5f * d), 0);
-            bar.addView(tab, tlp);
+            bar.addView(tab);
         }
         bar.addView(glyph(activity, "R1", d));
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                Math.round(26 * d));
+                Math.round(28 * d));
         lp.gravity = Gravity.CENTER_VERTICAL;
         if (row instanceof LinearLayout) {
             row.addView(bar, index, lp);
         }
         else {
             row.addView(bar, index, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                    Math.round(26 * d), Gravity.CENTER_VERTICAL | Gravity.START));
+                    Math.round(28 * d), Gravity.CENTER_VERTICAL | Gravity.START));
         }
-        if (activity instanceof com.limelight.pocket.ConsoleActivity) {
-            // Real acrylic over the screen's art (when the device can blur live)
-            ((com.limelight.pocket.ConsoleActivity) activity).makeGlass(bar);
+    }
+
+    /** A tab as plain words: white and bold when it's the one you're on, faded otherwise. */
+    public static TextView portalTab(Activity activity, String text, boolean on, float d) {
+        TextView tab = new TextView(activity);
+        tab.setText(text);
+        tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
+        tab.setTypeface(on ? PocketFonts.bold() : PocketFonts.medium());
+        tab.setLetterSpacing(-0.01f);
+        tab.setIncludeFontPadding(false);
+        tab.setGravity(Gravity.CENTER);
+        tab.setTextColor(on ? 0xFFFFFFFF : 0x8CFFFFFF);
+        // A soft light around the one you're on; a shadow keeps the others readable on art
+        tab.setShadowLayer(on ? 10 * d : 6 * d, 0, 0, on ? 0x59FFFFFF : 0x99000000);
+        tab.setPadding(Math.round(9 * d), 0, Math.round(9 * d), 0);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                Math.round(28 * d));
+        lp.gravity = Gravity.CENTER_VERTICAL;
+        tab.setLayoutParams(lp);
+        if (on && PocketPrefs.animationsEnabled(activity)) {
+            tab.setAlpha(0.6f);
+            tab.animate().alpha(1f).setDuration(260).setInterpolator(PocketMotion.DECELERATE).start();
         }
+        return tab;
     }
 
     public interface TabPick {
@@ -157,75 +146,95 @@ public final class SectionBar {
             return;
         }
         float d = activity.getResources().getDisplayMetrics().density;
-        int accent = PocketTheme.accent(activity);
         LinearLayout bar = new LinearLayout(activity);
         bar.setTag("pocket_tabs");
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setPadding(Math.round(3 * d), 0, Math.round(3 * d), 0);
-        GradientDrawable plain = new GradientDrawable();
-        plain.setCornerRadius(13 * d);
-        plain.setColor(0xD91C1C1F);
-        plain.setStroke(Math.max(1, Math.round(0.75f * d)), 0x26FFFFFF);
-        bar.setBackground(plain);
         bar.addView(glyph(activity, "L1", d));
         for (int i = 0; i < labels.length; i++) {
             final int index = i;
-            boolean on = i == active;
-            TextView tab = new TextView(activity);
-            tab.setText(labels[i]);
-            tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
-            tab.setTypeface(on ? PocketFonts.semibold() : PocketFonts.medium());
-            tab.setIncludeFontPadding(false);
-            tab.setGravity(Gravity.CENTER);
-            tab.setTextColor(on ? (accent == 0xFFFFFFFF ? 0xFF0B0B0D : 0xFFFFFFFF) : 0xB3FFFFFF);
-            tab.setPadding(Math.round(12 * d), 0, Math.round(12 * d), 0);
-            if (on) {
-                GradientDrawable chip = new GradientDrawable();
-                chip.setCornerRadius(10 * d);
-                chip.setColor(accent == 0xFFFFFFFF ? 0xFFFFFFFF : accent);
-                tab.setBackground(chip);
-            }
+            TextView tab = portalTab(activity, activity.getString(labels[i]), i == active, d);
             tab.setFocusable(false);
             tab.setOnClickListener(v -> {
                 if (index != active) {
                     onPick.pick(index);
                 }
             });
-            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                    Math.round(20 * d));
-            tlp.setMargins(Math.round(0.5f * d), 0, Math.round(0.5f * d), 0);
-            bar.addView(tab, tlp);
+            bar.addView(tab);
         }
         bar.addView(glyph(activity, "R1", d));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                Math.round(26 * d));
+                Math.round(28 * d));
         lp.gravity = Gravity.CENTER_VERTICAL;
-        lp.setMarginStart(Math.round(6 * d));
+        lp.setMarginStart(Math.round(10 * d));
         row.addView(bar, row.indexOfChild(pill) + 1, lp);
-        if (activity instanceof com.limelight.pocket.ConsoleActivity) {
-            ((com.limelight.pocket.ConsoleActivity) activity).makeGlass(bar);
-        }
     }
 
-    /** The shoulder button, drawn as a small outlined key. */
+    /**
+     * A clear button with an icon at the top of a screen, after its "< Title" (a PC's games):
+     * the icon, its name and the button that opens it (R1). Tapping it works too.
+     */
+    public static void attachAction(final Activity activity, int icon, int label, String button,
+                                    final Runnable onClick) {
+        View title = activity.findViewById(R.id.appListText);
+        if (title == null || !(title.getParent() instanceof View)
+                || !(((View) title.getParent()).getParent() instanceof ViewGroup)) {
+            return;
+        }
+        View pill = (View) title.getParent();
+        ViewGroup row = (ViewGroup) pill.getParent();
+        if (row.findViewWithTag("pocket_action") != null) {
+            return;
+        }
+        float d = activity.getResources().getDisplayMetrics().density;
+        LinearLayout action = new LinearLayout(activity);
+        action.setTag("pocket_action");
+        action.setOrientation(LinearLayout.HORIZONTAL);
+        action.setGravity(Gravity.CENTER_VERTICAL);
+        action.setPadding(Math.round(10 * d), 0, Math.round(8 * d), 0);
+        GradientDrawable face = new GradientDrawable();
+        face.setCornerRadius(100 * d);
+        face.setColor(0x2EFFFFFF);
+        action.setBackground(face);
+        android.widget.ImageView glyphIcon = new android.widget.ImageView(activity);
+        glyphIcon.setImageResource(icon);
+        glyphIcon.setColorFilter(0xFFFFFFFF);
+        action.addView(glyphIcon, new LinearLayout.LayoutParams(Math.round(17 * d), Math.round(17 * d)));
+        TextView name = new TextView(activity);
+        name.setText(label);
+        name.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+        name.setTypeface(PocketFonts.semibold());
+        name.setTextColor(0xFFFFFFFF);
+        name.setIncludeFontPadding(false);
+        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        nlp.setMarginStart(Math.round(7 * d));
+        action.addView(name, nlp);
+        if (button != null) {
+            action.addView(glyph(activity, button, d));
+        }
+        action.setFocusable(false);
+        action.setOnClickListener(v -> onClick.run());
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                Math.round(28 * d));
+        lp.gravity = Gravity.CENTER_VERTICAL;
+        lp.setMarginStart(Math.round(10 * d));
+        row.addView(action, row.indexOfChild(pill) + 1, lp);
+    }
+
+    /** The shoulder button that switches: small, faded words (no outline, like the rest). */
     private static TextView glyph(Activity a, String text, float d) {
         TextView g = new TextView(a);
         g.setText(text);
-        g.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7.5f);
+        g.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f);
         g.setTypeface(PocketFonts.bold());
-        g.setTextColor(0xC7FFFFFF);
+        g.setTextColor(0x73FFFFFF);
         g.setIncludeFontPadding(false);
         g.setGravity(Gravity.CENTER);
-        GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(4 * d);
-        bg.setColor(0x00000000);
-        bg.setStroke(Math.max(1, Math.round(0.75f * d)), 0x59FFFFFF);
-        g.setBackground(bg);
-        g.setPadding(Math.round(4.5f * d), Math.round(2 * d), Math.round(4.5f * d), Math.round(2 * d));
+        g.setShadowLayer(6 * d, 0, 0, 0x99000000);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(Math.round(5 * d), 0, Math.round(5 * d), 0);
+        lp.setMargins(Math.round(4 * d), 0, Math.round(4 * d), 0);
         lp.gravity = Gravity.CENTER_VERTICAL;
         g.setLayoutParams(lp);
         return g;

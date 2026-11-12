@@ -214,22 +214,11 @@ public final class CloudArt {
         return out;
     }
 
-    /** A wide backdrop for the hero (when SteamGridDB has no background for it). */
+    /** A wide backdrop for the hero (when SteamGridDB has no background for it): light in its colours. */
     public static Bitmap backdrop(Context ctx, CloudService s, int w, int h) {
         Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         light(c, s, w, h);
-        Bitmap icon = officialIcon(ctx, s, Math.round(h * 0.42f));
-        int[] p = palette(s);
-        if (icon != null) {
-            Paint ip = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
-            ip.setAlpha(0xD9);
-            ip.setShadowLayer(h * 0.05f, 0, h * 0.015f, 0x66000000);
-            c.drawBitmap(icon, w * 0.72f - icon.getWidth() / 2f, h * 0.36f - icon.getHeight() / 2f, ip);
-        }
-        else {
-            cloudMark(c, w * 0.72f, h * 0.36f, h * 0.5f, p[1]);
-        }
         return out;
     }
 

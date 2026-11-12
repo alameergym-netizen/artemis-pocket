@@ -936,6 +936,8 @@ public class HomeActivity extends ConsoleActivity {
         int screenW = getResources().getDisplayMetrics().widthPixels;
         FrameLayout.LayoutParams rlp = (FrameLayout.LayoutParams) row.getLayoutParams();
         FrameLayout.LayoutParams hlp = (FrameLayout.LayoutParams) heroView.getLayoutParams();
+        int logoMax = shelf ? 112 : 96;
+        int descLines = shelf ? 2 : 4;
         View sideScrim = findViewById(R.id.homeSideScrim);
         if (shelf) {
             AnchoredLayoutManager lm = new AnchoredLayoutManager(this);
@@ -944,7 +946,21 @@ public class HomeActivity extends ConsoleActivity {
             rlp.height = tileH + Math.round(20 * d);
             rlp.gravity = Gravity.BOTTOM;
             rlp.topMargin = 0;
-            rlp.bottomMargin = Math.round(22 * d);
+            // Clear of the button hints under it
+            int bottom = 40;
+            rlp.bottomMargin = Math.round(bottom * d);
+            // The hero gets what's left above the row and its label: its logo and description
+            // fit themselves to that (so nothing runs into the row on a shorter screen)
+            float screenH = getResources().getDisplayMetrics().heightPixels / d;
+            float avail = screenH - (bottom + tileH / d + 20 + 24) - 44;
+            float fixed = 116;
+            float room = avail - fixed - 46;
+            if (room < 80) {
+                descLines = 1;
+                room = avail - fixed - 28;
+            }
+            logoMax = Math.round(Math.max(48, Math.min(112, room)));
+            hlp.topMargin = Math.round(44 * d);
             row.setPadding(Math.round(22 * d), Math.round(10 * d), Math.round(220 * d), Math.round(10 * d));
             row.setVerticalFadingEdgeEnabled(false);
             row.setHorizontalFadingEdgeEnabled(true);
@@ -992,9 +1008,9 @@ public class HomeActivity extends ConsoleActivity {
         row.setLayoutParams(rlp);
         heroView.setLayoutParams(hlp);
         logo.setMaxWidth(Math.round((shelf ? 340 : 290) * d));
-        logo.setMaxHeight(Math.round((shelf ? 112 : 96) * d));
-        title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, shelf ? 38f : 30f);
-        desc.setMaxLines(shelf ? 2 : 4);
+        logo.setMaxHeight(Math.round(logoMax * d));
+        title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, shelf ? (logoMax < 80 ? 32f : 38f) : 30f);
+        desc.setMaxLines(descLines);
         if (relayout) {
             TILE_ART.evictAll();
         }

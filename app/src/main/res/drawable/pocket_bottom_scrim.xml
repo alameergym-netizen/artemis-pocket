@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+<!-- Under the button hints: what scrolls by fades out instead of running into them -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
     <gradient
         android:angle="90"
-        android:startColor="#F2000000"
-        android:centerColor="#B3000000"
-        android:endColor="#00000000" />
+        android:centerColor="#C7000000"
+        android:centerY="0.45"
+        android:endColor="#00000000"
+        android:startColor="#F2000000" />
 </shape>

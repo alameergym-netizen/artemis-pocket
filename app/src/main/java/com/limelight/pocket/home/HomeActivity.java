@@ -195,6 +195,9 @@ public class HomeActivity extends ConsoleActivity {
         keyArt = KeyArtStage.find(this);
 
         row.setLayoutManager(new AnchoredLayoutManager(this));
+        // Tiles that slid past the left edge fade out instead of being sliced
+        row.setHorizontalFadingEdgeEnabled(true);
+        row.setFadingEdgeLength(Math.round(26 * d));
         row.setItemAnimator(null);
         row.setAdapter(tiles);
         setUpActions();

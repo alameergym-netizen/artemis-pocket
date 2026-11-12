@@ -357,6 +357,14 @@
             </LinearLayout>
         </com.limelight.pocket.ui.PageScrollView>
 
+        <!-- The page fades out under the buttons as it scrolls -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="84dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/pocket_bottom_scrim"
+            android:importantForAccessibility="no" />
+
         <!-- Buttons, bottom right (stays put while the page scrolls) -->
         <LinearLayout
             android:id="@+id/pocketHintBar"

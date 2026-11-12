@@ -110,6 +110,9 @@ public final class SectionBar {
                 }
             }
             tab.setOnClickListener(v -> go(activity, active, section));
+            // Tapped, or switched with L1 / R1: never a stop for the d-pad (a focused tab looked
+            // like a second selected one)
+            tab.setFocusable(false);
             LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                     Math.round(20 * d));
             tlp.setMargins(Math.round(0.5f * d), 0, Math.round(0.5f * d), 0);

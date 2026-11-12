@@ -196,7 +196,7 @@ fi
 
 # The boot sequence (skipped everywhere else), recorded on video
 rm -rf /tmp/seedb; mkdir -p /tmp/seedb
-printf 'pref\tbool\tpocket_preview_no_boot\tfalse\npref\tbool\tpocket_live_glass\tfalse\n' > /tmp/seedb/seed.txt
+printf 'pref\tbool\tpocket_preview_boot\ttrue\npref\tbool\tpocket_live_glass\tfalse\n' > /tmp/seedb/seed.txt
 if ensure_emulator; then
   push_seed /tmp/seedb
   adbt shell am force-stop $PKG

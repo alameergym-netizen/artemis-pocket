@@ -34,9 +34,12 @@ public final class PreviewSeed {
         return hw.contains("ranchu") || hw.contains("goldfish");
     }
 
-    /** The build's emulator screenshots skip the boot (its animated blur strains the emulator). */
+    /**
+     * On the emulator the boot only plays when a seed asks for it (pocket_preview_boot): its
+     * software GPU can't take it, and the app's very first start comes before any seed.
+     */
     public static boolean skipsBoot(Context context) {
-        return isEmulator() && PocketPrefs.prefs(context).getBoolean("pocket_preview_no_boot", false);
+        return isEmulator() && !PocketPrefs.prefs(context).getBoolean("pocket_preview_boot", false);
     }
 
     public static void apply(Context context) {

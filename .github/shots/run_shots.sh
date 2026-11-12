@@ -86,6 +86,10 @@ adb shell pm list packages | sed 's/^package://' | sort > /tmp/pkgs.txt
 bash "$GITHUB_WORKSPACE/.github/shots/make_seed.sh" /tmp/seed /tmp/pkgs.txt > /tmp/seed.log 2>&1
 cat /tmp/seed.log
 prepare_app
+# A ROM folder (empty files) and file access, so the Retro section has systems to show
+for sys in nes snes n64 psx gba megadrive; do adb shell mkdir -p /sdcard/ROMs/$sys; done
+adb shell 'touch "/sdcard/ROMs/nes/Super Mario Bros. (World).nes" "/sdcard/ROMs/nes/The Legend of Zelda (USA).nes" "/sdcard/ROMs/snes/Super Metroid (Japan, USA).sfc" "/sdcard/ROMs/n64/Super Mario 64 (USA).z64" "/sdcard/ROMs/psx/Castlevania - Symphony of the Night (USA).chd" "/sdcard/ROMs/gba/Metroid Fusion (USA).gba" "/sdcard/ROMs/megadrive/Sonic The Hedgehog (USA, Europe).md"'
+adb shell appops set --uid $PKG MANAGE_EXTERNAL_STORAGE allow
 adb logcat -c
 
 if scene home; then
@@ -119,10 +123,28 @@ fi
 
 if scene sections; then
   key KEYCODE_BUTTON_R1 gamepad 3
-  key KEYCODE_BUTTON_R1 gamepad 4; shot 09_cloud
+  key KEYCODE_BUTTON_R1 gamepad 6; shot 09_cloud
+  key KEYCODE_DPAD_RIGHT dpad 3; shot 09_cloud_next
   key KEYCODE_BUTTON_R1 gamepad 5; shot 10_android
   key KEYCODE_DPAD_RIGHT dpad 2; shot 11_android_next
-  key KEYCODE_BUTTON_R1 gamepad 4; shot 12_retro
+  key KEYCODE_BUTTON_R1 gamepad 9; shot 12_retro
+  key KEYCODE_DPAD_RIGHT dpad 6; shot 12_retro_next
+  key KEYCODE_DPAD_RIGHT dpad 6; shot 12_retro_next2
+fi
+
+# Every app (the app drawer): the last card of the Android section's row
+if scene drawer; then
+  key KEYCODE_BUTTON_R1 gamepad 3
+  key KEYCODE_BUTTON_R1 gamepad 3
+  key KEYCODE_BUTTON_R1 gamepad 5
+  for n in 1 2 3 4 5 6 7 8; do key KEYCODE_DPAD_RIGHT dpad 0.6; done
+  sleep 1.5; shot 17_android_all_apps_card
+  key KEYCODE_BUTTON_A gamepad 4; shot 17_drawer
+  key KEYCODE_DPAD_RIGHT dpad 1; key KEYCODE_DPAD_DOWN dpad 2; shot 17_drawer_moved
+  key KEYCODE_BUTTON_R1 gamepad 2.5; shot 18_drawer_games
+  key KEYCODE_BUTTON_L1 gamepad 1.5
+  key KEYCODE_BUTTON_R2 gamepad 1; shot 18_drawer_letter
+  key KEYCODE_BUTTON_Y gamepad 2.5; shot 19_drawer_options
 fi
 
 # The Android section in the grid and list views
@@ -160,6 +182,21 @@ if ensure_emulator; then
     shot 15_frost_home
     key KEYCODE_BUTTON_Y gamepad 3; shot 16_frost_options
   fi
+fi
+
+# The boot sequence (skipped everywhere else), recorded on video
+rm -rf /tmp/seedb; mkdir -p /tmp/seedb
+printf 'pref\tbool\tpocket_preview_no_boot\tfalse\npref\tbool\tpocket_live_glass\tfalse\n' > /tmp/seedb/seed.txt
+if ensure_emulator; then
+  push_seed /tmp/seedb
+  adb shell am force-stop $PKG
+  adb shell input keyevent KEYCODE_WAKEUP
+  (timeout 20 adb shell screenrecord --time-limit 9 --bit-rate 12000000 /sdcard/boot.mp4 > /dev/null 2>&1 &)
+  sleep 1
+  timeout 30 adb shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null
+  sleep 11
+  timeout 60 adb pull /sdcard/boot.mp4 "$SHOTS/boot.mp4" > /dev/null 2>&1 && log "boot video"
+  shot 30_after_boot
 fi
 
 ensure_emulator && {

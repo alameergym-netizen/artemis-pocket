@@ -1158,4 +1158,34 @@
     <string name="pocket_ra_signout">Sign out</string>
     <string name="pocket_page_on_home">On Home</string>
     <string name="pocket_page_add_home">Add to Home</string>
+    <string name="pocket_sysart_title">Console art</string>
+    <string name="pocket_sysart_artwork">Artwork</string>
+    <string name="pocket_sysart_screens">Screenshots</string>
+    <string name="pocket_sysart_outline">Controller</string>
+    <string name="pocket_sysart_circuit">Circuit board</string>
+    <string name="pocket_sysart_noir">Noir</string>
+    <string name="pocket_sysart_credit">Console art, logos and facts: Art Book Next for ES-DE by anthonycaccese and its contributors (CC BY-NC-SA), downloaded the first time each system shows</string>
+    <string name="pocket_drawer_title">All apps</string>
+    <string name="pocket_drawer_all">All</string>
+    <string name="pocket_drawer_games">Games</string>
+    <string name="pocket_drawer_emulators">Emulators</string>
+    <string name="pocket_drawer_apps">Apps</string>
+    <string name="pocket_drawer_sort_name">A to Z</string>
+    <string name="pocket_drawer_sort_recent">Played lately</string>
+    <string name="pocket_drawer_sort_new">Newest</string>
+    <string name="pocket_drawer_search">Search</string>
+    <string name="pocket_drawer_search_hint">Search apps</string>
+    <string name="pocket_drawer_hint_category">Category</string>
+    <string name="pocket_drawer_hint_letter">Letter</string>
+    <string name="pocket_drawer_hint_sort">Order</string>
+    <string name="pocket_drawer_nothing">Nothing here</string>
+    <string name="pocket_drawer_new">NEW</string>
+    <string name="pocket_drawer_add_section">Add to the Android section</string>
+    <string name="pocket_drawer_remove_section">Remove from the Android section</string>
+    <string name="pocket_drawer_open_short">All apps</string>
+    <plurals name="pocket_drawer_count">
+        <item quantity="one">%1$d app</item>
+        <item quantity="other">%1$d apps</item>
+    </plurals>
+    <string name="pocket_drawer_sub">Every app on this handheld</string>
 </resources>

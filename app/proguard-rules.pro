@@ -47,3 +47,7 @@
 -keep class com.limelight.pocket.info.GameInfo { *; }
 -keep class com.limelight.pocket.info.GameInfo$* { *; }
 -keep class com.limelight.pocket.info.GameInfoService$Entry { *; }
+
+# Console logos (androidsvg)
+-keep class com.caverock.androidsvg.** { *; }
+-dontwarn com.caverock.androidsvg.**

@@ -97,11 +97,11 @@
 
             <ImageView
                 android:id="@+id/pocketBrandLogo"
-                android:layout_width="26dp"
-                android:layout_height="12dp"
+                android:layout_width="14dp"
+                android:layout_height="14dp"
                 android:importantForAccessibility="no"
                 android:scaleType="fitCenter"
-                android:src="@drawable/ic_pocket_logo" />
+                android:src="@drawable/ic_pocket_mark" />
 
             <TextView
                 android:id="@+id/pocketBrand"

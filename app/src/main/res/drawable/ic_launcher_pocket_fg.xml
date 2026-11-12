@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Artemis Pocket launcher icon: a white landscape handheld on black -->
+<!-- Pocket Nexus launcher icon: the mark, white on black -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
@@ -7,6 +7,11 @@
     android:viewportHeight="108">
     <path
         android:fillColor="#FFFFFFFF"
-        android:fillType="evenOdd"
-        android:pathData="M34,39H74A12,12 0 0 1 86,51V57A12,12 0 0 1 74,69H34A12,12 0 0 1 22,57V51A12,12 0 0 1 34,39ZM40.2,45H67.8A2.2,2.2 0 0 1 70,47.2V60.8A2.2,2.2 0 0 1 67.8,63H40.2A2.2,2.2 0 0 1 38,60.8V47.2A2.2,2.2 0 0 1 40.2,45ZM26.6,48.5A3.4,3.4 0 1 0 33.4,48.5A3.4,3.4 0 1 0 26.6,48.5ZM28.85,55.7L31.15,55.7L31.15,58.35L33.8,58.35L33.8,60.65L31.15,60.65L31.15,63.3L28.85,63.3L28.85,60.65L26.2,60.65L26.2,58.35L28.85,58.35ZM76.65,46.8A1.35,1.35 0 1 0 79.35,46.8A1.35,1.35 0 1 0 76.65,46.8ZM76.65,53.2A1.35,1.35 0 1 0 79.35,53.2A1.35,1.35 0 1 0 76.65,53.2ZM73.45,50A1.35,1.35 0 1 0 76.15,50A1.35,1.35 0 1 0 73.45,50ZM79.85,50A1.35,1.35 0 1 0 82.55,50A1.35,1.35 0 1 0 79.85,50ZM75,60.5A3,3 0 1 0 81,60.5A3,3 0 1 0 75,60.5Z" />
+        android:pathData="M35.0383,32H39.9617A2.51429,2.51429 0,0 1,42.476,34.5143V73.4857A2.51429,2.51429 0,0 1,39.9617,76H35.0383A2.51429,2.51429 0,0 1,32.524,73.4857V34.5143A2.51429,2.51429 0,0 1,35.0383,32Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M68.0383,32H72.9617A2.51429,2.51429 0,0 1,75.476,34.5143V73.4857A2.51429,2.51429 0,0 1,72.9617,76H68.0383A2.51429,2.51429 0,0 1,65.524,73.4857V34.5143A2.51429,2.51429 0,0 1,68.0383,32Z" />
+    <path
+        android:fillColor="#B3FFFFFF"
+        android:pathData="M44.362,32L63.638,60.286L63.638,76L44.362,47.714Z" />
 </vector>

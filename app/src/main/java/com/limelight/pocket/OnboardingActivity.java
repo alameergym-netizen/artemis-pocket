@@ -209,9 +209,9 @@ public class OnboardingActivity extends ConsoleActivity {
         column.addView(top, new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         logo = new ImageView(this);
-        logo.setImageResource(R.drawable.ic_pocket_logo);
+        logo.setImageResource(R.drawable.ic_pocket_mark);
         logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        top.addView(logo, new LinearLayout.LayoutParams(dp(26), dp(12)));
+        top.addView(logo, new LinearLayout.LayoutParams(dp(15), dp(15)));
         TextView brand = new TextView(this);
         brand.setText(R.string.pocket_brand);
         brand.setLetterSpacing(0.22f);
@@ -541,10 +541,10 @@ public class OnboardingActivity extends ConsoleActivity {
         FrameLayout hero = new FrameLayout(this);
         hero.addView(new PulseRingsView(this), new FrameLayout.LayoutParams(dp(230), dp(230), Gravity.CENTER));
         ImageView big = new ImageView(this);
-        big.setImageResource(R.drawable.ic_pocket_logo);
+        big.setImageResource(R.drawable.ic_pocket_mark);
         big.setColorFilter(PocketTheme.accent(this));
         big.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        hero.addView(big, new FrameLayout.LayoutParams(dp(112), dp(53), Gravity.CENTER));
+        hero.addView(big, new FrameLayout.LayoutParams(dp(84), dp(84), Gravity.CENTER));
         stage.addView(hero, new LinearLayout.LayoutParams(dp(230), dp(200)));
         if (animated()) {
             big.setScaleX(0.8f);

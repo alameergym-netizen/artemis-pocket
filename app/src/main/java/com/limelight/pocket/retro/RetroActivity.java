@@ -109,6 +109,10 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
     private int artVersion = PocketArt.version();
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService work = Executors.newSingleThreadExecutor();
+    /** Console art (downloaded the first time, then kept): apart from the games' covers. */
+    private final ExecutorService systemWork = Executors.newFixedThreadPool(2);
+    private static final LruCache<String, Bitmap> BACKDROPS = new LruCache<>(3);
+    private TextView about;
     private static final LruCache<String, Bitmap> CARDS = new LruCache<String, Bitmap>(12 * 1024 * 1024) {
         @Override
         protected int sizeOf(String key, Bitmap value) {
@@ -190,6 +194,9 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
         hide(R.id.pocketHeroPlay);
         hide(R.id.pocketHeroPlaytime);
         hide(R.id.pocketHeroLogo);
+        if (about != null) {
+            about.setVisibility(View.GONE);
+        }
         if (keyArt != null) {
             keyArt.show(null);
         }
@@ -238,6 +245,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
     protected void onDestroy() {
         super.onDestroy();
         work.shutdownNow();
+        systemWork.shutdownNow();
     }
 
     @Override
@@ -574,11 +582,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
         String sub;
         int playLabel;
         if (e.kind == KIND_SYSTEM) {
-            EsdeConfig.SystemDef s = cfg.system(e.system);
-            sub = getResources().getQuantityString(R.plurals.pocket_retro_games, e.count, e.count);
-            if (s != null) {
-                sub += "  ·  " + emulatorLabel(RetroLibrary.systemCommand(this, lib, s));
-            }
+            sub = systemLine(e, SystemArt.cachedInfo(e.system));
             playLabel = R.string.pocket_apps_open;
         }
         else if (e.kind == KIND_GAME) {
@@ -611,7 +615,81 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
             }
         }
         if (changed) {
+            showAbout(e.kind == KIND_SYSTEM ? SystemArt.cachedInfo(e.system) : null);
             showArt(e);
+        }
+    }
+
+    private String sysArtLabel() {
+        if (!SystemArt.enabled(this)) {
+            return getString(R.string.pocket_off);
+        }
+        switch (SystemArt.style(this)) {
+            case SystemArt.SCREENSHOTS:
+                return getString(R.string.pocket_sysart_screens);
+            case SystemArt.OUTLINE:
+                return getString(R.string.pocket_sysart_outline);
+            case SystemArt.CIRCUIT:
+                return getString(R.string.pocket_sysart_circuit);
+            case SystemArt.NOIR:
+                return getString(R.string.pocket_sysart_noir);
+            default:
+                return getString(R.string.pocket_sysart_artwork);
+        }
+    }
+
+    /** "Nintendo · 1996 · 109 games · RetroArch" (what's known of it). */
+    private String systemLine(Entry e, SystemArt.Info info) {
+        StringBuilder b = new StringBuilder();
+        if (info != null && !e.system.startsWith("@")) {
+            if (info.maker != null && !info.maker.isEmpty()) {
+                b.append(info.maker);
+            }
+            if (info.year != null && !info.year.isEmpty()) {
+                b.append(b.length() > 0 ? "  ·  " : "").append(info.year);
+            }
+        }
+        b.append(b.length() > 0 ? "  ·  " : "").append(getResources().getQuantityString(R.plurals.pocket_retro_games, e.count, e.count));
+        EsdeConfig.SystemDef s = cfg.system(e.system);
+        if (s != null) {
+            b.append("  ·  ").append(emulatorLabel(RetroLibrary.systemCommand(this, lib, s)));
+        }
+        return b.toString();
+    }
+
+    /** A system's story, under its name (two lines). */
+    private void showAbout(SystemArt.Info info) {
+        if (about == null) {
+            ViewGroup hero = findViewById(R.id.pocketHero);
+            if (hero == null) {
+                return;
+            }
+            float d = getResources().getDisplayMetrics().density;
+            about = new TextView(this);
+            about.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11f);
+            about.setTextColor(0xB8FFFFFF);
+            about.setMaxLines(2);
+            about.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            about.setLineSpacing(0, 1.15f);
+            about.setMaxWidth(Math.round(470 * d));
+            about.setShadowLayer(8, 0, 0, 0x80000000);
+            about.setTypeface(com.limelight.pocket.ui.PocketFonts.regular());
+            android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            lp.topMargin = Math.round(10 * d);
+            hero.addView(about, lp);
+        }
+        String text = info != null ? info.description : null;
+        if (text == null || text.isEmpty()) {
+            about.setVisibility(View.GONE);
+            return;
+        }
+        boolean was = about.getVisibility() == View.VISIBLE && about.getText().length() > 0;
+        about.setText(text);
+        about.setVisibility(View.VISIBLE);
+        if (!was && PocketPrefs.animationsEnabled(this)) {
+            about.setAlpha(0f);
+            about.animate().alpha(1f).setDuration(240).start();
         }
     }
 
@@ -625,34 +703,64 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
             title.setVisibility(View.VISIBLE);
         }
         final String key = e.key;
-        if (e.kind == KIND_SYSTEM) {
-            // A game of the system as the backdrop (the one played last, else the first with art)
-            final List<RomScanner.Rom> roms = romsOf(e.system);
+        if (e.kind == KIND_SYSTEM && SystemArt.enabled(this)) {
+            // The console: its logo in place of its name, its facts, its art as the backdrop
+            final float d = getResources().getDisplayMetrics().density;
+            final int lw = Math.round(340 * d);
+            final int lh = Math.round(60 * d);
+            final int bw = Math.max(640, getResources().getDisplayMetrics().widthPixels * 2 / 3);
+            final int bh = Math.round(bw * 9f / 16f);
+            final String system = e.system;
+            final int color = SYS_FAVS.equals(system) ? 0xFFF9A825 : SYS_RECENT.equals(system) ? 0xFF37474F : colorOf(system);
+            Bitmap ready = BACKDROPS.get(system);
             if (keyArt != null) {
-                keyArt.show(null);
+                keyArt.show(ready);
             }
-            work.execute(() -> {
-                RomScanner.Rom pick = null;
-                long best = -1;
-                for (int i = 0; i < roms.size() && i < 80; i++) {
-                    RomScanner.Rom r = roms.get(i);
-                    if (PocketArt.has(this, RetroLibrary.UUID, r.id(), PocketArt.HERO)) {
-                        long played = RetroLibrary.lastPlayed(this, r.key());
-                        if (played > best) {
-                            best = played;
-                            pick = r;
-                        }
+            systemWork.execute(() -> {
+                final Bitmap mark = SystemArt.logo(this, system, lw, lh);
+                final SystemArt.Info info = SystemArt.info(this, system);
+                Bitmap back = BACKDROPS.get(system);
+                if (back == null) {
+                    back = SystemArt.backdrop(this, system, color, bw, bh);
+                    if (back != null) {
+                        BACKDROPS.put(system, back);
                     }
                 }
-                final RomScanner.Rom chosen = pick;
-                if (chosen != null) {
-                    main.post(() -> PocketArt.load(this, RetroLibrary.UUID, chosen.id(), PocketArt.HERO, bitmap -> {
-                        if (key.equals(heroKey) && keyArt != null) {
-                            keyArt.show(bitmap);
+                final Bitmap backdrop = back;
+                main.post(() -> {
+                    if (isFinishing() || !key.equals(heroKey)) {
+                        return;
+                    }
+                    if (mark != null && logo != null && title != null) {
+                        logo.setImageBitmap(mark);
+                        logo.setVisibility(View.VISIBLE);
+                        title.setVisibility(View.GONE);
+                        if (PocketPrefs.animationsEnabled(this)) {
+                            logo.setAlpha(0f);
+                            logo.setTranslationY(6 * d);
+                            logo.animate().alpha(1f).translationY(0f).setDuration(320)
+                                    .setInterpolator(com.limelight.pocket.ui.PocketMotion.DECELERATE).start();
                         }
-                    }));
-                }
+                    }
+                    if (info != null) {
+                        TextView subtitle = findViewById(R.id.pocketHeroSubtitle);
+                        if (subtitle != null) {
+                            subtitle.setText(systemLine(e, info));
+                        }
+                        showAbout(info);
+                    }
+                    if (backdrop != null && keyArt != null) {
+                        keyArt.show(backdrop);
+                    }
+                    else if (backdrop == null) {
+                        gameBackdrop(e, key);
+                    }
+                });
             });
+            return;
+        }
+        if (e.kind == KIND_SYSTEM) {
+            gameBackdrop(e, key);
             return;
         }
         if (e.kind != KIND_GAME) {
@@ -661,23 +769,53 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
             }
             return;
         }
-        final int id = e.rom.id();
-        PocketArt.load(this, RetroLibrary.UUID, id, PocketArt.HERO, bitmap -> {
+        final int gameId = e.rom.id();
+        PocketArt.load(this, RetroLibrary.UUID, gameId, PocketArt.HERO, bitmap -> {
             if (key.equals(heroKey) && keyArt != null) {
                 keyArt.show(bitmap);
             }
         });
-        PocketArt.load(this, RetroLibrary.UUID, id, PocketArt.LOGO, bitmap -> {
+        PocketArt.load(this, RetroLibrary.UUID, gameId, PocketArt.LOGO, bitmap -> {
             if (key.equals(heroKey) && bitmap != null && logo != null && title != null) {
                 logo.setImageBitmap(bitmap);
                 logo.setVisibility(View.VISIBLE);
                 title.setVisibility(View.GONE);
             }
         });
-        if (!PocketArt.has(this, RetroLibrary.UUID, id, PocketArt.COVER)
-                || !PocketArt.has(this, RetroLibrary.UUID, id, PocketArt.HERO)) {
+        if (!PocketArt.has(this, RetroLibrary.UUID, gameId, PocketArt.COVER)
+                || !PocketArt.has(this, RetroLibrary.UUID, gameId, PocketArt.HERO)) {
             scrape(e.rom, false);
         }
+    }
+
+    /** A game of the system as the backdrop (the one played last, else the first with art). */
+    private void gameBackdrop(final Entry e, final String key) {
+        final List<RomScanner.Rom> roms = romsOf(e.system);
+        if (keyArt != null) {
+            keyArt.show(null);
+        }
+        work.execute(() -> {
+            RomScanner.Rom pick = null;
+            long best = -1;
+            for (int i = 0; i < roms.size() && i < 80; i++) {
+                RomScanner.Rom r = roms.get(i);
+                if (PocketArt.has(this, RetroLibrary.UUID, r.id(), PocketArt.HERO)) {
+                    long played = RetroLibrary.lastPlayed(this, r.key());
+                    if (played > best) {
+                        best = played;
+                        pick = r;
+                    }
+                }
+            }
+            final RomScanner.Rom chosen = pick;
+            if (chosen != null) {
+                main.post(() -> PocketArt.load(this, RetroLibrary.UUID, chosen.id(), PocketArt.HERO, bitmap -> {
+                    if (key.equals(heroKey) && keyArt != null) {
+                        keyArt.show(bitmap);
+                    }
+                }));
+            }
+        });
     }
 
     // ---- Art ------------------------------------------------------------------------------------
@@ -1091,8 +1229,30 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                     showEntries();
                     return getString(now ? R.string.pocket_on : R.string.pocket_off);
                 }));
+        items.add(StreamMenuView.Item.value(getString(R.string.pocket_sysart_title), sysArtLabel(), direction -> {
+            // Artwork, screenshots, the controller, the circuit board, noir, or none
+            if (!SystemArt.enabled(this)) {
+                SystemArt.setEnabled(this, true);
+                PocketPrefs.prefs(this).edit().putString("pocket_system_art", SystemArt.STYLES[0]).apply();
+            }
+            else if (SystemArt.style(this).equals(SystemArt.STYLES[SystemArt.STYLES.length - 1])) {
+                SystemArt.setEnabled(this, false);
+            }
+            else {
+                SystemArt.nextStyle(this);
+            }
+            PocketSounds.play(this, PocketSounds.NAV);
+            BACKDROPS.evictAll();
+            adapter.notifyDataSetChanged();
+            heroKey = null;
+            if (heroPos >= 0) {
+                updateHero(heroPos);
+            }
+            return sysArtLabel();
+        }));
         com.limelight.pocket.ui.LibraryLayout.addSettings(this, items);
         items.add(StreamMenuView.Item.header(getString(R.string.pocket_retro_tip)));
+        items.add(StreamMenuView.Item.header(getString(R.string.pocket_sysart_credit)));
     }
 
     @Override
@@ -1334,7 +1494,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                 overlay.setVisibility(View.GONE);
             }
             card.setContentDescription(e.label);
-            final String tag = e.key + "|" + e.count + "|" + PocketArt.version();
+            final String tag = e.key + "|" + e.count + "|" + PocketArt.version() + "|" + SystemArt.style(RetroActivity.this);
             if (tag.equals(image.getTag()) && image.getDrawable() != null) {
                 return card;
             }
@@ -1345,7 +1505,37 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
             if (e.kind != KIND_GAME) {
                 // Drawn here (no text under it: the card says it all)
                 text.setVisibility(View.GONE);
+                final String style = SystemArt.style(RetroActivity.this);
+                final String artKey = "art|" + e.key + "#" + e.count + "|" + style;
+                Bitmap art = e.kind == KIND_SYSTEM ? CARDS.get(artKey) : null;
+                if (art != null) {
+                    image.setImageBitmap(art);
+                    return card;
+                }
                 image.setImageBitmap(cardFor(e, w, h));
+                if (e.kind == KIND_SYSTEM && (e.count > 0 || e.system.startsWith("@")) && SystemArt.enabled(RetroActivity.this)) {
+                    // The console's own art, once it's here (downloaded the first time)
+                    final String system = e.system;
+                    final int color = SYS_FAVS.equals(system) ? 0xFFF9A825 : SYS_RECENT.equals(system) ? 0xFF37474F : colorOf(system);
+                    final String count = String.valueOf(e.count);
+                    final boolean ready = SystemArt.has(RetroActivity.this, system, style);
+                    systemWork.execute(() -> {
+                        final Bitmap made = SystemArt.card(RetroActivity.this, system, style, color, count, w, h);
+                        if (made == null) {
+                            return;
+                        }
+                        CARDS.put(artKey, made);
+                        main.post(() -> {
+                            if (tag.equals(image.getTag())) {
+                                image.setImageBitmap(made);
+                                if (!ready && PocketPrefs.animationsEnabled(RetroActivity.this)) {
+                                    image.setAlpha(0f);
+                                    image.animate().alpha(1f).setDuration(260).start();
+                                }
+                            }
+                        });
+                    });
+                }
                 return card;
             }
             text.setText(e.label);

@@ -78,6 +78,8 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
     static final int TYPE_EMULATOR = 2;
     static final int TYPE_SETTING = 3;
     private static final String PANEL = "pocket:device_panel";
+    /** The last card of the row: every app on the handheld (the app drawer). */
+    private static final String DRAWER = "pocket:all_apps";
 
     public static void open(Activity from) {
         PocketSounds.play(from, PocketSounds.OPEN);
@@ -143,8 +145,9 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
         hide(R.id.profilesButton);
         TextView add = findViewById(R.id.pocketPcLibraryButton);
         if (add != null) {
-            add.setText(R.string.pocket_apps_add_short);
-            add.setOnClickListener(v -> AppPickerActivity.open(this));
+            // Every app on the handheld (picking the section's apps is in the options)
+            add.setText("\u229E  " + getString(R.string.pocket_drawer_open_short));
+            add.setOnClickListener(v -> AppDrawerActivity.open(this));
         }
 
         carousel = findViewById(R.id.pocketAppCarousel);
@@ -345,6 +348,10 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
                 shown.add(e);
             }
         }
+        if (filter == FILTER_ALL) {
+            shown.add(new Entry("drawer", getString(R.string.pocket_drawer_title), TYPE_SETTING, null, DRAWER,
+                    R.drawable.ic_pocket_all_apps));
+        }
         String keep = heroKey;
         adapter.set(shown);
         updateSection();
@@ -440,7 +447,7 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
         TextView subtitle = findViewById(R.id.pocketHeroSubtitle);
         if (subtitle != null) {
             subtitle.setVisibility(View.VISIBLE);
-            subtitle.setText(typeLabel(e.type));
+            subtitle.setText(DRAWER.equals(e.settingsAction) ? R.string.pocket_drawer_sub : typeLabel(e.type));
         }
         hide(R.id.pocketHeroPlaytime);
         TextView play = findViewById(R.id.pocketHeroPlay);
@@ -613,6 +620,10 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
     private void open(Entry e) {
         try {
             if (e.type == TYPE_SETTING) {
+                if (DRAWER.equals(e.settingsAction)) {
+                    AppDrawerActivity.open(this);
+                    return;
+                }
                 if (PANEL.equals(e.settingsAction)) {
                     com.limelight.pocket.device.DevicePanel.show(this);
                     return;

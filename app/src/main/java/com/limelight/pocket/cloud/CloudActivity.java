@@ -96,6 +96,34 @@ public class CloudActivity extends ConsoleActivity implements CarouselAdapter.Li
         hide(R.id.pocketHeroLogo);
         hide(R.id.pocketHeroPlaytime);
         focusAt(0, 0);
+        // Real covers, backgrounds and logos (SteamGridDB, with a key): looked up once
+        for (final CloudService s : CloudService.ALL) {
+            com.limelight.pocket.home.HomeItem item = homeItem(s);
+            com.limelight.pocket.PocketArt.autoFetch(this, com.limelight.pocket.home.HomeActivity.artUuid(item),
+                    com.limelight.pocket.home.HomeActivity.artId(item), getString(s.name), true, () -> {
+                        if (isFinishing()) {
+                            return;
+                        }
+                        CARDS.evictAll();
+                        adapter.notifyDataSetChanged();
+                        if (heroPos >= 0) {
+                            int p = heroPos;
+                            heroPos = -1;
+                            updateHero(p);
+                        }
+                    });
+        }
+    }
+
+    private static final android.util.LruCache<String, Bitmap> CARDS = new android.util.LruCache<>(8);
+    private static final android.util.LruCache<String, Bitmap> BACKDROPS = new android.util.LruCache<>(3);
+
+    private String artUuid(CloudService s) {
+        return com.limelight.pocket.home.HomeActivity.artUuid(homeItem(s));
+    }
+
+    private int artId(CloudService s) {
+        return com.limelight.pocket.home.HomeActivity.artId(homeItem(s));
     }
 
     private void hide(int id) {
@@ -149,11 +177,15 @@ public class CloudActivity extends ConsoleActivity implements CarouselAdapter.Li
         }
         CloudService s = CloudService.ALL[position];
         TextView title = findViewById(R.id.pocketHeroTitle);
-        if (title != null && position != heroPos) {
+        boolean changed = position != heroPos;
+        if (title != null && changed) {
             title.setVisibility(View.VISIBLE);
             PocketMotion.swapText(title, getString(s.name), heroPos < 0 ? 0 : Integer.signum(position - heroPos));
         }
         heroPos = position;
+        if (changed) {
+            showArt(s, position);
+        }
         TextView subtitle = findViewById(R.id.pocketHeroSubtitle);
         if (subtitle != null) {
             subtitle.setVisibility(View.VISIBLE);
@@ -169,6 +201,40 @@ public class CloudActivity extends ConsoleActivity implements CarouselAdapter.Li
             play.setVisibility(View.VISIBLE);
             play.setText("▶  " + getString(s.isRunning(this) ? R.string.pocket_cloud_return : R.string.pocket_hero_play));
         }
+    }
+
+    /** Its background (SteamGridDB's, else light in its colours) and logo in place of its name. */
+    private void showArt(final CloudService s, final int position) {
+        final ImageView logo = findViewById(R.id.pocketHeroLogo);
+        final TextView title = findViewById(R.id.pocketHeroTitle);
+        if (logo != null) {
+            logo.setVisibility(View.GONE);
+        }
+        final String uuid = artUuid(s);
+        final int id = artId(s);
+        com.limelight.pocket.PocketArt.load(this, uuid, id, com.limelight.pocket.PocketArt.HERO, bitmap -> {
+            if (heroPos != position || keyArt == null) {
+                return;
+            }
+            if (bitmap != null) {
+                keyArt.show(bitmap);
+                return;
+            }
+            Bitmap back = BACKDROPS.get(s.id);
+            if (back == null) {
+                int w = Math.max(640, getResources().getDisplayMetrics().widthPixels / 2);
+                back = CloudArt.backdrop(this, s, w, Math.round(w * 9f / 16f));
+                BACKDROPS.put(s.id, back);
+            }
+            keyArt.show(back);
+        });
+        com.limelight.pocket.PocketArt.load(this, uuid, id, com.limelight.pocket.PocketArt.LOGO, bitmap -> {
+            if (heroPos == position && bitmap != null && logo != null && title != null) {
+                logo.setImageBitmap(bitmap);
+                logo.setVisibility(View.VISIBLE);
+                title.setVisibility(View.GONE);
+            }
+        });
     }
 
     private void play(CloudService s) {
@@ -258,52 +324,6 @@ public class CloudActivity extends ConsoleActivity implements CarouselAdapter.Li
 
     // ---- Cards ------------------------------------------------------------------------------
 
-    private static int darker(int color, float f) {
-        return Color.rgb(Math.round(Color.red(color) * f), Math.round(Color.green(color) * f), Math.round(Color.blue(color) * f));
-    }
-
-    /** The service's name on its colour (no logos), with a "running" dot. */
-    private Bitmap cardFor(CloudService s, boolean running, int w, int h) {
-        Bitmap b = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
-        Canvas c = new Canvas(b);
-        Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
-        bg.setShader(new LinearGradient(0, 0, w * 0.4f, h, s.color, darker(s.color, 0.22f), Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, w, h, bg);
-        Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
-        glow.setShader(new RadialGradient(w * 0.2f, h * 0.15f, w, 0x3DFFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, w, h, glow);
-        Paint t = new Paint(Paint.ANTI_ALIAS_FLAG);
-        t.setColor(0xFFFFFFFF);
-        t.setTypeface(com.limelight.pocket.ui.PocketFonts.bold());
-        t.setTextAlign(Paint.Align.CENTER);
-        String[] words = getString(s.name).split(" ");
-        float size = h * 0.11f;
-        t.setTextSize(size);
-        for (String word : words) {
-            while (t.measureText(word) > w * 0.84f && size > h * 0.05f) {
-                size *= 0.92f;
-                t.setTextSize(size);
-            }
-        }
-        float y = h * 0.42f - (words.length - 1) * size * 0.55f;
-        for (String word : words) {
-            c.drawText(word, w / 2f, y, t);
-            y += size * 1.1f;
-        }
-        Paint cloud = new Paint(Paint.ANTI_ALIAS_FLAG);
-        cloud.setColor(0x40FFFFFF);
-        float cy = h * 0.8f;
-        c.drawCircle(w * 0.42f, cy, w * 0.11f, cloud);
-        c.drawCircle(w * 0.56f, cy - w * 0.05f, w * 0.14f, cloud);
-        c.drawRoundRect(w * 0.3f, cy - w * 0.02f, w * 0.72f, cy + w * 0.11f, w * 0.06f, w * 0.06f, cloud);
-        if (running) {
-            Paint dot = new Paint(Paint.ANTI_ALIAS_FLAG);
-            dot.setColor(0xFF4CFF8F);
-            c.drawCircle(w * 0.86f, h * 0.08f, w * 0.045f, dot);
-        }
-        return b;
-    }
-
     private final class Cards extends BaseAdapter {
         @Override
         public int getCount() {
@@ -334,7 +354,24 @@ public class CloudActivity extends ConsoleActivity implements CarouselAdapter.Li
             text.setVisibility(View.GONE);
             card.setContentDescription(getString(s.name));
             float d = getResources().getDisplayMetrics().density;
-            image.setImageBitmap(cardFor(s, s.isRunning(CloudActivity.this), Math.round(108 * d), Math.round(162 * d)));
+            final int w = Math.round(108 * d);
+            final int h = Math.round(162 * d);
+            final boolean running = s.isRunning(CloudActivity.this);
+            final String key = s.id + "|" + running + "|" + com.limelight.pocket.PocketArt.version();
+            image.setTag(key);
+            Bitmap ready = CARDS.get(key);
+            if (ready != null) {
+                image.setImageBitmap(ready);
+                return card;
+            }
+            com.limelight.pocket.PocketArt.load(CloudActivity.this, artUuid(s), artId(s), com.limelight.pocket.PocketArt.COVER, cover -> {
+                if (!key.equals(image.getTag())) {
+                    return;
+                }
+                Bitmap made = CloudArt.card(CloudActivity.this, s, getString(s.name), running, cover, w, h);
+                CARDS.put(key, made);
+                image.setImageBitmap(made);
+            });
             return card;
         }
     }

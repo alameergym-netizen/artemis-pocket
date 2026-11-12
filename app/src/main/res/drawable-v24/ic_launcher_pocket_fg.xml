@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pocket Nexus launcher icon: the mark, white on black -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M35.0383,32H39.9617A2.51429,2.51429 0,0 1,42.476,34.5143V73.4857A2.51429,2.51429 0,0 1,39.9617,76H35.0383A2.51429,2.51429 0,0 1,32.524,73.4857V34.5143A2.51429,2.51429 0,0 1,35.0383,32Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M68.0383,32H72.9617A2.51429,2.51429 0,0 1,75.476,34.5143V73.4857A2.51429,2.51429 0,0 1,72.9617,76H68.0383A2.51429,2.51429 0,0 1,65.524,73.4857V34.5143A2.51429,2.51429 0,0 1,68.0383,32Z" />
+    <path android:pathData="M44.362,32L63.638,60.286L63.638,76L44.362,47.714Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="44.362"
+                android:startY="32"
+                android:endX="63.638"
+                android:endY="76">
+                <item android:offset="0" android:color="#FFFFFFFF" />
+                <item android:offset="1" android:color="#59FFFFFF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

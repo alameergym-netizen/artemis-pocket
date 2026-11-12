@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pocket Nexus: two pillars and the light between them, a stencil N (a link between two places) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M13.9,11H18.6A2.4,2.4 0,0 1,21,13.4V50.6A2.4,2.4 0,0 1,18.6,53H13.9A2.4,2.4 0,0 1,11.5,50.6V13.4A2.4,2.4 0,0 1,13.9,11Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M45.4,11H50.1A2.4,2.4 0,0 1,52.5,13.4V50.6A2.4,2.4 0,0 1,50.1,53H45.4A2.4,2.4 0,0 1,43,50.6V13.4A2.4,2.4 0,0 1,45.4,11Z" />
+    <path
+        android:fillColor="#B3FFFFFF"
+        android:pathData="M22.8,11L41.2,38L41.2,53L22.8,26Z" />
+</vector>

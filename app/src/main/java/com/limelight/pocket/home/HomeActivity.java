@@ -375,7 +375,7 @@ public class HomeActivity extends ConsoleActivity {
     // ---- Per kind ------------------------------------------------------------------------------
 
     /** Where its art is kept (uuid, id), or null for drawn cards. */
-    static String artUuid(HomeItem i) {
+    public static String artUuid(HomeItem i) {
         switch (i.kind) {
             case HomeItem.PC:
             case HomeItem.PC_LIBRARY_GAME:
@@ -388,12 +388,14 @@ public class HomeActivity extends ConsoleActivity {
                 return "shortcut";
             case HomeItem.NATIVE:
                 return "native";
+            case HomeItem.CLOUD:
+                return "cloud";
             default:
                 return null;
         }
     }
 
-    static int artId(HomeItem i) {
+    public static int artId(HomeItem i) {
         switch (i.kind) {
             case HomeItem.PC:
             case HomeItem.PC_LIBRARY_GAME:
@@ -2098,7 +2100,10 @@ public class HomeActivity extends ConsoleActivity {
         }
         if (HomeItem.CLOUD.equals(item.kind)) {
             CloudService cs = CloudService.byId(item.a);
-            return nameTile(name, cs != null ? cs.color : 0xFF2B6CB0, w, h);
+            if (cs != null) {
+                return com.limelight.pocket.cloud.CloudArt.card(this, cs, name, false, null, w, h);
+            }
+            return nameTile(name, 0xFF2B6CB0, w, h);
         }
         if (HomeItem.PC_GAMES.equals(item.kind)) {
             return nameTile(name, 0xFF3A3F55, w, h);

@@ -16,7 +16,8 @@ android {
 
         // Artemis Pocket targets the Retroid Pocket 6 (Snapdragon 8 Gen 2), so only arm64 is built
         ndk {
-            abiFilters 'arm64-v8a'
+            // -PpocketAbis=x86_64: the build's emulator screenshots (never shipped)
+            abiFilters(*((project.findProperty('pocketAbis') ?: 'arm64-v8a').toString().split(',')))
         }
 
         // Generate native debug symbols to allow Google Play to symbolicate our native crashes

@@ -66,6 +66,22 @@ jobs:
           (cd pc-setup && zip -qr "../out/PocketNexus-PC.zip" . -x "*.md" "tests/*")
           ls -la out
 
+      # The same app built for x86_64, only for the emulator screenshots below (never released)
+      - name: Build emulator APK
+        if: success()
+        run: |
+          set -o pipefail
+          ./gradlew --no-daemon assembleNonRoot_gameRelease -PpocketAbis=x86_64 2>&1 | tail -n 30
+          mkdir -p out-emu
+          cp "$(find app/build/outputs/apk -name "*release*.apk" | head -n 1)" out-emu/PocketNexus-emu.apk
+
+      - name: Upload emulator APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PocketNexus-emu
+          path: out-emu/*.apk
+
       - name: Upload artifact
         if: success()
         uses: actions/upload-artifact@v4
@@ -124,7 +140,7 @@ jobs:
       - name: Get the APK
         uses: actions/download-artifact@v4
         with:
-          name: PocketNexus-apk
+          name: PocketNexus-emu
           path: out
 
       - name: Enable KVM

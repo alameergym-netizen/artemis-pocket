@@ -136,6 +136,18 @@ if scene game_page; then
   key KEYCODE_DPAD_DOWN dpad 3; shot 04_game_page_more
 fi
 
+# The real frosted glass (live blur), last: the emulator may not survive it
+rm -rf /tmp/seedf; mkdir -p /tmp/seedf
+printf 'pref\tbool\tpocket_live_glass\ttrue\n' > /tmp/seedf/seed.txt
+if ensure_emulator; then
+  push_seed /tmp/seedf
+  if scene frost; then
+    key KEYCODE_DPAD_RIGHT dpad 2
+    shot 15_frost_home
+    key KEYCODE_BUTTON_Y gamepad 3; shot 16_frost_options
+  fi
+fi
+
 ensure_emulator && {
   adb logcat -d -b crash > "$SHOTS/crash.txt" 2>&1 || true
   adb logcat -d -v brief | grep -E "AndroidRuntime|$PKG|E/" | tail -n 400 > "$SHOTS/logcat.txt" 2>&1 || true

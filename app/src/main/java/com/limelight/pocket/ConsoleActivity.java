@@ -345,11 +345,15 @@ public abstract class ConsoleActivity extends AppCompatActivity {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
+        lastInputWasButton = false;
         if (heroFocus != null) {
             heroFocus.onTouch(event);
         }
         return super.dispatchTouchEvent(event);
     }
+
+    /** The last thing the user did was press a button (the next screen opens ready for buttons). */
+    private static boolean lastInputWasButton = true;
 
     @Override
     protected void onPause() {
@@ -386,6 +390,20 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) {
             enterImmersive();
+            // Opened with a button (L1 / R1, A...) while Android still thought the screen was
+            // being touched: leave touch mode, so the screen's first game gets its focus ring
+            // straight away instead of on the next press
+            View decor = getWindow().getDecorView();
+            if (lastInputWasButton && decor.isInTouchMode()) {
+                PocketUi.quietFor(400);
+                View focus = decor.findFocus();
+                if (focus != null) {
+                    focus.requestFocusFromTouch();
+                }
+                else {
+                    decor.requestFocusFromTouch();
+                }
+            }
         }
     }
 
@@ -1018,6 +1036,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        lastInputWasButton = true;
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             switch (event.getKeyCode()) {
                 case KeyEvent.KEYCODE_DPAD_UP:

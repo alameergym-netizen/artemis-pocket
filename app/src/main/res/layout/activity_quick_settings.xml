@@ -22,13 +22,15 @@
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="24dp"
-            android:paddingTop="12dp"
-            android:paddingEnd="22dp">
+            android:paddingTop="16dp"
+            android:paddingEnd="18dp"
+            android:paddingBottom="6dp">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="@font/inter_medium"
+                android:fontFamily="@font/inter_semibold"
+                android:letterSpacing="-0.02"
                 android:text="@string/pocket_settings_title"
                 android:textColor="@color/pocket_text"
                 android:textSize="19sp" />
@@ -38,49 +40,40 @@
                 android:layout_height="1dp"
                 android:layout_weight="1" />
 
-            <LinearLayout
+            <!-- Status without a frame, like every other screen -->
+            <TextView
+                android:id="@+id/pocketLinkChip"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/pocket_glass_pill"
-                android:tag="glass"
+                android:fontFamily="@font/inter_medium"
                 android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="4dp"
-                android:paddingTop="3dp"
-                android:paddingEnd="12dp"
-                android:paddingBottom="3dp">
+                android:shadowColor="#99000000"
+                android:shadowRadius="8"
+                android:textColor="@color/pocket_text"
+                android:textSize="11sp" />
 
-                <TextView
-                    android:id="@+id/pocketLinkChip"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/pocket_chip_bg"
-                    android:fontFamily="@font/inter_medium"
-                    android:gravity="center_vertical"
-                    android:paddingStart="8dp"
-                    android:paddingTop="2dp"
-                    android:paddingEnd="9dp"
-                    android:paddingBottom="2dp"
-                    android:textColor="@color/pocket_text"
-                    android:textSize="10sp" />
+            <TextView
+                android:id="@+id/pocketBattery"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:fontFamily="@font/inter_medium"
+                android:shadowColor="#99000000"
+                android:shadowRadius="8"
+                android:textColor="@color/pocket_text"
+                android:textSize="11sp" />
 
-                <TextView
-                    android:id="@+id/pocketBattery"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:textColor="@color/pocket_text_dim"
-                    android:textSize="11sp" />
-
-                <TextView
-                    android:id="@+id/pocketClock"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="10dp"
-                    android:fontFamily="@font/inter_medium"
-                    android:textColor="@color/pocket_text"
-                    android:textSize="12sp" />
-            </LinearLayout>
+            <TextView
+                android:id="@+id/pocketClock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:fontFamily="@font/inter_semibold"
+                android:letterSpacing="-0.01"
+                android:shadowColor="#99000000"
+                android:shadowRadius="8"
+                android:textColor="@color/pocket_text"
+                android:textSize="12.5sp" />
         </LinearLayout>
 
         <LinearLayout

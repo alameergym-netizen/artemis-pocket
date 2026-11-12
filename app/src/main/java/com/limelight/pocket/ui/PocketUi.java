@@ -94,8 +94,18 @@ public final class PocketUi {
     private static final java.util.concurrent.ExecutorService HAPTICS =
             java.util.concurrent.Executors.newSingleThreadExecutor();
 
+    private static long quietUntil;
+
+    /** No move sound for a moment (a screen placing its first focus isn't a move). */
+    public static void quietFor(long ms) {
+        quietUntil = android.os.SystemClock.uptimeMillis() + ms;
+    }
+
     /** A very light tick when moving between items, like a console menu. */
     public static void tick(Context context) {
+        if (android.os.SystemClock.uptimeMillis() < quietUntil) {
+            return;
+        }
         com.limelight.pocket.PocketSounds.play(context, com.limelight.pocket.PocketSounds.NAV);
         if (!PocketPrefs.hapticsEnabled(context)) {
             return;

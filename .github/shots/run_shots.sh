@@ -34,6 +34,7 @@ restarts=0
 ensure_emulator() {
   alive && return 0
   [ $restarts -gt 0 ] && { log "emulator log ($restarts):"; tail -n 25 /tmp/emu-$restarts.log; }
+  log "last words ($restarts):"; tail -n 60 /tmp/live-logcat-$restarts.txt 2>/dev/null | cut -c1-220
   [ $restarts -ge 3 ] && return 1
   restarts=$((restarts+1))
   log "restarting the emulator ($restarts)"
@@ -56,7 +57,12 @@ ensure_emulator() {
 prepare_app() {
   log "install"
   timeout 180 adb install -r -g "$APK" 2>&1 | tail -3
-  # First start creates the app's folders, then the seed goes in
+  # The seed in place before the very first start (no boot, no onboarding, no live blur)
+  adbt shell mkdir -p /sdcard/Android/data/$PKG/files/preview
+  T=60 adbt push /tmp/seed/. /sdcard/Android/data/$PKG/files/preview/ > /dev/null
+  # Everything the handheld logs, kept on this side: if the emulator dies, its last words
+  (timeout 900 adb logcat -v brief > /tmp/live-logcat-$restarts.txt 2>&1 &)
+  # First start creates the app's folders, then the seed goes in (again)
   timeout 60 adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null; sleep 6
   push_seed /tmp/seed
   # ...and is read by the next start

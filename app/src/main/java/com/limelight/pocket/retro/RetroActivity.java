@@ -207,7 +207,8 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                     hintX(this, R.string.pocket_hint_details),
                     hintY(this, R.string.pocket_hint_options),
                     hintB(this, R.string.pocket_hint_back),
-                    new Hint("L2 R2", 0xFFFFFFFF, getString(R.string.pocket_retro_hint_systems)));
+                    new Hint("L2 R2", 0xFFFFFFFF, getString(R.string.pocket_retro_hint_systems)),
+                    hintSelect(this, R.string.pocket_layout_hint));
         }
     }
 
@@ -1006,6 +1007,15 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                 openPage(e);
             }));
             items.add(com.limelight.pocket.home.HomePins.item(this, homeItem(rom)));
+            final Achievements.Target trophies = Achievements.hasRa(this) && Achievements.consoleId(rom.system) > 0
+                    ? Achievements.Target.retro(rom.system, rom.relPath, rom.name) : null;
+            if (trophies != null) {
+                Achievements.Set known = Achievements.cached(this, trophies);
+                items.add(StreamMenuView.Item.action(getString(R.string.pocket_trophy_title), () -> {
+                    hideConsolePanel();
+                    AchievementsActivity.open(this, trophies, RetroLibrary.UUID, rom.id());
+                }).withValue(known != null && known.total > 0 ? known.earned + " / " + known.total : null));
+            }
             items.add(StreamMenuView.Item.action(getString(R.string.pocket_rename), () -> {
                 hideConsolePanel();
                 rename(rom);

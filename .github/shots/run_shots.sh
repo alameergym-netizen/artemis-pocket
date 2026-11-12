@@ -94,6 +94,18 @@ if scene home; then
   key KEYCODE_BUTTON_Y gamepad 2.5; shot 03_home_options
 fi
 
+# Home's layouts, one SELECT press each
+if scene home_layouts; then
+  key KEYCODE_DPAD_RIGHT dpad 1.5
+  key KEYCODE_BUTTON_SELECT gamepad 2.5; shot 20_home_covers
+  key KEYCODE_BUTTON_SELECT gamepad 2.5; shot 21_home_wide
+  key KEYCODE_BUTTON_SELECT gamepad 2.5; shot 22_home_grid_covers
+  key KEYCODE_BUTTON_SELECT gamepad 2.5; shot 23_home_grid_tiles
+  key KEYCODE_BUTTON_SELECT gamepad 2.5
+  key KEYCODE_BUTTON_SELECT gamepad 2.5; shot 24_home_list
+  key KEYCODE_BUTTON_SELECT gamepad 2.5; shot 25_home_tiles_again
+fi
+
 if scene add; then
   for n in 1 2 3 4 5 6 7 8 9; do key KEYCODE_DPAD_RIGHT dpad 0.6; done
   sleep 1.5; shot 05_home_last

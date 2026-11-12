@@ -42,10 +42,26 @@
                 android:alpha="0" />
         </FrameLayout>
 
+        <!-- The game's own colour, glowing up from the bottom left (set from its art) -->
         <View
+            android:id="@+id/homeGlow"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0" />
+
+        <View
+            android:id="@+id/homeScrim"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@drawable/pocket_home_scrim" />
+
+        <!-- Grid and list: the details sit on the right, over their own shade -->
+        <View
+            android:id="@+id/homeSideScrim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/pocket_side_scrim"
+            android:visibility="gone" />
 
         <View
             android:layout_width="match_parent"
@@ -59,6 +75,15 @@
         android:layout_height="match_parent"
         android:clipChildren="false"
         android:clipToPadding="false">
+
+        <!-- The art blurs more and more toward the bottom, under the games (progressive blur) -->
+        <View
+            android:id="@+id/homeFrostFloor"
+            android:layout_width="match_parent"
+            android:layout_height="250dp"
+            android:layout_gravity="bottom"
+            android:importantForAccessibility="no"
+            android:tag="glass_fade" />
 
         <!-- Sections and status -->
         <LinearLayout
@@ -120,10 +145,10 @@
         <!-- The focused game -->
         <LinearLayout
             android:id="@+id/pocketHero"
-            android:layout_width="360dp"
+            android:layout_width="440dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="28dp"
-            android:layout_marginTop="68dp"
+            android:layout_marginStart="30dp"
+            android:layout_marginTop="62dp"
             android:clipChildren="false"
             android:clipToPadding="false"
             android:orientation="vertical">
@@ -139,18 +164,18 @@
                 android:maxLines="1"
                 android:shadowColor="#80000000"
                 android:shadowRadius="8"
-                android:textColor="#B8FFFFFF"
-                android:textSize="10sp" />
+                android:textColor="#C7FFFFFF"
+                android:textSize="11.5sp" />
 
             <ImageView
                 android:id="@+id/pocketHeroLogo"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="10dp"
                 android:adjustViewBounds="true"
                 android:importantForAccessibility="no"
-                android:maxWidth="280dp"
-                android:maxHeight="60dp"
+                android:maxWidth="340dp"
+                android:maxHeight="112dp"
                 android:scaleType="fitStart"
                 android:visibility="gone" />
 
@@ -160,36 +185,46 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:ellipsize="end"
-                android:fontFamily="@font/inter_semibold"
-                android:letterSpacing="-0.028"
-                android:lineSpacingMultiplier="0.95"
+                android:fontFamily="@font/inter_bold"
+                android:letterSpacing="-0.032"
+                android:lineSpacingMultiplier="0.92"
                 android:maxLines="2"
-                android:shadowColor="#73000000"
+                android:shadowColor="#80000000"
                 android:shadowDy="2"
-                android:shadowRadius="18"
+                android:shadowRadius="20"
                 android:textColor="#FFFFFFFF"
-                android:textSize="28sp" />
+                android:textSize="38sp" />
+
+            <!-- Rating, trophies, time played, genre (filled as they're known) -->
+            <LinearLayout
+                android:id="@+id/homeMeta"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:visibility="gone" />
 
             <TextView
                 android:id="@+id/homeDesc"
-                android:layout_width="360dp"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="7dp"
+                android:layout_marginTop="10dp"
                 android:ellipsize="end"
                 android:fontFamily="@font/inter_regular"
-                android:lineSpacingMultiplier="1.12"
+                android:lineSpacingMultiplier="1.16"
                 android:maxLines="2"
-                android:shadowColor="#80000000"
-                android:shadowRadius="8"
-                android:textColor="#B3FFFFFF"
-                android:textSize="10.5sp"
+                android:shadowColor="#99000000"
+                android:shadowRadius="10"
+                android:textColor="#D1FFFFFF"
+                android:textSize="12.5sp"
                 android:visibility="gone" />
 
             <LinearLayout
                 android:id="@+id/homeActions"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="18dp"
                 android:clipChildren="false"
                 android:clipToPadding="false"
                 android:gravity="center_vertical"
@@ -198,38 +233,38 @@
                 <TextView
                     android:id="@+id/pocketHeroPlay"
                     android:layout_width="wrap_content"
-                    android:layout_height="30dp"
+                    android:layout_height="40dp"
                     android:drawableStart="@drawable/ic_pocket_play"
-                    android:drawablePadding="7dp"
+                    android:drawablePadding="8dp"
                     android:focusable="true"
                     android:fontFamily="@font/inter_semibold"
                     android:gravity="center"
-                    android:paddingStart="15dp"
-                    android:paddingEnd="19dp"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="26dp"
                     android:textColor="#FF0B0B0D"
-                    android:textSize="12.5sp" />
+                    android:textSize="14sp" />
 
                 <ImageView
                     android:id="@+id/homeInfo"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:layout_marginStart="8dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="10dp"
                     android:background="@drawable/pocket_round_button"
                     android:contentDescription="@string/pocket_hint_details"
                     android:focusable="true"
-                    android:padding="8dp"
+                    android:padding="11dp"
                     android:src="@drawable/ic_pocket_info"
                     android:tint="@color/pocket_round_icon" />
 
                 <ImageView
                     android:id="@+id/homeMore"
-                    android:layout_width="30dp"
-                    android:layout_height="30dp"
-                    android:layout_marginStart="8dp"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_marginStart="10dp"
                     android:background="@drawable/pocket_round_button"
                     android:contentDescription="@string/pocket_hint_options"
                     android:focusable="true"
-                    android:padding="8dp"
+                    android:padding="11dp"
                     android:src="@drawable/ic_pocket_more"
                     android:tint="@color/pocket_round_icon" />
             </LinearLayout>
@@ -245,8 +280,9 @@
             android:fontFamily="@font/inter_semibold"
             android:shadowColor="#80000000"
             android:shadowRadius="8"
-            android:textColor="#9EFFFFFF"
-            android:textSize="10sp" />
+            android:letterSpacing="0.01"
+            android:textColor="#B3FFFFFF"
+            android:textSize="11.5sp" />
 
         <!-- Your games -->
         <androidx.recyclerview.widget.RecyclerView

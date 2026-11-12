@@ -340,8 +340,11 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         // Pocket Nexus: the PC's own game library (Steam, Epic, GOG)
         View pcLibrary = findViewById(R.id.pocketPcLibraryButton);
         if (pcLibrary != null) {
-            pcLibrary.setOnClickListener(v -> pocketOpenPcLibrary());
+            // Now a tab at the top, next to the PC's name (Apps | PC games, L1 / R1)
+            pcLibrary.setVisibility(View.GONE);
         }
+        com.limelight.pocket.ui.SectionBar.attachTabs(this,
+                new int[]{R.string.pocket_tab_apps, R.string.pocket_tab_pc_games}, 0, i -> pocketOpenPcLibrary());
 
         showHiddenApps = getIntent().getBooleanExtra(SHOW_HIDDEN_APPS_EXTRA, false);
         uuidString = getIntent().getStringExtra(UUID_EXTRA);
@@ -1109,7 +1112,7 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         setHints(hintA(this, R.string.pocket_hint_play),
                 hintX(this, R.string.pocket_hint_details),
                 hintY(this, R.string.pocket_hint_options),
-                hintSelect(this, R.string.pocket_quick_hint),
+                hintSelect(this, R.string.pocket_layout_hint),
                 hintStart(this, R.string.pocket_hint_settings));
     }
 
@@ -1638,23 +1641,18 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
                 .start();
     }
 
+    /** L1 / R1: the tabs at the top (this PC's Apps, its PC games). */
     @Override
     protected boolean onShoulder(int direction) {
-        if (appCarousel == null || appGridAdapter == null || appGridAdapter.getCount() == 0) {
-            return false;
+        if (direction > 0) {
+            pocketOpenPcLibrary();
         }
-        int current = carouselAdapter != null ? carouselAdapter.getFocusedPosition() : 0;
-        if (current < 0) {
-            current = 0;
-        }
-        final int target = Math.max(0, Math.min(appGridAdapter.getCount() - 1, current + direction * 5));
-        appCarousel.scrollToPosition(target);
-        appCarousel.post(() -> {
-            RecyclerView.ViewHolder holder = appCarousel.findViewHolderForAdapterPosition(target);
-            if (holder != null) {
-                holder.itemView.requestFocus();
+        else {
+            View tabs = getWindow().getDecorView().findViewWithTag("pocket_tabs");
+            if (tabs != null) {
+                com.limelight.pocket.ui.PocketMotion.pop(tabs, 0.96f);
             }
-        });
+        }
         return true;
     }
 

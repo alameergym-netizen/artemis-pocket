@@ -136,6 +136,78 @@ public final class SectionBar {
         }
     }
 
+    public interface TabPick {
+        void pick(int index);
+    }
+
+    /**
+     * Tabs inside a screen (a PC's Apps and its PC games): the same acrylic capsule as the
+     * sections, after the screen's "< Title", switched with L1 / R1. onPick gets the tab tapped.
+     */
+    public static void attachTabs(final Activity activity, int[] labels, int active,
+                                  final TabPick onPick) {
+        View title = activity.findViewById(R.id.appListText);
+        if (title == null || !(title.getParent() instanceof View)
+                || !(((View) title.getParent()).getParent() instanceof ViewGroup)) {
+            return;
+        }
+        View pill = (View) title.getParent();
+        ViewGroup row = (ViewGroup) pill.getParent();
+        if (row.findViewWithTag("pocket_tabs") != null) {
+            return;
+        }
+        float d = activity.getResources().getDisplayMetrics().density;
+        int accent = PocketTheme.accent(activity);
+        LinearLayout bar = new LinearLayout(activity);
+        bar.setTag("pocket_tabs");
+        bar.setOrientation(LinearLayout.HORIZONTAL);
+        bar.setGravity(Gravity.CENTER_VERTICAL);
+        bar.setPadding(Math.round(3 * d), 0, Math.round(3 * d), 0);
+        GradientDrawable plain = new GradientDrawable();
+        plain.setCornerRadius(13 * d);
+        plain.setColor(0xD91C1C1F);
+        plain.setStroke(Math.max(1, Math.round(0.75f * d)), 0x26FFFFFF);
+        bar.setBackground(plain);
+        bar.addView(glyph(activity, "L1", d));
+        for (int i = 0; i < labels.length; i++) {
+            final int index = i;
+            boolean on = i == active;
+            TextView tab = new TextView(activity);
+            tab.setText(labels[i]);
+            tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
+            tab.setTypeface(on ? PocketFonts.semibold() : PocketFonts.medium());
+            tab.setIncludeFontPadding(false);
+            tab.setGravity(Gravity.CENTER);
+            tab.setTextColor(on ? (accent == 0xFFFFFFFF ? 0xFF0B0B0D : 0xFFFFFFFF) : 0xB3FFFFFF);
+            tab.setPadding(Math.round(12 * d), 0, Math.round(12 * d), 0);
+            if (on) {
+                GradientDrawable chip = new GradientDrawable();
+                chip.setCornerRadius(10 * d);
+                chip.setColor(accent == 0xFFFFFFFF ? 0xFFFFFFFF : accent);
+                tab.setBackground(chip);
+            }
+            tab.setFocusable(false);
+            tab.setOnClickListener(v -> {
+                if (index != active) {
+                    onPick.pick(index);
+                }
+            });
+            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    Math.round(20 * d));
+            tlp.setMargins(Math.round(0.5f * d), 0, Math.round(0.5f * d), 0);
+            bar.addView(tab, tlp);
+        }
+        bar.addView(glyph(activity, "R1", d));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                Math.round(26 * d));
+        lp.gravity = Gravity.CENTER_VERTICAL;
+        lp.setMarginStart(Math.round(6 * d));
+        row.addView(bar, row.indexOfChild(pill) + 1, lp);
+        if (activity instanceof com.limelight.pocket.ConsoleActivity) {
+            ((com.limelight.pocket.ConsoleActivity) activity).makeGlass(bar);
+        }
+    }
+
     /** The shoulder button, drawn as a small outlined key. */
     private static TextView glyph(Activity a, String text, float d) {
         TextView g = new TextView(a);

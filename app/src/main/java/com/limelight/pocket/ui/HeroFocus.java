@@ -35,9 +35,11 @@ public final class HeroFocus {
         void heroPlay();
     }
 
-    private static final float PLAY_GROWTH = 0.28f;
-    private static final float LOGO_GROWTH = 0.34f;
-    private static final float TITLE_GROWTH = 0.16f;
+    // Play lights up where it is: a little growth and a ring, nothing slides around (moving the
+    // whole hero pushed Play outside its box, where it was cut off)
+    private static final float PLAY_GROWTH = 0.07f;
+    private static final float LOGO_GROWTH = 0f;
+    private static final float TITLE_GROWTH = 0f;
 
     private final Activity activity;
     private final Host host;
@@ -51,6 +53,8 @@ public final class HeroFocus {
     private final View bottomScrim;
     private final ViewGroup hintBar;
     private final GradientDrawable ring = new GradientDrawable();
+    /** The ring a little outside Play (Play is white: a ring on it wouldn't show). */
+    private android.graphics.drawable.Drawable ringOutside;
     private final float d;
 
     private final Spring spring = new Spring(260f, 0.9f, 0f);
@@ -78,8 +82,9 @@ public final class HeroFocus {
         this.d = activity.getResources().getDisplayMetrics().density;
         ring.setCornerRadius(PocketUi.PLAY_RADIUS_DP * d);
         ring.setColor(0x00000000);
-        ring.setStroke(Math.max(2, Math.round(2 * d)), 0x730B0B0F); // Play is white: a dark inner edge
+        ring.setStroke(Math.max(2, Math.round(2 * d)), 0xFFFFFFFF);
         ring.setAlpha(0);
+        ringOutside = new android.graphics.drawable.InsetDrawable(ring, -Math.round(4.5f * d));
         play.setClickable(true);
         play.setOnClickListener(v -> {
             PocketSounds.play(activity, PocketSounds.SELECT);
@@ -286,10 +291,10 @@ public final class HeroFocus {
         boolean rtl = hero.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
         float rowH = row.getHeight();
 
-        // The name and Play glide down to where the row was; the row sinks away under them
-        hero.setTranslationY(rowH * 0.5f * p);
-        row.setTranslationY(rowH * 0.64f * p);
-        row.setAlpha(1f - 0.84f * c);
+        // The hero stays put; the row steps back a little so Play is clearly what's chosen
+        hero.setTranslationY(0f);
+        row.setTranslationY(rowH * 0.06f * p);
+        row.setAlpha(1f - 0.45f * c);
 
         // Play grows (from its start edge) and lights up with a ring
         float playScale = 1f + PLAY_GROWTH * p;
@@ -300,12 +305,12 @@ public final class HeroFocus {
         play.setElevation((7f + 9f * c) * d);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             if (c > 0f) {
-                if (play.getForeground() != ring) {
-                    play.setForeground(ring);
+                if (play.getForeground() != ringOutside) {
+                    play.setForeground(ringOutside);
                 }
                 ring.setAlpha(Math.round(255 * c));
             }
-            else if (play.getForeground() == ring) {
+            else if (play.getForeground() == ringOutside) {
                 play.setForeground(null);
             }
         }
@@ -349,18 +354,18 @@ public final class HeroFocus {
             for (int i = 0; i < bottom.getChildCount(); i++) {
                 View child = bottom.getChildAt(i);
                 if (child != hintBar) {
-                    child.setAlpha(1f - c);
-                    child.setTranslationY(row.getHeight() * 0.2f * c);
+                    child.setAlpha(1f - 0.5f * c);
+                    child.setTranslationY(0f);
                 }
             }
         }
 
-        // The shades over the art clear, so the art shows
+        // The shades over the art clear a little, so the art shows
         if (heroScrim != null) {
-            heroScrim.setAlpha(1f - 0.62f * c);
+            heroScrim.setAlpha(1f - 0.25f * c);
         }
         if (bottomScrim != null) {
-            bottomScrim.setAlpha(1f - 0.4f * c);
+            bottomScrim.setAlpha(1f);
         }
     }
 

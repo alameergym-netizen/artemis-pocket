@@ -147,6 +147,8 @@ public final class HomeStore {
 
     /** Remembers that it was just started (Home shows it first). */
     public static void record(Context context, HomeItem item) {
+        // Its play session starts now (it ends when a Pocket Nexus screen comes back)
+        PlayTime.started(context, item);
         List<String> lines = new ArrayList<>();
         lines.add(System.currentTimeMillis() + "\t" + item.toLine());
         for (String l : historyLines(context)) {

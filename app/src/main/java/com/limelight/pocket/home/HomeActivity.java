@@ -41,7 +41,12 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import android.view.Gravity;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
 
 import com.limelight.R;
 import com.limelight.binding.PlatformBinding;
@@ -107,6 +112,16 @@ import java.util.concurrent.Executors;
 public class HomeActivity extends ConsoleActivity {
 
     private static final float TILE_DP = 72f;
+    /** How Home is laid out now (SELECT switches: tiles, covers, wide, grids, list). */
+    private com.limelight.pocket.ui.Layouts.Layout layout;
+    /** A tile's art in this layout (px), and its corner. */
+    private int tileW;
+    private int tileH;
+    private float tileRadius;
+    private View heroView;
+    private LinearLayout meta;
+    private View glow;
+    private int glowColor;
     private static final float FOCUS_SCALE = 1.1f;
     private static final long CHECK_TIMEOUT_MS = 12000;
     private static final long WAKE_TIMEOUT_MS = 75000;
@@ -194,16 +209,17 @@ public class HomeActivity extends ConsoleActivity {
         more = findViewById(R.id.homeMore);
         keyArt = KeyArtStage.find(this);
 
-        row.setLayoutManager(new AnchoredLayoutManager(this));
-        // Tiles that slid past the left edge fade out instead of being sliced
-        row.setHorizontalFadingEdgeEnabled(true);
-        row.setFadingEdgeLength(Math.round(26 * d));
+        heroView = findViewById(R.id.pocketHero);
+        meta = findViewById(R.id.homeMeta);
+        glow = findViewById(R.id.homeGlow);
         row.setItemAnimator(null);
+        applyLayout(false);
         row.setAdapter(tiles);
         setUpActions();
         setHints(hintA(this, R.string.pocket_hero_play),
                 hintX(this, R.string.pocket_hint_details),
                 hintY(this, R.string.pocket_hint_options),
+                hintSelect(this, R.string.pocket_layout_hint),
                 hintShoulders(this, R.string.pocket_retro_hint_sections));
         title.setText(R.string.pocket_home_welcome);
         source.setText("");
@@ -444,6 +460,8 @@ public class HomeActivity extends ConsoleActivity {
         heroKey = key;
         if (e == null) {
             boolean empty = entries.size() <= 1;
+            setMeta(null, null);
+            setGlow(0);
             source.setCompoundDrawablesRelative(null, null, null, null);
             source.setText(empty ? getString(R.string.pocket_home_welcome) : "");
             if (changed) {
@@ -474,10 +492,26 @@ public class HomeActivity extends ConsoleActivity {
         }
         source.setText(line);
         if (changed) {
-            title.setVisibility(View.VISIBLE);
-            logo.setVisibility(View.GONE);
-            PocketMotion.swapText(title, name, dir);
+            lastDir = dir;
+            String uuid = artUuid(item);
+            boolean hasLogo = uuid != null && PocketArt.has(this, uuid, artId(item), PocketArt.LOGO);
+            if (hasLogo) {
+                // Its logo is on the way: no name flashing up before it
+                title.setVisibility(View.GONE);
+                logo.setImageDrawable(null);
+                logo.setVisibility(View.VISIBLE);
+            }
+            else {
+                title.setVisibility(View.VISIBLE);
+                logo.setVisibility(View.GONE);
+                PocketMotion.swapText(title, name, dir);
+            }
             setDesc(null);
+            setMeta(e, GameInfoService.cached(RomScanner.searchName(name)));
+            heroEntrance(dir);
+            refreshTrophies(e);
+            Bitmap tile = TILE_ART.get(item.key() + "|" + (layout != null ? layout.shape : ""));
+            setGlow(tile != null ? averageColor(software(tile)) : 0);
             showArt(e);
             loadDescription(item, name);
         }
@@ -550,6 +584,7 @@ public class HomeActivity extends ConsoleActivity {
             setDesc(summary(known));
             return;
         }
+        final HomeStore.Entry entry = entryAt(heroPos);
         final String key = item.key();
         main.postDelayed(() -> {
             if (!key.equals(heroKey) || isFinishing()) {
@@ -558,6 +593,7 @@ public class HomeActivity extends ConsoleActivity {
             GameInfoService.get(this, search, false, found -> {
                 if (found != null && key.equals(heroKey) && !isFinishing()) {
                     setDesc(summary(found));
+                    setMeta(entry, found);
                 }
             });
         }, 450);
@@ -592,6 +628,23 @@ public class HomeActivity extends ConsoleActivity {
                 logo.setImageBitmap(bitmap);
                 logo.setVisibility(View.VISIBLE);
                 title.setVisibility(View.GONE);
+                if (PocketPrefs.animationsEnabled(this)) {
+                    logo.animate().cancel();
+                    logo.setAlpha(0f);
+                    logo.setTranslationX(lastDir * 16 * d);
+                    logo.setScaleX(0.97f);
+                    logo.setScaleY(0.97f);
+                    logo.setPivotX(0f);
+                    logo.setPivotY(logo.getHeight());
+                    logo.animate().alpha(1f).translationX(0f).scaleX(1f).scaleY(1f).setStartDelay(0)
+                            .setDuration(420).setInterpolator(PocketMotion.DECELERATE).start();
+                }
+            }
+            else if (key.equals(heroKey) && title.getVisibility() != View.VISIBLE) {
+                // No logo after all: the name
+                logo.setVisibility(View.GONE);
+                title.setVisibility(View.VISIBLE);
+                title.setText(displayName(e.item));
             }
         });
         // Art for what has none yet
@@ -622,22 +675,344 @@ public class HomeActivity extends ConsoleActivity {
 
     // ---- Play, Details, More -------------------------------------------------------------------
 
+    private int lastDir;
+
+    /** The game's achievements, brought up to date in the background (then its chip). */
+    private void refreshTrophies(final HomeStore.Entry e) {
+        final com.limelight.pocket.retro.Achievements.Target t =
+                com.limelight.pocket.retro.Achievements.forItem(this, e.item);
+        if (t == null) {
+            return;
+        }
+        final String key = e.item.key();
+        main.postDelayed(() -> {
+            if (!key.equals(heroKey) || isFinishing()) {
+                return;
+            }
+            com.limelight.pocket.retro.Achievements.load(this, t, false, set -> {
+                if (set != null && key.equals(heroKey) && !isFinishing()) {
+                    setMeta(e, GameInfoService.cached(RomScanner.searchName(displayName(e.item))));
+                }
+            });
+        }, 700);
+    }
+
+    /**
+     * What's known about the game, as small glass chips under its name: its rating (coloured
+     * like Metacritic's), its trophies, how long it's been played, its genre and year.
+     */
+    private void setMeta(HomeStore.Entry e, GameInfo info) {
+        if (meta == null) {
+            return;
+        }
+        meta.removeAllViews();
+        if (e == null) {
+            meta.setVisibility(View.GONE);
+            return;
+        }
+        if (info != null && info.metacritic > 0) {
+            meta.addView(ratingChip(info.metacritic));
+        }
+        String trophies = com.limelight.pocket.retro.Achievements.chip(this, e.item);
+        if (trophies != null) {
+            meta.addView(metaChip(R.drawable.ic_pocket_trophy, trophies));
+        }
+        String played = PlayTime.format(this, PlayTime.seconds(this, e.item));
+        if (played != null) {
+            meta.addView(metaChip(R.drawable.ic_pocket_clock, played));
+        }
+        if (info != null) {
+            StringBuilder sb = new StringBuilder();
+            if (!info.genres.isEmpty()) {
+                sb.append(info.genres.get(0));
+            }
+            String year = info.releaseDate != null ? info.releaseDate.replaceAll(".*?(\\d{4}).*", "$1") : null;
+            if (year != null && year.matches("\\d{4}")) {
+                if (sb.length() > 0) {
+                    sb.append("  \u00b7  ");
+                }
+                sb.append(year);
+            }
+            if (sb.length() > 0) {
+                meta.addView(metaChip(0, sb.toString()));
+            }
+        }
+        boolean was = meta.getVisibility() == View.VISIBLE;
+        meta.setVisibility(meta.getChildCount() > 0 ? View.VISIBLE : View.GONE);
+        if (!was && meta.getVisibility() == View.VISIBLE && PocketPrefs.animationsEnabled(this)) {
+            meta.setAlpha(0f);
+            meta.animate().alpha(1f).setDuration(260).start();
+        }
+    }
+
+    private TextView metaChip(int icon, String text) {
+        TextView chip = new TextView(this);
+        chip.setText(text);
+        chip.setTypeface(PocketFonts.medium());
+        chip.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11f);
+        chip.setTextColor(0xE6FFFFFF);
+        chip.setIncludeFontPadding(false);
+        chip.setGravity(Gravity.CENTER_VERTICAL);
+        chip.setMaxLines(1);
+        chip.setPadding(Math.round(9 * d), Math.round(5 * d), Math.round(10 * d), Math.round(5 * d));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(100 * d);
+        bg.setColor(0x33FFFFFF);
+        bg.setStroke(Math.max(1, Math.round(0.75f * d)), 0x24FFFFFF);
+        chip.setBackground(bg);
+        if (icon != 0) {
+            Drawable dr = getDrawable(icon);
+            if (dr != null) {
+                dr = dr.mutate();
+                dr.setTint(0xE6FFFFFF);
+                int sz = Math.round(12 * d);
+                dr.setBounds(0, 0, sz, sz);
+                chip.setCompoundDrawablesRelative(dr, null, null, null);
+                chip.setCompoundDrawablePadding(Math.round(5 * d));
+            }
+        }
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMarginEnd(Math.round(6 * d));
+        chip.setLayoutParams(lp);
+        return chip;
+    }
+
+    /** The score in its colour (green / yellow / red, like Metacritic), then whose score it is. */
+    private View ratingChip(int score) {
+        LinearLayout chip = new LinearLayout(this);
+        chip.setOrientation(LinearLayout.HORIZONTAL);
+        chip.setGravity(Gravity.CENTER_VERTICAL);
+        chip.setPadding(Math.round(3 * d), Math.round(3 * d), Math.round(10 * d), Math.round(3 * d));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(100 * d);
+        bg.setColor(0x33FFFFFF);
+        bg.setStroke(Math.max(1, Math.round(0.75f * d)), 0x24FFFFFF);
+        chip.setBackground(bg);
+        TextView box = new TextView(this);
+        box.setText(String.valueOf(score));
+        box.setTypeface(PocketFonts.bold());
+        box.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10.5f);
+        box.setIncludeFontPadding(false);
+        box.setGravity(Gravity.CENTER);
+        int color = score >= 75 ? 0xFF66CC33 : (score >= 50 ? 0xFFFFCC33 : 0xFFFF3B30);
+        box.setTextColor(score >= 50 && score < 75 ? 0xFF1A1A1A : 0xFFFFFFFF);
+        GradientDrawable sq = new GradientDrawable();
+        sq.setCornerRadius(100 * d);
+        sq.setColor(color);
+        box.setBackground(sq);
+        box.setPadding(Math.round(6 * d), Math.round(3 * d), Math.round(6 * d), Math.round(3 * d));
+        chip.addView(box);
+        TextView label = new TextView(this);
+        label.setText(R.string.pocket_meta_metacritic);
+        label.setTypeface(PocketFonts.medium());
+        label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11f);
+        label.setTextColor(0xE6FFFFFF);
+        label.setIncludeFontPadding(false);
+        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        llp.setMarginStart(Math.round(6 * d));
+        chip.addView(label, llp);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMarginEnd(Math.round(6 * d));
+        chip.setLayoutParams(lp);
+        return chip;
+    }
+
+    /** The parts of the hero arrive one after the other, from the side you moved to. */
+    private void heroEntrance(int dir) {
+        if (!PocketPrefs.animationsEnabled(this)) {
+            return;
+        }
+        View[] parts = {source, meta, desc};
+        float dx = (dir == 0 ? 1 : dir) * 14 * d;
+        for (int i = 0; i < parts.length; i++) {
+            View v = parts[i];
+            v.animate().cancel();
+            v.setAlpha(0f);
+            v.setTranslationX(dx);
+            v.animate().alpha(1f).translationX(0f).setStartDelay(30L + i * 45L).setDuration(360)
+                    .setInterpolator(PocketMotion.DECELERATE).start();
+        }
+    }
+
+    private android.animation.ValueAnimator glowAnim;
+
+    /** The game's own colour glowing up from the bottom left (Harbor / Xbox style); 0: none. */
+    private void setGlow(int color) {
+        if (glow == null) {
+            return;
+        }
+        final int target;
+        if (color == 0) {
+            target = 0;
+        }
+        else {
+            float[] hsv = new float[3];
+            Color.colorToHSV(color, hsv);
+            hsv[1] = Math.max(0.45f, Math.min(1f, hsv[1] * 1.35f));
+            hsv[2] = Math.max(0.5f, Math.min(0.85f, hsv[2] * 1.2f));
+            target = Color.HSVToColor(hsv);
+        }
+        final int from = glowColor;
+        glowColor = target;
+        if (glowAnim != null) {
+            glowAnim.cancel();
+        }
+        final GradientDrawable g = new GradientDrawable();
+        g.setGradientType(GradientDrawable.RADIAL_GRADIENT);
+        g.setGradientCenter(0.12f, 1.05f);
+        g.setGradientRadius(getResources().getDisplayMetrics().widthPixels * 0.8f);
+        glow.setBackground(g);
+        glow.setAlpha(1f);
+        android.animation.ArgbEvaluator ev = new android.animation.ArgbEvaluator();
+        glowAnim = android.animation.ValueAnimator.ofFloat(0f, 1f);
+        glowAnim.setDuration(PocketPrefs.animationsEnabled(this) ? 600 : 0);
+        glowAnim.addUpdateListener(a -> {
+            int c = (int) ev.evaluate((float) a.getAnimatedValue(), from, target);
+            int a1 = Math.round(0x8C * Color.alpha(c) / 255f);
+            int a2 = Math.round(0x2E * Color.alpha(c) / 255f);
+            int rgb = c & 0x00FFFFFF;
+            g.setColors(new int[]{(a1 << 24) | rgb, (a2 << 24) | rgb, 0x00000000});
+        });
+        glowAnim.start();
+    }
+
+    /** SELECT: the next layout, right here (the chip at the top says which). */
+    @Override
+    protected void onSelectButton() {
+        com.limelight.pocket.ui.Layouts.nextHome(this);
+        PocketSounds.play(this, PocketSounds.NAV);
+        final int keep = Math.max(0, heroPos);
+        final View main = findViewById(R.id.pocketMain);
+        Runnable swap = () -> {
+            applyLayout(true);
+            tiles.notifyDataSetChanged();
+            focusAt(Math.min(keep, Math.max(0, entries.size() - 1)), 0);
+            com.limelight.pocket.ui.Layouts.showChip(this, com.limelight.pocket.ui.Layouts.homeIndex(this));
+        };
+        if (PocketPrefs.animationsEnabled(this) && main != null) {
+            row.animate().alpha(0f).setDuration(110).withEndAction(() -> {
+                swap.run();
+                row.setTranslationY(10 * d);
+                row.animate().alpha(1f).translationY(0f).setDuration(320)
+                        .setInterpolator(com.limelight.pocket.ui.PocketMotion.DECELERATE).withEndAction(null).start();
+            }).start();
+        }
+        else {
+            swap.run();
+        }
+    }
+
+    /**
+     * Puts the tiles and the details where this layout wants them: a shelf under the big hero,
+     * or a grid / list on the left with the details on the right.
+     */
+    private void applyLayout(boolean relayout) {
+        layout = com.limelight.pocket.ui.Layouts.home(this);
+        boolean shelf = layout.arrange == com.limelight.pocket.ui.Layouts.SHELF;
+        boolean list = layout.arrange == com.limelight.pocket.ui.Layouts.LIST;
+        String shape = layout.shape;
+        float w;
+        float h;
+        if (com.limelight.pocket.ui.LibraryLayout.STYLE_COVER.equals(shape)) {
+            w = shelf ? 86 : 88;
+            h = w * 1.5f;
+        }
+        else if (com.limelight.pocket.ui.LibraryLayout.STYLE_WIDE.equals(shape)) {
+            h = shelf ? 84 : 80;
+            w = h * 2.14f;
+        }
+        else {
+            w = list ? 52 : (shelf ? 84 : 78);
+            h = w;
+        }
+        tileW = Math.round(w * d);
+        tileH = Math.round(h * d);
+        tileRadius = (com.limelight.pocket.ui.LibraryLayout.STYLE_ICON.equals(shape) ? (list ? 12 : 16) : 10) * d;
+        int screenW = getResources().getDisplayMetrics().widthPixels;
+        FrameLayout.LayoutParams rlp = (FrameLayout.LayoutParams) row.getLayoutParams();
+        FrameLayout.LayoutParams hlp = (FrameLayout.LayoutParams) heroView.getLayoutParams();
+        View sideScrim = findViewById(R.id.homeSideScrim);
+        if (shelf) {
+            AnchoredLayoutManager lm = new AnchoredLayoutManager(this);
+            row.setLayoutManager(lm);
+            rlp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            rlp.height = tileH + Math.round(20 * d);
+            rlp.gravity = Gravity.BOTTOM;
+            rlp.topMargin = 0;
+            rlp.bottomMargin = Math.round(22 * d);
+            row.setPadding(Math.round(22 * d), Math.round(10 * d), Math.round(220 * d), Math.round(10 * d));
+            row.setVerticalFadingEdgeEnabled(false);
+            row.setHorizontalFadingEdgeEnabled(true);
+            row.setFadingEdgeLength(Math.round(26 * d));
+            hlp.gravity = Gravity.TOP | Gravity.START;
+            hlp.width = Math.round(440 * d);
+            hlp.setMarginStart(Math.round(30 * d));
+            hlp.setMarginEnd(0);
+            rowLabel.setVisibility(View.VISIBLE);
+            FrameLayout.LayoutParams llp = (FrameLayout.LayoutParams) rowLabel.getLayoutParams();
+            llp.bottomMargin = rlp.bottomMargin + rlp.height - Math.round(4 * d);
+            rowLabel.setLayoutParams(llp);
+            if (sideScrim != null) {
+                sideScrim.setVisibility(View.GONE);
+            }
+        }
+        else {
+            int cell = tileW + Math.round((list ? 0 : 22) * d);
+            int width = Math.round(screenW * (list ? 0.44f : 0.62f));
+            if (list) {
+                row.setLayoutManager(new LinearLayoutManager(this, RecyclerView.VERTICAL, false));
+            }
+            else {
+                int span = Math.max(2, (width - Math.round(30 * d)) / Math.max(1, cell));
+                row.setLayoutManager(new GridLayoutManager(this, span, RecyclerView.VERTICAL, false));
+            }
+            rlp.width = width;
+            rlp.height = ViewGroup.LayoutParams.MATCH_PARENT;
+            rlp.gravity = Gravity.TOP | Gravity.START;
+            rlp.topMargin = Math.round(48 * d);
+            rlp.bottomMargin = Math.round(34 * d);
+            row.setPadding(Math.round(18 * d), Math.round(12 * d), Math.round(8 * d), Math.round(60 * d));
+            row.setHorizontalFadingEdgeEnabled(false);
+            row.setVerticalFadingEdgeEnabled(true);
+            row.setFadingEdgeLength(Math.round(30 * d));
+            hlp.gravity = Gravity.TOP | Gravity.END;
+            hlp.width = Math.round(300 * d);
+            hlp.setMarginStart(0);
+            hlp.setMarginEnd(Math.round(30 * d));
+            rowLabel.setVisibility(View.GONE);
+            if (sideScrim != null) {
+                sideScrim.setVisibility(View.VISIBLE);
+            }
+        }
+        row.setLayoutParams(rlp);
+        heroView.setLayoutParams(hlp);
+        logo.setMaxWidth(Math.round((shelf ? 340 : 290) * d));
+        logo.setMaxHeight(Math.round((shelf ? 112 : 96) * d));
+        title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, shelf ? 38f : 30f);
+        desc.setMaxLines(shelf ? 2 : 4);
+        if (relayout) {
+            TILE_ART.evictAll();
+        }
+    }
+
     private void setUpActions() {
         PocketUi.stylePlayPill(play);
         play.setFocusable(true);
         // Focused, Play wears a white ring a little apart from it
-        Drawable face = play.getBackground();
-        if (face instanceof GradientDrawable && face.getConstantState() != null) {
+        {
             GradientDrawable ring = new GradientDrawable();
             ring.setCornerRadius(100 * d);
             ring.setColor(0x00000000);
             ring.setStroke(Math.round(2 * d), 0xFFFFFFFF);
-            LayerDrawable focused = new LayerDrawable(new Drawable[]{face.getConstantState().newDrawable().mutate(), ring});
+            LayerDrawable focused = new LayerDrawable(new Drawable[]{PocketUi.playFace(d), ring});
             int out = -Math.round(4.5f * d);
             focused.setLayerInset(1, out, out, out, out);
             StateListDrawable states = new StateListDrawable();
             states.addState(new int[]{android.R.attr.state_focused}, focused);
-            states.addState(new int[]{}, face);
+            states.addState(new int[]{}, PocketUi.playFace(d));
             play.setBackground(states);
         }
         setPlayIcon(false);
@@ -673,6 +1048,11 @@ public class HomeActivity extends ConsoleActivity {
             }
             if ((keyCode == KeyEvent.KEYCODE_DPAD_UP) && event.getAction() == KeyEvent.ACTION_DOWN) {
                 return true; // nothing above the buttons but the tabs (L1 / R1)
+            }
+            if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && v == play && event.getAction() == KeyEvent.ACTION_DOWN
+                    && layout != null && layout.arrange != com.limelight.pocket.ui.Layouts.SHELF) {
+                focusAt(Math.max(0, heroPos), 0);
+                return true;
             }
             return false;
         };
@@ -1014,6 +1394,15 @@ public class HomeActivity extends ConsoleActivity {
             activate(position);
         }));
         final String uuid = artUuid(item);
+        final com.limelight.pocket.retro.Achievements.Target trophies =
+                com.limelight.pocket.retro.Achievements.forItem(this, item);
+        if (trophies != null) {
+            String have = com.limelight.pocket.retro.Achievements.chip(this, item);
+            items.add(StreamMenuView.Item.action(getString(R.string.pocket_trophy_title), () -> {
+                hideConsolePanel();
+                com.limelight.pocket.retro.AchievementsActivity.open(this, trophies, uuid, artId(item));
+            }).withValue(have));
+        }
         if (uuid != null) {
             items.add(StreamMenuView.Item.action(getString(R.string.pocket_hint_details), () -> {
                 hideConsolePanel();
@@ -1363,14 +1752,19 @@ public class HomeActivity extends ConsoleActivity {
         final ImageView badge;
         final TextView label;
         final View ring;
+        final TextView name;
+        final GradientDrawable ringFace = new GradientDrawable();
         String boundKey;
 
-        TileHolder(View v) {
+        TileHolder(View v, TextView name) {
             super(v);
             image = v.findViewById(R.id.grid_image);
             badge = v.findViewById(R.id.homeTileBadge);
             label = v.findViewById(R.id.homeTileLabel);
             ring = v.findViewById(R.id.homeTileRing);
+            this.name = name;
+            ringFace.setColor(0x00000000);
+            ring.setBackground(ringFace);
         }
     }
 
@@ -1380,12 +1774,23 @@ public class HomeActivity extends ConsoleActivity {
         @Override
         public TileHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
             View v = LayoutInflater.from(HomeActivity.this).inflate(R.layout.home_tile, parent, false);
-            final TileHolder h = new TileHolder(v);
-            final float radius = 15 * d;
+            // The list's name beside the tile
+            TextView name = new TextView(HomeActivity.this);
+            name.setId(R.id.homeTileName);
+            name.setTypeface(PocketFonts.semibold());
+            name.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f);
+            name.setTextColor(0xFFFFFFFF);
+            name.setShadowLayer(8 * d, 0, 0, 0x99000000);
+            name.setMaxLines(1);
+            name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            name.setVisibility(View.GONE);
+            ((ViewGroup) v).addView(name, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL | Gravity.START));
+            final TileHolder h = new TileHolder(v, name);
             ViewOutlineProvider rounded = new ViewOutlineProvider() {
                 @Override
                 public void getOutline(View view, Outline outline) {
-                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), radius);
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), tileRadius);
                 }
             };
             h.image.setOutlineProvider(rounded);
@@ -1421,13 +1826,14 @@ public class HomeActivity extends ConsoleActivity {
                     }
                     return true;
                 }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_UP && event.getAction() == KeyEvent.ACTION_DOWN) {
+                boolean shelf = layout == null || layout.arrange == com.limelight.pocket.ui.Layouts.SHELF;
+                if (shelf && keyCode == KeyEvent.KEYCODE_DPAD_UP && event.getAction() == KeyEvent.ACTION_DOWN) {
                     if (play.getVisibility() == View.VISIBLE) {
                         play.requestFocus();
                     }
                     return true;
                 }
-                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (shelf && keyCode == KeyEvent.KEYCODE_DPAD_DOWN && event.getAction() == KeyEvent.ACTION_DOWN) {
                     return true; // nothing under the row
                 }
                 return false;
@@ -1450,7 +1856,9 @@ public class HomeActivity extends ConsoleActivity {
         @Override
         public void onBindViewHolder(@NonNull TileHolder h, int position) {
             HomeStore.Entry e = entries.get(position);
+            sizeTile(h);
             focusLook(h, h.itemView.hasFocus(), false);
+            h.name.setText(e != null ? displayName(e.item) : getString(R.string.pocket_home_add_short));
             if (e == null) {
                 h.boundKey = "+";
                 h.itemView.setContentDescription(getString(R.string.pocket_home_add));
@@ -1460,7 +1868,7 @@ public class HomeActivity extends ConsoleActivity {
                 h.label.setText(R.string.pocket_home_add_short);
                 h.label.setTypeface(PocketFonts.medium());
                 GradientDrawable bg = new GradientDrawable();
-                bg.setCornerRadius(15 * d);
+                bg.setCornerRadius(tileRadius);
                 bg.setColor(0x9E1C1C1F);
                 bg.setStroke(Math.max(1, Math.round(0.75f * d)), 0x33FFFFFF);
                 h.label.setBackground(bg);
@@ -1476,7 +1884,7 @@ public class HomeActivity extends ConsoleActivity {
                 int iconPx = plus != null ? plus.getBounds().height() : 0;
                 int group = iconPx + h.label.getCompoundDrawablePadding() + h.label.getLineHeight();
                 h.label.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL);
-                h.label.setPadding(0, Math.max(0, (Math.round(TILE_DP * d) - group) / 2), 0, 0);
+                h.label.setPadding(0, Math.max(0, (tileH - group) / 2), 0, 0);
                 return;
             }
             final HomeItem item = e.item;
@@ -1485,7 +1893,8 @@ public class HomeActivity extends ConsoleActivity {
             // Where it's from is shown with the name above; the tile is just the game
             h.badge.setVisibility(View.GONE);
             h.itemView.setContentDescription(displayName(item));
-            final String key = item.key();
+            final String shape = layout.shape;
+            final String key = item.key() + "|" + shape;
             h.boundKey = key;
             Bitmap cached = TILE_ART.get(key);
             if (cached != null) {
@@ -1495,7 +1904,7 @@ public class HomeActivity extends ConsoleActivity {
             h.image.setImageDrawable(null);
             final String name = displayName(item);
             work.execute(() -> {
-                Bitmap art = tileArt(item, name);
+                Bitmap art = tileArt(item, name, shape);
                 if (art != null) {
                     TILE_ART.put(key, art);
                 }
@@ -1503,6 +1912,9 @@ public class HomeActivity extends ConsoleActivity {
                     if (key.equals(h.boundKey) && art != null) {
                         boolean fresh = h.image.getDrawable() == null;
                         h.image.setImageBitmap(art);
+                        if (glowColor == 0 && heroKey != null && key.startsWith(heroKey + "|")) {
+                            setGlow(averageColor(art));
+                        }
                         if (fresh && PocketPrefs.animationsEnabled(HomeActivity.this)) {
                             h.image.setAlpha(0f);
                             h.image.animate().alpha(1f).setDuration(180).start();
@@ -1511,8 +1923,10 @@ public class HomeActivity extends ConsoleActivity {
                 });
                 // A square capsule from SteamGridDB, when there's a key and none yet
                 String uuid = artUuid(item);
-                if (uuid != null && PocketArt.hasKey(HomeActivity.this)
-                        && PocketArt.fetchOne(HomeActivity.this, uuid, artId(item), RomScanner.searchName(name), PocketArt.SQUARE)) {
+                int want = com.limelight.pocket.ui.LibraryLayout.STYLE_WIDE.equals(shape) ? PocketArt.WIDE
+                        : (com.limelight.pocket.ui.LibraryLayout.STYLE_COVER.equals(shape) ? PocketArt.COVER : PocketArt.SQUARE);
+                if (uuid != null && PocketArt.hasKey(HomeActivity.this) && !PocketArt.has(HomeActivity.this, uuid, artId(item), want)
+                        && PocketArt.fetchOne(HomeActivity.this, uuid, artId(item), RomScanner.searchName(name), want)) {
                     main.post(() -> {
                         if (!isFinishing()) {
                             TILE_ART.remove(key);
@@ -1537,7 +1951,68 @@ public class HomeActivity extends ConsoleActivity {
         }
     }
 
+    /** The tile's art, ring and name at this layout's size (a list puts the name beside it). */
+    private void sizeTile(TileHolder h) {
+        boolean list = layout.arrange == com.limelight.pocket.ui.Layouts.LIST;
+        boolean grid = layout.arrange == com.limelight.pocket.ui.Layouts.GRID;
+        int pad = Math.round(10 * d);
+        ViewGroup.LayoutParams flp = h.itemView.getLayoutParams();
+        int fw = (list || grid) ? ViewGroup.LayoutParams.MATCH_PARENT : tileW + pad * 2;
+        int fh = tileH + pad * 2;
+        if (flp == null) {
+            flp = new RecyclerView.LayoutParams(fw, fh);
+        }
+        flp.width = fw;
+        flp.height = fh;
+        h.itemView.setLayoutParams(flp);
+        int gravity = list ? (Gravity.CENTER_VERTICAL | Gravity.START) : Gravity.CENTER;
+        int start = list ? Math.round(8 * d) : 0;
+        for (View v : new View[]{h.image, h.label}) {
+            FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) v.getLayoutParams();
+            lp.width = tileW;
+            lp.height = tileH;
+            lp.gravity = gravity;
+            lp.setMarginStart(start);
+            v.setLayoutParams(lp);
+            v.invalidateOutline();
+        }
+        // The ring: 4.5dp around the art
+        int out = Math.round(4.5f * d);
+        FrameLayout.LayoutParams rlp = (FrameLayout.LayoutParams) h.ring.getLayoutParams();
+        rlp.width = tileW + out * 2;
+        rlp.height = tileH + out * 2;
+        rlp.gravity = gravity;
+        rlp.setMarginStart(list ? start - out : 0);
+        h.ring.setLayoutParams(rlp);
+        h.ringFace.setCornerRadius(tileRadius + out);
+        h.ringFace.setStroke(Math.max(2, Math.round(2.2f * d)), 0xFFFFFFFF);
+        // Scaled around the art itself (in a list the frame is the whole line)
+        if (list) {
+            h.itemView.setPivotX(start + tileW / 2f);
+            h.itemView.setPivotY(fh / 2f);
+        }
+        else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            h.itemView.resetPivot();
+        }
+        else if (fw > 0) {
+            h.itemView.setPivotX(fw / 2f);
+            h.itemView.setPivotY(fh / 2f);
+        }
+        if (list) {
+            FrameLayout.LayoutParams nlp = (FrameLayout.LayoutParams) h.name.getLayoutParams();
+            nlp.setMarginStart(start + tileW + Math.round(18 * d));
+            h.name.setLayoutParams(nlp);
+            h.name.setVisibility(View.VISIBLE);
+        }
+        else {
+            h.name.setVisibility(View.GONE);
+        }
+    }
+
     private void focusLook(TileHolder h, boolean focused, boolean animate) {
+        if (layout != null && layout.arrange == com.limelight.pocket.ui.Layouts.LIST) {
+            h.name.setAlpha(focused ? 1f : 0.55f);
+        }
         float s = focused ? FOCUS_SCALE : 1f;
         float z = focused ? 8 * d : 0f;
         if (animate && PocketPrefs.animationsEnabled(this)) {
@@ -1567,51 +2042,69 @@ public class HomeActivity extends ConsoleActivity {
     // ---- Tile art (blocking: worker threads only) --------------------------------------------
 
     /**
-     * A square picture for a tile: SteamGridDB's square capsule, else the cover (cropped around
-     * its upper middle, where the title and hero usually are), else the background, else the
-     * app's icon on its own colour, else a drawn card.
+     * The picture for a tile in this layout's shape. Square: SteamGridDB's square capsule, else
+     * the cover (around its upper middle), else the background. Cover: the cover. Wide: the wide
+     * capsule, else the background, else the cover. Without art: the app's icon on its own colour,
+     * else a drawn card.
      */
-    private Bitmap tileArt(HomeItem item, String name) {
-        int size = Math.round(TILE_DP * d * 1.15f);
+    private Bitmap tileArt(HomeItem item, String name, String shape) {
+        boolean cover = com.limelight.pocket.ui.LibraryLayout.STYLE_COVER.equals(shape);
+        boolean wide = com.limelight.pocket.ui.LibraryLayout.STYLE_WIDE.equals(shape);
+        int h = Math.round((wide ? 84 : (cover ? 132 : 88)) * d * 1.1f);
+        int w = Math.round(wide ? h * 2.14f : (cover ? h / 1.5f : h));
         String uuid = artUuid(item);
         if (uuid != null) {
             int id = artId(item);
-            Bitmap sq = decode(PocketArt.file(this, uuid, id, PocketArt.SQUARE), size);
-            if (sq != null) {
-                return crop(sq, size, 0.5f);
+            if (!cover && !wide) {
+                Bitmap sq = decode(PocketArt.file(this, uuid, id, PocketArt.SQUARE), w);
+                if (sq != null) {
+                    return crop(sq, w, h, 0.5f);
+                }
+            }
+            if (wide) {
+                Bitmap wd = decode(PocketArt.file(this, uuid, id, PocketArt.WIDE), h);
+                if (wd != null) {
+                    return crop(wd, w, h, 0.5f);
+                }
             }
             // An Android app with no art of its own: its icon (never a lettered card)
             boolean appOnly = HomeItem.ANDROID.equals(item.kind) && !PocketArt.has(this, uuid, id, PocketArt.COVER)
                     && !PocketArt.has(this, uuid, id, PocketArt.HERO);
             if (!HomeItem.SHORTCUT.equals(item.kind) && !appOnly) {
-                Bitmap cover = null;
+                if (wide) {
+                    Bitmap hero = decode(PocketArt.file(this, uuid, id, PocketArt.HERO), h * 2);
+                    if (hero != null) {
+                        return crop(hero, w, h, 0.45f);
+                    }
+                }
+                Bitmap coverArt = null;
                 try {
-                    cover = HeroArt.load(this, uuid, id);
+                    coverArt = HeroArt.load(this, uuid, id);
                 } catch (RuntimeException ignored) {
                 }
-                if (cover != null && !HeroArt.isPlaceholder(cover)
-                        && !(HomeItem.ANDROID.equals(item.kind) && cover.getWidth() == cover.getHeight() && cover.getWidth() <= 256)) {
-                    return crop(cover, size, 0.38f);
+                if (coverArt != null && !HeroArt.isPlaceholder(coverArt)
+                        && !(HomeItem.ANDROID.equals(item.kind) && coverArt.getWidth() == coverArt.getHeight() && coverArt.getWidth() <= 256)) {
+                    return crop(coverArt, w, h, cover ? 0.5f : 0.38f);
                 }
-                Bitmap hero = decode(PocketArt.file(this, uuid, id, PocketArt.HERO), size * 2);
+                Bitmap hero = decode(PocketArt.file(this, uuid, id, PocketArt.HERO), h * 2);
                 if (hero != null) {
-                    return crop(hero, size, 0.42f);
+                    return crop(hero, w, h, 0.42f);
                 }
             }
         }
         Bitmap icon = iconOf(item);
         if (icon != null) {
-            return iconTile(icon, size);
+            return iconTile(icon, w, h);
         }
         if (HomeItem.CLOUD.equals(item.kind)) {
-            CloudService s = CloudService.byId(item.a);
-            return nameTile(name, s != null ? s.color : 0xFF2B6CB0, size);
+            CloudService cs = CloudService.byId(item.a);
+            return nameTile(name, cs != null ? cs.color : 0xFF2B6CB0, w, h);
         }
         if (HomeItem.PC_GAMES.equals(item.kind)) {
-            return nameTile(name, 0xFF3A3F55, size);
+            return nameTile(name, 0xFF3A3F55, w, h);
         }
-        Bitmap placeholder = PlaceholderArt.render(RomScanner.searchName(name), size);
-        return placeholder != null ? crop(placeholder, size, 0.4f) : nameTile(name, 0xFF2E2F3A, size);
+        Bitmap placeholder = PlaceholderArt.render(RomScanner.searchName(name), Math.max(w, h));
+        return placeholder != null ? crop(placeholder, w, h, 0.4f) : nameTile(name, 0xFF2E2F3A, w, h);
     }
 
     private static Bitmap decode(java.io.File f, int target) {
@@ -1634,21 +2127,31 @@ public class HomeActivity extends ConsoleActivity {
         }
     }
 
-    /** A square of side size from the picture (centred across, at yFocus down). */
-    private static Bitmap crop(Bitmap src, int size, float yFocus) {
+    /** A w x h picture from src, cropped to that shape (centred across, at yFocus down). */
+    private static Bitmap crop(Bitmap src, int outW, int outH, float yFocus) {
         src = software(src);
         if (src == null) {
             return null;
         }
         int w = src.getWidth();
         int h = src.getHeight();
-        int side = Math.min(w, h);
-        int left = (w - side) / 2;
-        int top = Math.round(Math.max(0, Math.min(h - side, h * yFocus - side / 2f)));
-        Bitmap out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        float want = outW / (float) outH;
+        int cw;
+        int ch;
+        if (w / (float) h > want) {
+            ch = h;
+            cw = Math.round(h * want);
+        }
+        else {
+            cw = w;
+            ch = Math.round(w / want);
+        }
+        int left = (w - cw) / 2;
+        int top = Math.round(Math.max(0, Math.min(h - ch, h * yFocus - ch / 2f)));
+        Bitmap out = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         Paint p = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
-        c.drawBitmap(src, new Rect(left, top, left + side, top + side), new RectF(0, 0, size, size), p);
+        c.drawBitmap(src, new Rect(left, top, left + cw, top + ch), new RectF(0, 0, outW, outH), p);
         return out;
     }
 
@@ -1665,7 +2168,8 @@ public class HomeActivity extends ConsoleActivity {
     }
 
     /** The app's icon, big, on a deep version of its own colour (like a console's app tiles). */
-    private static Bitmap iconTile(Bitmap icon, int size) {
+    private static Bitmap iconTile(Bitmap icon, int w, int h) {
+        int size = Math.min(w, h);
         icon = software(icon);
         if (icon == null) {
             return null;
@@ -1678,17 +2182,17 @@ public class HomeActivity extends ConsoleActivity {
         int deep = Color.HSVToColor(hsv);
         hsv[2] = Math.min(0.62f, hsv[2] * 1.6f);
         int light = Color.HSVToColor(hsv);
-        Bitmap out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
-        bg.setShader(new LinearGradient(0, 0, size * 0.6f, size, light, deep, Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, size, size, bg);
-        Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
-        glow.setShader(new RadialGradient(size * 0.5f, size * 0.42f, size * 0.6f, 0x33FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, size, size, glow);
+        bg.setShader(new LinearGradient(0, 0, w * 0.6f, h, light, deep, Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, h, bg);
+        Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        glowPaint.setShader(new RadialGradient(w * 0.5f, h * 0.42f, Math.max(w, h) * 0.6f, 0x33FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, h, glowPaint);
         float s = size * 0.56f;
-        float l = (size - s) / 2f;
-        float t = (size - s) / 2f;
+        float l = (w - s) / 2f;
+        float t = (h - s) / 2f;
         c.drawBitmap(icon, null, new RectF(l, t, l + s, t + s), new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG));
         return out;
     }
@@ -1718,14 +2222,15 @@ public class HomeActivity extends ConsoleActivity {
     }
 
     /** A tile with its name on a colour (cloud services, a PC's library). */
-    private Bitmap nameTile(String name, int color, int size) {
-        Bitmap out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+    private Bitmap nameTile(String name, int color, int w, int h) {
+        int size = Math.min(w, h);
+        Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
         Canvas c = new Canvas(out);
         Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
         int dark = Color.rgb(Math.round(Color.red(color) * 0.3f), Math.round(Color.green(color) * 0.3f),
                 Math.round(Color.blue(color) * 0.3f));
-        bg.setShader(new LinearGradient(0, 0, size * 0.5f, size, color, dark, Shader.TileMode.CLAMP));
-        c.drawRect(0, 0, size, size, bg);
+        bg.setShader(new LinearGradient(0, 0, w * 0.5f, h, color, dark, Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, h, bg);
         Paint t = new Paint(Paint.ANTI_ALIAS_FLAG);
         t.setColor(0xFFFFFFFF);
         t.setTypeface(PocketFonts.bold());
@@ -1736,7 +2241,7 @@ public class HomeActivity extends ConsoleActivity {
         StringBuilder line = new StringBuilder();
         for (String word : name.split(" ")) {
             String next = line.length() == 0 ? word : line + " " + word;
-            if (t.measureText(next) > size * 0.82f && line.length() > 0) {
+            if (t.measureText(next) > w * 0.82f && line.length() > 0) {
                 lines.add(line.toString());
                 line = new StringBuilder(word);
             }
@@ -1748,9 +2253,9 @@ public class HomeActivity extends ConsoleActivity {
             lines.add(line.toString());
         }
         int count = Math.min(3, lines.size());
-        float y = size / 2f - (count - 1) * textSize * 0.6f + textSize * 0.35f;
+        float y = h / 2f - (count - 1) * textSize * 0.6f + textSize * 0.35f;
         for (int i = 0; i < count; i++) {
-            c.drawText(lines.get(i), size / 2f, y, t);
+            c.drawText(lines.get(i), w / 2f, y, t);
             y += textSize * 1.2f;
         }
         return out;

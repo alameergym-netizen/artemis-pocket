@@ -1012,6 +1012,13 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 () -> PocketPrefs.showLatency(this),
                 value -> prefs().edit().putBoolean(PocketPrefs.KEY_SHOW_LATENCY, value).apply());
 
+        addHeader(R.string.pocket_header_trophies);
+
+        addAction(getString(R.string.pocket_set_ra), getString(R.string.pocket_set_ra_sub),
+                () -> com.limelight.pocket.retro.Achievements.hasRa(this)
+                        ? com.limelight.pocket.retro.Achievements.raUser(this) : getString(R.string.pocket_art_key_missing),
+                this::askRetroAchievements);
+
         addHeader(R.string.pocket_header_art);
 
         addAction(getString(R.string.pocket_set_sgdb_key), getString(R.string.pocket_set_sgdb_key_sub),
@@ -1127,6 +1134,54 @@ public class QuickSettingsActivity extends ConsoleActivity {
 
         addAction(getString(R.string.pocket_set_about), getString(R.string.pocket_about_sub),
                 () -> BuildConfig.VERSION_NAME, null);
+    }
+
+    /** RetroAchievements: the user name and the Web API key (retroachievements.org/settings). */
+    private void askRetroAchievements() {
+        float d = getResources().getDisplayMetrics().density;
+        android.widget.LinearLayout box = new android.widget.LinearLayout(this);
+        box.setOrientation(android.widget.LinearLayout.VERTICAL);
+        int pad = Math.round(20 * d);
+        box.setPadding(pad, pad / 2, pad, 0);
+        final android.widget.EditText user = new android.widget.EditText(this);
+        user.setSingleLine(true);
+        user.setHint(R.string.pocket_ra_user_hint);
+        user.setText(com.limelight.pocket.retro.Achievements.raUser(this));
+        final android.widget.EditText key = new android.widget.EditText(this);
+        key.setSingleLine(true);
+        key.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD);
+        key.setHint(R.string.pocket_ra_key_hint);
+        box.addView(user);
+        box.addView(key);
+        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(R.string.pocket_set_ra)
+                .setMessage(R.string.pocket_ra_message)
+                .setView(box)
+                .setPositiveButton(android.R.string.ok, (dlg, w) -> {
+                    final android.content.Context app = getApplicationContext();
+                    com.limelight.pocket.retro.Achievements.setRa(app, user.getText().toString(), key.getText().toString());
+                    Toast.makeText(this, R.string.pocket_steam_checking, Toast.LENGTH_SHORT).show();
+                    final android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
+                    new Thread(() -> {
+                        final int points = com.limelight.pocket.retro.Achievements.checkRa(app);
+                        main.post(() -> {
+                            if (points < 0) {
+                                com.limelight.pocket.retro.Achievements.setRa(app, "", "");
+                                Toast.makeText(app, R.string.pocket_ra_bad, Toast.LENGTH_LONG).show();
+                            }
+                            else {
+                                Toast.makeText(app, app.getString(R.string.pocket_ra_ok, points), Toast.LENGTH_LONG).show();
+                            }
+                            refreshRows();
+                        });
+                    }, "PocketRaCheck").start();
+                })
+                .setNeutralButton(R.string.pocket_ra_signout, (dlg, w) -> {
+                    com.limelight.pocket.retro.Achievements.setRa(this, "", "");
+                    refreshRows();
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .show();
     }
 
     /** IGDB's Twitch app (client ID and secret, free at dev.twitch.tv): checked, then kept. */

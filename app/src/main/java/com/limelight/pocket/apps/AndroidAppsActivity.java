@@ -173,6 +173,7 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
                 hintX(this, R.string.pocket_hint_details),
                 hintY(this, R.string.pocket_hint_options),
                 new Hint("L2 R2", 0xFFFFFFFF, getString(R.string.pocket_pclib_hint_filter)),
+                hintSelect(this, R.string.pocket_layout_hint),
                 hintStart(this, R.string.pocket_hint_settings));
         load();
     }

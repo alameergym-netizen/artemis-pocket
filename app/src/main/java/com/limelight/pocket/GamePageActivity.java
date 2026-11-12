@@ -140,6 +140,9 @@ public class GamePageActivity extends ConsoleActivity {
     private TextView trailerButton;
     private TextView artButton;
     private TextView favButton;
+    private TextView trophyButton;
+    private TextView homeButton;
+    private com.limelight.pocket.home.HomeItem homeItem;
     private TextView more;
     private TextView mediaLabel;
     private RecyclerView media;
@@ -294,6 +297,8 @@ public class GamePageActivity extends ConsoleActivity {
         trailerButton = findViewById(R.id.pageTrailerButton);
         artButton = findViewById(R.id.pageArtButton);
         favButton = findViewById(R.id.pageFavButton);
+        trophyButton = findViewById(R.id.pageTrophyButton);
+        homeButton = findViewById(R.id.pageHomeButton);
         more = findViewById(R.id.pageMore);
         mediaLabel = findViewById(R.id.pageMediaLabel);
         media = findViewById(R.id.pageMedia);
@@ -435,6 +440,10 @@ public class GamePageActivity extends ConsoleActivity {
         }
         info = found;
         infoLoaded = true;
+        // Steam's achievements need the game's Steam id, which comes with its info
+        if (trophyButton != null && trophyButton.getVisibility() != View.VISIBLE) {
+            updateTrophyButton();
+        }
         skeleton.animate().alpha(0f).setDuration(220).withEndAction(() -> skeleton.setVisibility(View.GONE)).start();
         shortText.animate().alpha(1f).setDuration(320).setStartDelay(80).start();
         if (found == null) {
@@ -601,7 +610,7 @@ public class GamePageActivity extends ConsoleActivity {
         trailerButton.setText("▷  " + getString(R.string.pocket_page_trailer));
         artButton.setText(R.string.pocket_page_art);
         updateFavourite();
-        for (TextView b : new TextView[]{play, quit, trailerButton, artButton, favButton}) {
+        for (TextView b : new TextView[]{play, quit, trailerButton, artButton, favButton, trophyButton, homeButton}) {
             if (b != play) {
                 b.setForeground(buttonFace(accent, false));
             }
@@ -635,7 +644,115 @@ public class GamePageActivity extends ConsoleActivity {
             updateFavourite();
             PocketMotion.pop(favButton, 0.86f);
         });
+        homeButton.setOnClickListener(v -> {
+            if (homeItem == null) {
+                return;
+            }
+            boolean pinned = com.limelight.pocket.home.HomeStore.isPinned(this, homeItem);
+            if (pinned) {
+                com.limelight.pocket.home.HomeStore.unpin(this, homeItem);
+            }
+            else {
+                com.limelight.pocket.home.HomeStore.pin(this, homeItem);
+            }
+            PocketSounds.play(this, pinned ? PocketSounds.TOGGLE_OFF : PocketSounds.TOGGLE_ON);
+            updateHomeButton();
+            PocketMotion.pop(homeButton, 0.9f);
+        });
+        trophyButton.setOnClickListener(v -> {
+            com.limelight.pocket.retro.Achievements.Target t =
+                    com.limelight.pocket.retro.Achievements.forPage(this, uuid, appId, name, info);
+            if (t != null) {
+                com.limelight.pocket.retro.AchievementsActivity.open(this, t, uuid, appId);
+            }
+        });
+        findHomeItem();
+        updateTrophyButton();
         play.post(() -> play.requestFocus());
+    }
+
+    /** What this page's game is on Home (to add it there right from here), found off the main thread. */
+    private void findHomeItem() {
+        final android.content.Context app = getApplicationContext();
+        new Thread(() -> {
+            com.limelight.pocket.home.HomeItem found = null;
+            try {
+                if (com.limelight.pocket.retro.RetroLibrary.UUID.equals(uuid)) {
+                    com.limelight.pocket.retro.RomScanner.Rom rom = com.limelight.pocket.retro.Achievements.findRom(app, appId);
+                    if (rom != null) {
+                        found = new com.limelight.pocket.home.HomeItem(com.limelight.pocket.home.HomeItem.RETRO,
+                                com.limelight.pocket.retro.RomScanner.searchName(rom.name), rom.system, rom.relPath, "", 0);
+                    }
+                }
+                else if (com.limelight.pocket.apps.AndroidLibrary.UUID.equals(uuid)) {
+                    android.content.pm.PackageManager pm = app.getPackageManager();
+                    for (android.content.pm.ApplicationInfo ai : pm.getInstalledApplications(0)) {
+                        if (com.limelight.pocket.apps.AndroidLibrary.idFor(ai.packageName) == appId) {
+                            found = new com.limelight.pocket.home.HomeItem(com.limelight.pocket.home.HomeItem.ANDROID,
+                                    name, ai.packageName, "", "", 0);
+                            break;
+                        }
+                    }
+                }
+                else if (uuid != null && uuid.length() >= 32 && uuid.indexOf(':') < 0) {
+                    found = new com.limelight.pocket.home.HomeItem(com.limelight.pocket.home.HomeItem.PC,
+                            name, uuid, "", "", appId);
+                }
+            } catch (RuntimeException ignored) {
+            }
+            final com.limelight.pocket.home.HomeItem item = found;
+            main.post(() -> {
+                if (!isFinishing()) {
+                    homeItem = item;
+                    updateHomeButton();
+                }
+            });
+        }, "PocketPageHome").start();
+    }
+
+    private void updateHomeButton() {
+        if (homeItem == null) {
+            homeButton.setVisibility(View.GONE);
+            return;
+        }
+        boolean pinned = com.limelight.pocket.home.HomeStore.isPinned(this, homeItem);
+        homeButton.setText(pinned ? "\u2713  " + getString(R.string.pocket_page_on_home) : "+  " + getString(R.string.pocket_page_add_home));
+        homeButton.setVisibility(View.VISIBLE);
+    }
+
+    /** Trophies: their progress on the button (and up to date in the background). */
+    private void updateTrophyButton() {
+        final com.limelight.pocket.retro.Achievements.Target t =
+                com.limelight.pocket.retro.Achievements.forPage(this, uuid, appId, name, info);
+        if (t == null) {
+            trophyButton.setVisibility(View.GONE);
+            return;
+        }
+        com.limelight.pocket.retro.Achievements.Set known = com.limelight.pocket.retro.Achievements.cached(this, t);
+        showTrophies(known);
+        com.limelight.pocket.retro.Achievements.load(this, t, false, set -> {
+            if (!isFinishing()) {
+                showTrophies(set);
+            }
+        });
+    }
+
+    private void showTrophies(com.limelight.pocket.retro.Achievements.Set set) {
+        String label = getString(R.string.pocket_trophy_title);
+        if (set != null && set.total > 0) {
+            label = set.earned + " / " + set.total;
+        }
+        android.graphics.drawable.Drawable cup = getDrawable(R.drawable.ic_pocket_trophy);
+        if (cup != null) {
+            cup = cup.mutate();
+            cup.setTint(0xFFFFD27A);
+            int s = dp(15);
+            cup.setBounds(0, 0, s, s);
+            trophyButton.setCompoundDrawablesRelative(cup, null, null, null);
+            trophyButton.setCompoundDrawablePadding(dp(7));
+        }
+        trophyButton.setText(label);
+        trophyButton.setVisibility(View.VISIBLE);
     }
 
     private void updateFavourite() {

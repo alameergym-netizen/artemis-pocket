@@ -230,6 +230,18 @@
                             android:paddingStart="0dp"
                             android:paddingEnd="0dp"
                             android:tag="glass" />
+
+                        <TextView
+                            android:id="@+id/pageTrophyButton"
+                            style="@style/PocketPageButton"
+                            android:tag="glass"
+                            android:visibility="gone" />
+
+                        <TextView
+                            android:id="@+id/pageHomeButton"
+                            style="@style/PocketPageButton"
+                            android:tag="glass"
+                            android:visibility="gone" />
                     </LinearLayout>
 
                     <TextView

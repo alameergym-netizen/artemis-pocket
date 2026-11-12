@@ -42,6 +42,11 @@ public final class LiveGlass {
     /** Glass looks: a light chip on dark, or a deeper panel for bigger surfaces. */
     public static final int STYLE_PILL = 0;
     public static final int STYLE_PANEL = 1;
+    /**
+     * A blur that fades in (progressive blur, like visionOS / iOS): clear at the top of the view,
+     * fully frosted at the bottom, no edge and no tint. Under a shelf of games or a menu.
+     */
+    public static final int STYLE_FADE = 2;
 
     private static final float SCALE = 0.25f;
 
@@ -134,7 +139,7 @@ public final class LiveGlass {
         }
         GlassDrawable glass = new GlassDrawable(host, backdrop, style);
         host.setBackground(glass);
-        host.setClipToOutline(true);
+        host.setClipToOutline(style != STYLE_FADE);
         if (backdrop != null && !backdrop.hosts.contains(host)) {
             backdrop.hosts.add(host);
             backdrop.glasses.add(glass);
@@ -174,6 +179,11 @@ public final class LiveGlass {
         }
         else if ("glass_panel".equals(tag)) {
             attach(root, backdrop, STYLE_PANEL);
+        }
+        else if ("glass_fade".equals(tag)) {
+            if (backdrop != null) {
+                attach(root, backdrop, STYLE_FADE);
+            }
         }
         if (root instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) root;
@@ -215,6 +225,7 @@ public final class LiveGlass {
         private final Paint face = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint veil = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint noise = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint fadeMask = new Paint();
         private final boolean frost;
         private int veilBase = 0x47;
         private int faceTop;
@@ -267,6 +278,14 @@ public final class LiveGlass {
             super.onBoundsChange(bounds);
             rect.set(bounds);
             float h = bounds.height();
+            if (style == STYLE_FADE) {
+                // Clear at the top, frosted from 55% down (a smooth ease, no visible start)
+                fadeMask.setShader(new LinearGradient(0, rect.top, 0, rect.bottom,
+                        new int[]{0x00000000, 0x2E000000, 0x9E000000, 0xFF000000, 0xFF000000},
+                        new float[]{0f, 0.18f, 0.38f, 0.58f, 1f}, Shader.TileMode.CLAMP));
+                fadeMask.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN));
+                return;
+            }
             radius = style == STYLE_PILL ? h / 2f : Math.min((frost ? 14 : 22) * d, h / 2f);
             float inset = rim.getStrokeWidth() / 2f;
             rimRect.set(rect.left + inset, rect.top + inset, rect.right - inset, rect.bottom - inset);
@@ -308,6 +327,25 @@ public final class LiveGlass {
         @Override
         public void draw(@NonNull Canvas canvas) {
             if (rect.isEmpty()) {
+                return;
+            }
+            if (style == STYLE_FADE) {
+                if (backdrop == null || !backdrop.ready || backdrop.failed || !supported()
+                        || !canvas.isHardwareAccelerated()) {
+                    return;
+                }
+                int layer = canvas.saveLayer(rect, null);
+                int[] src = backdrop.sourceLocation();
+                host.getLocationInWindow(hostLoc);
+                lastDx = hostLoc[0] - src[0];
+                lastDy = hostLoc[1] - src[1];
+                int save = canvas.save();
+                canvas.translate(-lastDx, -lastDy);
+                canvas.scale(1f / SCALE, 1f / SCALE);
+                Api31.draw(canvas, backdrop.node);
+                canvas.restoreToCount(save);
+                canvas.drawRect(rect, fadeMask);
+                canvas.restoreToCount(layer);
                 return;
             }
             if (backdrop != null && backdrop.ready && !backdrop.failed && supported()

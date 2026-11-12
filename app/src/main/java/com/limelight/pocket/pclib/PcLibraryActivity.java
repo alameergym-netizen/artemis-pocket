@@ -136,9 +136,11 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
 
         TextView title = findViewById(R.id.appListText);
         if (title != null) {
-            title.setText(pcName.isEmpty() ? getString(R.string.pocket_pclib_button)
-                    : getString(R.string.pocket_pclib_title, pcName));
+            // The PC's name, then the tabs (Apps | PC games) say where you are
+            title.setText(pcName.isEmpty() ? getString(R.string.pocket_pclib_button) : pcName);
         }
+        com.limelight.pocket.ui.SectionBar.attachTabs(this,
+                new int[]{R.string.pocket_tab_apps, R.string.pocket_tab_pc_games}, 1, i -> onShoulder(-1));
         // The library's own buttons don't belong here; its PC games button adds a PC app here
         hide(R.id.profilesButton);
         TextView addApp = findViewById(R.id.pocketPcLibraryButton);
@@ -174,7 +176,8 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         setHints(hintA(this, R.string.pocket_hint_play),
                 hintX(this, R.string.pocket_hint_details),
                 hintY(this, R.string.pocket_hint_options),
-                hintShoulders(this, R.string.pocket_pclib_hint_filter),
+                new Hint("L2 R2", 0xFFFFFFFF, getString(R.string.pocket_pclib_hint_filter)),
+                hintSelect(this, R.string.pocket_layout_hint),
                 hintStart(this, R.string.pocket_hint_settings));
 
         List<PcGame> cached = PcLibrary.cached(uuid);
@@ -729,9 +732,26 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         return onButtonX();
     }
 
-    /** L1 / R1: what the row shows (all, installed, not installed, Steam, other stores). */
+    /** L1 / R1: the tabs at the top (L1: back to the PC's Apps). */
     @Override
     protected boolean onShoulder(int direction) {
+        if (direction < 0) {
+            PocketSounds.play(this, PocketSounds.NAV);
+            finish();
+            overridePendingTransition(R.anim.pocket_section_in, R.anim.pocket_section_out);
+        }
+        else {
+            View tabs = getWindow().getDecorView().findViewWithTag("pocket_tabs");
+            if (tabs != null) {
+                PocketMotion.pop(tabs, 0.96f);
+            }
+        }
+        return true;
+    }
+
+    /** L2 / R2: what the row shows (all, installed, not installed, Steam, other stores). */
+    @Override
+    protected boolean onTrigger(int direction) {
         filter = (filter + direction + PcGame.FILTER_COUNT) % PcGame.FILTER_COUNT;
         PocketSounds.play(this, PocketSounds.NAV);
         TextView section = findViewById(R.id.pocketSectionTitle);
@@ -744,15 +764,6 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         return true;
     }
 
-    /** L2 / R2: the first / last game. */
-    @Override
-    protected boolean onTrigger(int direction) {
-        if (adapter.getCount() == 0) {
-            return false;
-        }
-        focusAt(direction < 0 ? 0 : adapter.getCount() - 1);
-        return true;
-    }
 
     // ---- Playing, installing ------------------------------------------------------------------
 

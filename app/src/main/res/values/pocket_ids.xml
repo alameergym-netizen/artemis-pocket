@@ -4,4 +4,7 @@
     <item name="pocket_blur_radius" type="id" />
     <item name="pocket_glass_face" type="id" />
     <item name="pocketSectionHost" type="id" />
+    <item name="pocket_layouts_on" type="id" />
+    <item name="homeMeta" type="id" />
+    <item name="homeTileName" type="id" />
 </resources>

@@ -220,7 +220,13 @@ public final class LibraryLayout {
      * Lays the screen out for the chosen mode (after the screen set its carousel up). The
      * carousel needs nothing; the grid and the list take the hero's place.
      */
+    /** True when this screen's library is laid out by apply() (SELECT switches its layout). */
+    public static boolean isApplied(Activity a) {
+        return Boolean.TRUE.equals(a.getWindow().getDecorView().getTag(R.id.pocket_layouts_on));
+    }
+
     public static void apply(Activity a, RecyclerView list) {
+        a.getWindow().getDecorView().setTag(R.id.pocket_layouts_on, Boolean.TRUE);
         String mode = viewMode(a);
         if (MODE_CAROUSEL.equals(mode) || list == null) {
             return;
@@ -283,33 +289,27 @@ public final class LibraryLayout {
 
     /** "View" and "Cards" in a screen's options (the screen comes back laid out the new way). */
     public static void addSettings(final ConsoleActivity a, List<StreamMenuView.Item> items) {
-        final String[] modeLabels = {a.getString(R.string.pocket_view_carousel), a.getString(R.string.pocket_view_grid),
-                a.getString(R.string.pocket_view_xmb)};
-        final String[] styleLabels = {a.getString(R.string.pocket_cards_cover), a.getString(R.string.pocket_cards_wide),
-                a.getString(R.string.pocket_cards_icon)};
-        items.add(StreamMenuView.Item.value(a.getString(R.string.pocket_view_mode),
-                modeLabels[indexOf(MODES, viewMode(a))], direction -> {
-                    int next = (indexOf(MODES, viewMode(a)) + (direction >= 0 ? 1 : -1) + MODES.length) % MODES.length;
-                    PocketPrefs.setViewMode(a, MODES[next]);
+        // One setting, the same as the SELECT button: the layout (left / right go through them)
+        items.add(StreamMenuView.Item.value(a.getString(R.string.pocket_layout),
+                a.getString(Layouts.ALL[Layouts.libraryIndex(a)].label), direction -> {
+                    Layouts.Layout l = direction >= 0 ? Layouts.nextLibrary(a) : previous(a);
                     PocketSounds.play(a, PocketSounds.NAV);
                     a.getWindow().getDecorView().postDelayed(() -> {
                         if (!a.isFinishing()) {
                             a.recreate();
                         }
                     }, 350);
-                    return modeLabels[next];
+                    return a.getString(l.label);
                 }));
-        items.add(StreamMenuView.Item.value(a.getString(R.string.pocket_cards_style),
-                styleLabels[indexOf(STYLES, PocketPrefs.cardStyle(a))], direction -> {
-                    int next = (indexOf(STYLES, PocketPrefs.cardStyle(a)) + (direction >= 0 ? 1 : -1) + STYLES.length) % STYLES.length;
-                    PocketPrefs.setCardStyle(a, STYLES[next]);
-                    PocketSounds.play(a, PocketSounds.NAV);
-                    a.getWindow().getDecorView().postDelayed(() -> {
-                        if (!a.isFinishing()) {
-                            a.recreate();
-                        }
-                    }, 350);
-                    return styleLabels[next];
-                }));
+    }
+
+    private static Layouts.Layout previous(Context c) {
+        int n = Layouts.ALL.length;
+        // nextLibrary n-1 times is the one before (and keeps the chip for it)
+        Layouts.Layout l = null;
+        for (int i = 0; i < n - 1; i++) {
+            l = Layouts.nextLibrary(c);
+        }
+        return l;
     }
 }

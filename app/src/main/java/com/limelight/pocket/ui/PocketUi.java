@@ -41,31 +41,48 @@ public final class PocketUi {
         float d = c.getResources().getDisplayMetrics().density;
         // Like the new consoles' and streaming apps' Play: solid white, black label, a capsule,
         // the one bright thing on the screen
-        android.graphics.drawable.GradientDrawable face = new android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFFFFFFFF, 0xFFF1F1F4});
-        face.setCornerRadius(PLAY_RADIUS_DP * d);
-        play.setBackground(face);
+        play.setBackground(playFace(d));
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             play.setForeground(null);
         }
         play.setTypeface(PocketFonts.semibold());
-        play.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12.5f);
-        play.setLetterSpacing(-0.005f);
+        play.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f);
+        play.setLetterSpacing(-0.01f);
         play.setIncludeFontPadding(false);
         play.setGravity(android.view.Gravity.CENTER);
-        play.setMinHeight(Math.round(30 * d));
-        play.setPadding(Math.round(15 * d), Math.round(8 * d), Math.round(19 * d), Math.round(8 * d));
+        play.setMinHeight(Math.round(38 * d));
+        play.setMinWidth(Math.round(112 * d));
+        play.setPadding(Math.round(18 * d), Math.round(10 * d), Math.round(24 * d), Math.round(10 * d));
         play.setShadowLayer(0f, 0f, 0f, 0);
         // Touch presses it; with buttons, the hero takes "focus" without stealing it from the row
         play.setFocusable(false);
         play.setClickable(true);
         play.setTextColor(0xFF0B0B0F);
-        play.setElevation(6 * d);
+        play.setElevation(10 * d);
         play.setClipToOutline(false);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
             play.setOutlineSpotShadowColor(0xFF000000);
             play.setOutlineAmbientShadowColor(0xFF000000);
         }
+    }
+
+    /**
+     * Play's face: a white capsule with a soft top-to-bottom sheen and a hairline edge, so it
+     * reads as a solid, pressable thing (not a flat white shape) on bright art too.
+     */
+    public static android.graphics.drawable.Drawable playFace(float d) {
+        android.graphics.drawable.GradientDrawable body = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFFFFFFFF, 0xFFF4F4F7, 0xFFE4E4EA});
+        body.setCornerRadius(PLAY_RADIUS_DP * d);
+        body.setStroke(Math.max(1, Math.round(0.75f * d)), 0x1F000000);
+        android.graphics.drawable.GradientDrawable shine = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0x99FFFFFF, 0x00FFFFFF});
+        shine.setCornerRadius(PLAY_RADIUS_DP * d);
+        android.graphics.drawable.LayerDrawable face = new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[]{body, shine});
+        int in = Math.max(1, Math.round(1.5f * d));
+        face.setLayerInset(1, in, in, in, Math.round(14 * d));
+        return face;
     }
 
     /** The corner of Play and the hero's buttons (dp): a capsule. */

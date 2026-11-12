@@ -259,10 +259,26 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
     }
 
-    /** SELECT (the "view" button): Quick Resume. Screens can override. */
+    /**
+     * SELECT (the "view" button): on a library, the next layout (tiles, covers, wide, grids,
+     * list); elsewhere Quick Resume. Held down, it's always Quick Resume. Screens can override.
+     */
     protected void onSelectButton() {
+        if (com.limelight.pocket.ui.LibraryLayout.isApplied(this)) {
+            com.limelight.pocket.ui.Layouts.nextLibrary(this);
+            PocketSounds.play(this, PocketSounds.NAV);
+            // The screen builds itself again in the new layout (its chip says which)
+            getWindow().getDecorView().postDelayed(() -> {
+                if (!isFinishing()) {
+                    recreate();
+                }
+            }, 90);
+            return;
+        }
         openQuickResume();
     }
+
+    private long selectDownAt;
 
     /** Edge-to-edge, behind the camera cutout, no system bars: the whole 1080p panel is ours. */
     public static void applyFullscreenWindow(android.app.Activity activity) {
@@ -289,6 +305,9 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         PocketMusic.screenShown(this);
+        com.limelight.pocket.home.PlayTime.resumed(this);
+        // Just switched layout: which one it is now
+        getWindow().getDecorView().post(() -> com.limelight.pocket.ui.Layouts.showPendingChip(this));
         // A notification that comes in while a console screen is up: a short note about it
         com.limelight.pocket.device.PocketNotifications.setListener(note -> {
             if (!isFinishing() && PocketPrefs.prefs(this).getBoolean("pocket_announce_notifications", true)) {
@@ -1200,8 +1219,17 @@ public abstract class ConsoleActivity extends AppCompatActivity {
                 }
                 return true;
             case KeyEvent.KEYCODE_BUTTON_SELECT:
+                if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                    selectDownAt = event.getEventTime();
+                }
                 if (up) {
-                    onSelectButton();
+                    if (selectDownAt > 0 && event.getEventTime() - selectDownAt >= 550) {
+                        openQuickResume();
+                    }
+                    else {
+                        onSelectButton();
+                    }
+                    selectDownAt = 0;
                 }
                 return true;
             case KeyEvent.KEYCODE_BUTTON_L1:

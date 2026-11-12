@@ -6,8 +6,12 @@ PKG=com.artemispocket
 SHOTS="$GITHUB_WORKSPACE/shots"
 mkdir -p "$SHOTS"
 log() { echo "== $*"; }
-shot() { adb exec-out screencap -p > "$SHOTS/$1.png"; log "shot $1"; }
-key() { adb shell input "${2:-gamepad}" keyevent "$1"; sleep "${3:-1.2}"; }
+alive() { timeout 10 adb shell echo ok > /dev/null 2>&1; }
+shot() {
+  alive || { log "emulator gone before $1"; exit 0; }
+  timeout 30 adb exec-out screencap -p > "$SHOTS/$1.png"; log "shot $1"
+}
+key() { timeout 15 adb shell input "${2:-gamepad}" keyevent "$1"; sleep "${3:-1.2}"; }
 
 adb shell settings put global window_animation_scale 0
 adb shell settings put global transition_animation_scale 0
@@ -34,6 +38,7 @@ push_seed() {
 adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null; sleep 6
 push_seed /tmp/seed
 adb logcat -c
+adb shell input dpad keyevent KEYCODE_DPAD_DOWN
 adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView; sleep 14
 shot 01_home
 key KEYCODE_DPAD_RIGHT dpad 2.5; shot 02_home_next
@@ -58,7 +63,7 @@ for mode in grid xmb; do
   rm -rf /tmp/seed2; mkdir -p /tmp/seed2
   printf 'pref\tstring\tpocket_view_mode\t%s\n' "$mode" > /tmp/seed2/seed.txt
   push_seed /tmp/seed2
-  adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null; sleep 8
+  adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null; sleep 13
   key KEYCODE_BUTTON_R1 gamepad 3
   key KEYCODE_BUTTON_R1 gamepad 3
   key KEYCODE_BUTTON_R1 gamepad 5; shot "13_android_$mode"

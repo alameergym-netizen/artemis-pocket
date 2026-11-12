@@ -14,6 +14,8 @@ pref int pocket_defaults_version 4
 pref bool pocket_onboarding_pending false
 for t in pcs games stream; do pref bool "pocket_tip_seen_$t" true; done
 pref string pocket_music off
+# The emulator's video decoding crashes it: trailers stay still
+pref bool pocket_trailer_autoplay false
 if [ -n "${VIEW_MODE:-}" ]; then pref string pocket_view_mode "$VIEW_MODE"; fi
 
 # Real games' library art (public Steam CDN), shown on emulator apps so every layout has art in it
@@ -44,6 +46,6 @@ for g in "${games[@]}"; do
   i=$((i+1))
 done
 # One more app with no art at all
-[ $i -lt ${#avail[@]} ] && echo "pin${T}android${T}${T}${avail[$i]}${T}${T}${T}0" >> "$seed"
+[ $i -lt ${#avail[@]} ] && echo "pin${T}android${T}Phone${T}${avail[$i]}${T}${T}${T}0" >> "$seed"
 cat "$seed"
 ls -la "$out"

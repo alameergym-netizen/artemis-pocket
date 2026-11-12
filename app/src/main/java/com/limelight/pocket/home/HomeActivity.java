@@ -205,6 +205,17 @@ public class HomeActivity extends ConsoleActivity {
         title.setText(R.string.pocket_home_welcome);
         source.setText("");
         bound = bindService(new Intent(this, ComputerManagerService.class), connection, Context.BIND_AUTO_CREATE);
+        // A button pressed after the screen was touched (or right after it opened): the focus
+        // goes to the game, never to a stray view
+        row.getViewTreeObserver().addOnTouchModeChangeListener(inTouch -> {
+            if (!inTouch && !isFinishing() && !isConsolePanelShowing()) {
+                View f = getCurrentFocus();
+                boolean inside = f != null && (row.hasFocus() || f == play || f == info || f == more);
+                if (!inside && !entries.isEmpty()) {
+                    focusAt(heroPos >= 0 && heroPos < entries.size() ? heroPos : 0, 0);
+                }
+            }
+        });
         load();
     }
 
@@ -513,7 +524,7 @@ public class HomeActivity extends ConsoleActivity {
             return;
         }
         // Two lines under a one-line name, one under a long name or a logo (the row stays clear)
-        boolean tall = logo.getVisibility() == View.VISIBLE || title.getLineCount() > 1;
+        boolean tall = title.getVisibility() == View.VISIBLE && title.getLineCount() > 1;
         desc.setMaxLines(tall ? 1 : 2);
         desc.setText(text.trim());
         if (desc.getVisibility() != View.VISIBLE) {
@@ -647,6 +658,12 @@ public class HomeActivity extends ConsoleActivity {
             }
         };
         View.OnKeyListener down = (v, keyCode, event) -> {
+            if (keyCode == KeyEvent.KEYCODE_BUTTON_Y || keyCode == KeyEvent.KEYCODE_MENU) {
+                if (event.getAction() == KeyEvent.ACTION_UP) {
+                    showOptions(heroPos);
+                }
+                return true;
+            }
             if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && event.getAction() == KeyEvent.ACTION_DOWN) {
                 focusAt(Math.max(0, heroPos), 0);
                 return true;
@@ -1458,8 +1475,8 @@ public class HomeActivity extends ConsoleActivity {
             final HomeItem item = e.item;
             h.label.setVisibility(View.GONE);
             h.image.setVisibility(View.VISIBLE);
-            h.badge.setVisibility(View.VISIBLE);
-            h.badge.setImageDrawable(new KindBadge(item.kind, KindBadge.ROUND, d));
+            // Where it's from is shown with the name above; the tile is just the game
+            h.badge.setVisibility(View.GONE);
             h.itemView.setContentDescription(displayName(item));
             final String key = item.key();
             h.boundKey = key;

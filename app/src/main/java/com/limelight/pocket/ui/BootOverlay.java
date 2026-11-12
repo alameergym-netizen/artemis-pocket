@@ -53,6 +53,10 @@ public final class BootOverlay extends FrameLayout {
     private static final float EXIT_LEN = 0.75f;
     private static final long MAX_SOUND_WAIT_MS = 600;
 
+    /** Live blur (Android 12+). Not on the emulator: its software GPU dies of full-screen blur. */
+    private static final boolean LIVE_BLUR = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+            && !com.limelight.pocket.PreviewSeed.isEmulator();
+
     private static final String WORD_1 = "POCKET";
     private static final String WORD_2 = "NEXUS";
 
@@ -219,7 +223,7 @@ public final class BootOverlay extends FrameLayout {
         mark.setPivotY(mcy);
         mark.setScaleX(s);
         mark.setScaleY(s);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (LIVE_BLUR) {
             float blur = 18 * d * (1 - focus);
             mark.setRenderEffect(blur > 0.5f ? RenderEffect.createBlurEffect(blur, blur, Shader.TileMode.DECAL) : null);
         }
@@ -243,7 +247,7 @@ public final class BootOverlay extends FrameLayout {
                 reveal.setScaleX(r);
                 reveal.setScaleY(r);
             }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (LIVE_BLUR) {
                 float out = 26 * d * ease(e);
                 setRenderEffect(out > 0.5f ? RenderEffect.createBlurEffect(out, out, Shader.TileMode.DECAL) : null);
                 if (reveal != null) {
@@ -280,7 +284,7 @@ public final class BootOverlay extends FrameLayout {
             reveal.setPivotY(reveal.getHeight() / 2f);
             reveal.setScaleX(1.04f);
             reveal.setScaleY(1.04f);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (LIVE_BLUR) {
                 float in = 22 * d;
                 reveal.setRenderEffect(RenderEffect.createBlurEffect(in, in, Shader.TileMode.CLAMP));
             }
@@ -293,7 +297,7 @@ public final class BootOverlay extends FrameLayout {
             reveal.setAlpha(1f);
             reveal.setScaleX(1f);
             reveal.setScaleY(1f);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (LIVE_BLUR) {
                 reveal.setRenderEffect(null);
             }
         }

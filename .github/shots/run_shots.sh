@@ -16,15 +16,18 @@ shot() {
 }
 key() { timeout 15 adb shell input "${2:-gamepad}" keyevent "$1"; sleep "${3:-1.2}"; }
 
+# Every adb call is bounded: with the emulator gone, adb would wait for a device forever
+adbt() { timeout "${T:-20}" adb "$@"; }
+
 setup_device() {
-  adb shell settings put global window_animation_scale 0
-  adb shell settings put global transition_animation_scale 0
-  adb shell settings put global animator_duration_scale 1
-  adb shell wm size 1920x1080
-  adb shell wm density 400
-  adb shell settings put system screen_off_timeout 1800000
-  adb shell svc power stayon true
-  adb shell input keyevent KEYCODE_WAKEUP
+  adbt shell settings put global window_animation_scale 0
+  adbt shell settings put global transition_animation_scale 0
+  adbt shell settings put global animator_duration_scale 1
+  adbt shell wm size 1920x1080
+  adbt shell wm density 400
+  adbt shell settings put system screen_off_timeout 1800000
+  adbt shell svc power stayon true
+  adbt shell input keyevent KEYCODE_WAKEUP
 }
 
 restarts=0
@@ -57,19 +60,19 @@ prepare_app() {
   push_seed /tmp/seed
   # ...and is read by the next start
   timeout 60 adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null; sleep 6
-  adb shell am force-stop $PKG
+  adbt shell am force-stop $PKG
 }
 
 push_seed() {
-  adb shell am force-stop $PKG
-  adb shell mkdir -p /sdcard/Android/data/$PKG/files/preview
-  adb push "$1"/. /sdcard/Android/data/$PKG/files/preview/ > /dev/null
+  adbt shell am force-stop $PKG
+  adbt shell mkdir -p /sdcard/Android/data/$PKG/files/preview
+  T=60 adbt push "$1"/. /sdcard/Android/data/$PKG/files/preview/ > /dev/null
 }
 
 # A fresh start of the app (a button press first: a handheld is driven with buttons)
 launch() {
-  adb shell am force-stop $PKG
-  adb shell input dpad keyevent KEYCODE_DPAD_DOWN
+  adbt shell am force-stop $PKG
+  adbt shell input dpad keyevent KEYCODE_DPAD_DOWN
   timeout 60 adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null
   sleep 8
 }
@@ -81,16 +84,16 @@ scene() { # name
 }
 
 setup_device
-adb shell getprop ro.product.cpu.abilist
-adb shell pm list packages | sed 's/^package://' | sort > /tmp/pkgs.txt
+adbt shell getprop ro.product.cpu.abilist
+adbt shell pm list packages | sed 's/^package://' | sort > /tmp/pkgs.txt
 bash "$GITHUB_WORKSPACE/.github/shots/make_seed.sh" /tmp/seed /tmp/pkgs.txt > /tmp/seed.log 2>&1
 cat /tmp/seed.log
 prepare_app
 # A ROM folder (empty files) and file access, so the Retro section has systems to show
-for sys in nes snes n64 psx gba megadrive; do adb shell mkdir -p /sdcard/ROMs/$sys; done
-adb shell 'touch "/sdcard/ROMs/nes/Super Mario Bros. (World).nes" "/sdcard/ROMs/nes/The Legend of Zelda (USA).nes" "/sdcard/ROMs/snes/Super Metroid (Japan, USA).sfc" "/sdcard/ROMs/n64/Super Mario 64 (USA).z64" "/sdcard/ROMs/psx/Castlevania - Symphony of the Night (USA).chd" "/sdcard/ROMs/gba/Metroid Fusion (USA).gba" "/sdcard/ROMs/megadrive/Sonic The Hedgehog (USA, Europe).md"'
-adb shell appops set --uid $PKG MANAGE_EXTERNAL_STORAGE allow
-adb logcat -c
+for sys in nes snes n64 psx gba megadrive; do adbt shell mkdir -p /sdcard/ROMs/$sys; done
+adbt shell 'touch "/sdcard/ROMs/nes/Super Mario Bros. (World).nes" "/sdcard/ROMs/nes/The Legend of Zelda (USA).nes" "/sdcard/ROMs/snes/Super Metroid (Japan, USA).sfc" "/sdcard/ROMs/n64/Super Mario 64 (USA).z64" "/sdcard/ROMs/psx/Castlevania - Symphony of the Night (USA).chd" "/sdcard/ROMs/gba/Metroid Fusion (USA).gba" "/sdcard/ROMs/megadrive/Sonic The Hedgehog (USA, Europe).md"'
+adbt shell appops set --uid $PKG MANAGE_EXTERNAL_STORAGE allow
+adbt logcat -c
 
 if scene home; then
   shot 01_home
@@ -189,8 +192,8 @@ rm -rf /tmp/seedb; mkdir -p /tmp/seedb
 printf 'pref\tbool\tpocket_preview_no_boot\tfalse\npref\tbool\tpocket_live_glass\tfalse\n' > /tmp/seedb/seed.txt
 if ensure_emulator; then
   push_seed /tmp/seedb
-  adb shell am force-stop $PKG
-  adb shell input keyevent KEYCODE_WAKEUP
+  adbt shell am force-stop $PKG
+  adbt shell input keyevent KEYCODE_WAKEUP
   (timeout 20 adb shell screenrecord --time-limit 9 --bit-rate 12000000 /sdcard/boot.mp4 > /dev/null 2>&1 &)
   sleep 1
   timeout 30 adb shell am start -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null
@@ -200,8 +203,8 @@ if ensure_emulator; then
 fi
 
 ensure_emulator && {
-  adb logcat -d -b crash > "$SHOTS/crash.txt" 2>&1 || true
-  adb logcat -d -v brief | grep -E "AndroidRuntime|$PKG|E/" | tail -n 400 > "$SHOTS/logcat.txt" 2>&1 || true
+  T=30 adbt logcat -d -b crash > "$SHOTS/crash.txt" 2>&1 || true
+  T=30 adbt logcat -d -v brief | grep -E "AndroidRuntime|$PKG|E/" | tail -n 400 > "$SHOTS/logcat.txt" 2>&1 || true
 }
 ls -la "$SHOTS"
 exit 0

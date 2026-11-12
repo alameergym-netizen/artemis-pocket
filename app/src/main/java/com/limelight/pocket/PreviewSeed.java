@@ -29,7 +29,7 @@ import java.util.Locale;
 public final class PreviewSeed {
     private PreviewSeed() {}
 
-    static boolean isEmulator() {
+    public static boolean isEmulator() {
         String hw = Build.HARDWARE != null ? Build.HARDWARE.toLowerCase(Locale.ROOT) : "";
         return hw.contains("ranchu") || hw.contains("goldfish");
     }

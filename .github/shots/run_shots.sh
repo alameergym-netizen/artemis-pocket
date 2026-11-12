@@ -33,6 +33,7 @@ setup_device() {
 restarts=0
 ensure_emulator() {
   alive && return 0
+  [ $restarts -gt 0 ] && { log "emulator log ($restarts):"; tail -n 25 /tmp/emu-$restarts.log; }
   [ $restarts -ge 3 ] && return 1
   restarts=$((restarts+1))
   log "restarting the emulator ($restarts)"
@@ -46,7 +47,7 @@ ensure_emulator() {
   done
   sleep 5
   setup_device
-  alive || return 1
+  alive || { log "emulator log:"; tail -n 25 /tmp/emu-$restarts.log; return 1; }
   # A restarted emulator can come back without the app (and its seed)
   timeout 20 adb shell pm path $PKG > /dev/null 2>&1 || prepare_app
   return 0

@@ -129,7 +129,8 @@ jobs:
   shots:
     needs: apk
     if: github.ref_name != 'ci-logs' && github.ref_name != 'ci-shots'
-    runs-on: ubuntu-latest
+    # Pinned: the emulator dies on install on the 2026-11-11 Ubuntu 26.04 runner image
+    runs-on: ubuntu-24.04
     timeout-minutes: 70
     steps:
       - name: Checkout

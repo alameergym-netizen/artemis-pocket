@@ -6,7 +6,7 @@ set -u
 APK=$(ls "$GITHUB_WORKSPACE"/out/*.apk | head -n 1)
 PKG=com.artemispocket
 SHOTS="$GITHUB_WORKSPACE/shots"
-EMU_OPTS=${EMU_OPTS:-"-no-window -no-snapshot -gpu swiftshader_indirect -feature -Vulkan -noaudio -no-boot-anim -camera-back none -camera-front none"}
+EMU_OPTS=${EMU_OPTS:-"-no-window -no-snapshot -gpu guest -feature -Vulkan -noaudio -no-boot-anim -camera-back none -camera-front none"}
 mkdir -p "$SHOTS"
 log() { echo "== $*"; }
 alive() { timeout 10 adb shell echo ok > /dev/null 2>&1; }
@@ -34,7 +34,7 @@ restarts=0
 ensure_emulator() {
   alive && return 0
   [ $restarts -gt 0 ] && { log "emulator log ($restarts):"; tail -n 25 /tmp/emu-$restarts.log; }
-  log "last words ($restarts):"; tail -n 60 /tmp/live-logcat-$restarts.txt 2>/dev/null | cut -c1-220
+  log "last words ($restarts):"; grep -vE "AudioFlinger|throttle" /tmp/live-logcat-$restarts.txt 2>/dev/null | tail -n 60 | cut -c1-220
   [ $restarts -ge 3 ] && return 1
   restarts=$((restarts+1))
   log "restarting the emulator ($restarts)"
@@ -85,6 +85,9 @@ launch() {
 scene() { # name
   ensure_emulator || { log "no emulator for $1"; return 1; }
   log "scene $1"
+  # This scene's log, kept on this side (the last lines show if the emulator dies)
+  pkill -f "adb logcat -v brief" 2>/dev/null
+  (timeout 600 adb logcat -v brief -T 1 > /tmp/live-logcat-$restarts.txt 2>&1 &)
   launch
 }
 

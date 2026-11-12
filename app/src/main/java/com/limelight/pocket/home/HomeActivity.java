@@ -1577,7 +1577,10 @@ public class HomeActivity extends ConsoleActivity {
             if (sq != null) {
                 return crop(sq, size, 0.5f);
             }
-            if (!HomeItem.SHORTCUT.equals(item.kind)) {
+            // An Android app with no art of its own: its icon (never a lettered card)
+            boolean appOnly = HomeItem.ANDROID.equals(item.kind) && !PocketArt.has(this, uuid, id, PocketArt.COVER)
+                    && !PocketArt.has(this, uuid, id, PocketArt.HERO);
+            if (!HomeItem.SHORTCUT.equals(item.kind) && !appOnly) {
                 Bitmap cover = null;
                 try {
                     cover = HeroArt.load(this, uuid, id);

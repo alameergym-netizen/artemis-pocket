@@ -172,12 +172,11 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
 
         // Nothing to tell about yet: no empty buttons in the hero
         heroIdle(getString(R.string.pocket_pclib_loading));
-        setHints(hintA(this, R.string.pocket_hint_play),
-                hintX(this, R.string.pocket_hint_details),
+        setHints(hintA(this, R.string.pocket_hint_details),
+                hintStart(this, R.string.pocket_hint_quick_play),
                 hintY(this, R.string.pocket_hint_options),
                 new Hint("L2 R2", 0xFFFFFFFF, getString(R.string.pocket_pclib_hint_filter)),
-                hintSelect(this, R.string.pocket_layout_hint),
-                hintStart(this, R.string.pocket_hint_settings));
+                hintSelect(this, R.string.pocket_layout_hint));
 
         List<PcGame> cached = PcLibrary.cached(uuid);
         if (cached != null) {
@@ -652,12 +651,23 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         updateHero(position, true);
     }
 
+    /** A: the game's page (media, details, Play / Install); START plays at once. */
     @Override
     public void onItemClicked(int position, View itemView) {
         PcGame g = gameAt(position);
         if (g != null) {
-            primary(g);
+            openPage(g);
         }
+    }
+
+    @Override
+    protected boolean onQuickPlay() {
+        PcGame g = gameAt(heroPos);
+        if (g == null) {
+            return false;
+        }
+        primary(g);
+        return true;
     }
 
     @Override

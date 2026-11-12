@@ -240,6 +240,16 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         return false;
     }
 
+    private long startDownAt;
+
+    /**
+     * START on a game in a section: play it straight away (A opens its page first). True when
+     * done; false gives START its usual job (settings).
+     */
+    protected boolean onQuickPlay() {
+        return false;
+    }
+
     /** Picks up the running game, or starts the one played last. */
     protected void resumeLastGame() {
         if (!(this instanceof com.limelight.pocket.ui.QuickResumePanel.Source)) {
@@ -1209,8 +1219,16 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
         switch (keyCode) {
             case KeyEvent.KEYCODE_BUTTON_START:
+                if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                    startDownAt = event.getEventTime();
+                }
                 if (up) {
-                    onMenuButton();
+                    // On a game: play it now (A opens its page). Held, or anywhere else: settings
+                    boolean held = startDownAt > 0 && event.getEventTime() - startDownAt >= 600;
+                    startDownAt = 0;
+                    if (held || !onQuickPlay()) {
+                        onMenuButton();
+                    }
                 }
                 return true;
             case KeyEvent.KEYCODE_BUTTON_X:
@@ -1467,8 +1485,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             glyph.setLetterSpacing(0.02f);
             GradientDrawable bg = new GradientDrawable();
             bg.setShape(GradientDrawable.RECTANGLE);
-            // A key, not a ring: a small rounded square (like the consoles' button hints)
-            bg.setCornerRadius(4 * density);
+            // A round button, filled (no outline ring)
+            bg.setCornerRadius(size / 2f);
             bg.setColor(0xEBFFFFFF);
             glyph.setBackground(bg);
             glyph.setTag("hint:" + hint.glyph);

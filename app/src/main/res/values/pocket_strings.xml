@@ -1191,4 +1191,5 @@
     <string name="pocket_art_square">Square</string>
     <string name="pocket_art_change_icon">Change icon</string>
     <string name="pocket_sysart_change">Change the console art</string>
+    <string name="pocket_hint_quick_play">Quick play</string>
 </resources>

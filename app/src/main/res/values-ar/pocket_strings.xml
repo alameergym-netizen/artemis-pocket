@@ -1196,4 +1196,5 @@
     <string name="pocket_art_square">مربّع</string>
     <string name="pocket_art_change_icon">غيّر الأيقونة</string>
     <string name="pocket_sysart_change">غيّر صور الجهاز</string>
+    <string name="pocket_hint_quick_play">تشغيل سريع</string>
 </resources>

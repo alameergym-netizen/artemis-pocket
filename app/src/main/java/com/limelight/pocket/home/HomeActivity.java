@@ -960,12 +960,15 @@ public class HomeActivity extends ConsoleActivity {
                 room = avail - fixed - 28;
             }
             logoMax = Math.round(Math.max(48, Math.min(112, room)));
-            hlp.topMargin = Math.round(44 * d);
+            // The hero stands on the row (its buttons a fixed step above it) and grows upward:
+            // a tall logo, a long name or a longer description never moves Play or the row
+            hlp.topMargin = 0;
+            hlp.bottomMargin = rlp.bottomMargin + rlp.height + Math.round(26 * d);
             row.setPadding(Math.round(22 * d), Math.round(10 * d), Math.round(220 * d), Math.round(10 * d));
             row.setVerticalFadingEdgeEnabled(false);
             row.setHorizontalFadingEdgeEnabled(true);
             row.setFadingEdgeLength(Math.round(26 * d));
-            hlp.gravity = Gravity.TOP | Gravity.START;
+            hlp.gravity = Gravity.BOTTOM | Gravity.START;
             hlp.width = Math.round(440 * d);
             hlp.setMarginStart(Math.round(30 * d));
             hlp.setMarginEnd(0);
@@ -997,6 +1000,8 @@ public class HomeActivity extends ConsoleActivity {
             row.setVerticalFadingEdgeEnabled(true);
             row.setFadingEdgeLength(Math.round(30 * d));
             hlp.gravity = Gravity.TOP | Gravity.END;
+            hlp.topMargin = Math.round(62 * d);
+            hlp.bottomMargin = 0;
             hlp.width = Math.round(300 * d);
             hlp.setMarginStart(0);
             hlp.setMarginEnd(Math.round(30 * d));
@@ -1016,18 +1021,30 @@ public class HomeActivity extends ConsoleActivity {
         }
     }
 
+    /** Nothing above these may cut the focus glow (it reaches a little outside them). */
+    private static void unclip(View v) {
+        for (android.view.ViewParent p = v.getParent(); p instanceof ViewGroup; p = p.getParent()) {
+            ((ViewGroup) p).setClipChildren(false);
+            ((ViewGroup) p).setClipToPadding(false);
+            if (((ViewGroup) p).getId() == android.R.id.content) {
+                break;
+            }
+        }
+    }
+
     private void setUpActions() {
+        unclip(play);
+        if (row != null) {
+            row.setClipChildren(false);
+            row.setClipToPadding(false);
+            unclip(row);
+        }
         PocketUi.stylePlayPill(play);
         play.setFocusable(true);
         // Focused, Play wears a white ring a little apart from it
         {
-            GradientDrawable ring = new GradientDrawable();
-            ring.setCornerRadius(100 * d);
-            ring.setColor(0x00000000);
-            ring.setStroke(Math.round(2 * d), 0xFFFFFFFF);
-            LayerDrawable focused = new LayerDrawable(new Drawable[]{PocketUi.playFace(d), ring});
-            int out = -Math.round(4.5f * d);
-            focused.setLayerInset(1, out, out, out, out);
+            LayerDrawable focused = new LayerDrawable(new Drawable[]{PocketUi.playFace(d),
+                    com.limelight.pocket.ui.SoftRing.forTheme(this, 0, true)});
             StateListDrawable states = new StateListDrawable();
             states.addState(new int[]{android.R.attr.state_focused}, focused);
             states.addState(new int[]{}, PocketUi.playFace(d));
@@ -1775,7 +1792,7 @@ public class HomeActivity extends ConsoleActivity {
         final TextView label;
         final View ring;
         final TextView name;
-        final GradientDrawable ringFace = new GradientDrawable();
+        float ringRadius = -1;
         String boundKey;
 
         TileHolder(View v, TextView name) {
@@ -1785,8 +1802,6 @@ public class HomeActivity extends ConsoleActivity {
             label = v.findViewById(R.id.homeTileLabel);
             ring = v.findViewById(R.id.homeTileRing);
             this.name = name;
-            ringFace.setColor(0x00000000);
-            ring.setBackground(ringFace);
         }
     }
 
@@ -1998,16 +2013,17 @@ public class HomeActivity extends ConsoleActivity {
             v.setLayoutParams(lp);
             v.invalidateOutline();
         }
-        // The ring: 4.5dp around the art
-        int out = Math.round(4.5f * d);
+        // The focus: a soft white line around the art with a glow (it draws itself outside)
         FrameLayout.LayoutParams rlp = (FrameLayout.LayoutParams) h.ring.getLayoutParams();
-        rlp.width = tileW + out * 2;
-        rlp.height = tileH + out * 2;
+        rlp.width = tileW;
+        rlp.height = tileH;
         rlp.gravity = gravity;
-        rlp.setMarginStart(list ? start - out : 0);
+        rlp.setMarginStart(list ? start : 0);
         h.ring.setLayoutParams(rlp);
-        h.ringFace.setCornerRadius(tileRadius + out);
-        h.ringFace.setStroke(Math.max(2, Math.round(2.2f * d)), 0xFFFFFFFF);
+        if (h.ringRadius != tileRadius) {
+            h.ringRadius = tileRadius;
+            h.ring.setBackground(com.limelight.pocket.ui.SoftRing.forTheme(this, tileRadius, false));
+        }
         // Scaled around the art itself (in a list the frame is the whole line)
         if (list) {
             h.itemView.setPivotX(start + tileW / 2f);
@@ -2141,7 +2157,7 @@ public class HomeActivity extends ConsoleActivity {
                     coverArt = HeroArt.load(this, uuid, id);
                 } catch (RuntimeException ignored) {
                 }
-                if (coverArt != null && !HeroArt.isPlaceholder(coverArt)
+                if (coverArt != null && (HeroArt.ownCover(this, uuid, id) || !HeroArt.isPlaceholder(coverArt))
                         && !(HomeItem.ANDROID.equals(item.kind) && coverArt.getWidth() == coverArt.getHeight() && coverArt.getWidth() <= 256)) {
                     return crop(coverArt, w, h, cover ? 0.5f : 0.38f);
                 }

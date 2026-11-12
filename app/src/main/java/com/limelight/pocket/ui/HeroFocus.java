@@ -37,7 +37,7 @@ public final class HeroFocus {
 
     // Play lights up where it is: a little growth and a ring, nothing slides around (moving the
     // whole hero pushed Play outside its box, where it was cut off)
-    private static final float PLAY_GROWTH = 0.07f;
+    private static final float PLAY_GROWTH = 0.05f;
     private static final float LOGO_GROWTH = 0f;
     private static final float TITLE_GROWTH = 0f;
 
@@ -80,11 +80,9 @@ public final class HeroFocus {
         this.bottomScrim = activity.findViewById(R.id.pocketBottomScrim);
         this.hintBar = activity.findViewById(R.id.pocketHintBar);
         this.d = activity.getResources().getDisplayMetrics().density;
-        ring.setCornerRadius(PocketUi.PLAY_RADIUS_DP * d);
-        ring.setColor(0x00000000);
-        ring.setStroke(Math.max(2, Math.round(2 * d)), 0xFFFFFFFF);
-        ring.setAlpha(0);
-        ringOutside = new android.graphics.drawable.InsetDrawable(ring, -Math.round(4.5f * d));
+        // The same soft, glowing line as every focused card
+        ringOutside = SoftRing.forTheme(activity, PocketUi.PLAY_RADIUS_DP * d, true);
+        ringOutside.setAlpha(0);
         play.setClickable(true);
         play.setOnClickListener(v -> {
             PocketSounds.play(activity, PocketSounds.SELECT);
@@ -105,8 +103,13 @@ public final class HeroFocus {
             ((ViewGroup) hero).setClipChildren(false);
             ((ViewGroup) hero).setClipToPadding(false);
         }
-        if (play.getParent() instanceof ViewGroup) {
-            ((ViewGroup) play.getParent()).setClipChildren(false);
+        // The grown button's glow reaches outside every box up to the screen: nothing may cut it
+        for (android.view.ViewParent p = play.getParent(); p instanceof ViewGroup; p = p.getParent()) {
+            ((ViewGroup) p).setClipChildren(false);
+            ((ViewGroup) p).setClipToPadding(false);
+            if (((ViewGroup) p).getId() == android.R.id.content) {
+                break;
+            }
         }
         return new HeroFocus(activity, host, hero, play, row);
     }
@@ -308,7 +311,7 @@ public final class HeroFocus {
                 if (play.getForeground() != ringOutside) {
                     play.setForeground(ringOutside);
                 }
-                ring.setAlpha(Math.round(255 * c));
+                ringOutside.setAlpha(Math.round(255 * c));
             }
             else if (play.getForeground() == ringOutside) {
                 play.setForeground(null);

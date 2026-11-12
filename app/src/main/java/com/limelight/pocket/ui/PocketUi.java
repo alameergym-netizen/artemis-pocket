@@ -46,19 +46,20 @@ public final class PocketUi {
             play.setForeground(null);
         }
         play.setTypeface(PocketFonts.semibold());
-        play.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f);
+        play.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13.5f);
         play.setLetterSpacing(-0.01f);
         play.setIncludeFontPadding(false);
         play.setGravity(android.view.Gravity.CENTER);
-        play.setMinHeight(Math.round(38 * d));
-        play.setMinWidth(Math.round(112 * d));
-        play.setPadding(Math.round(18 * d), Math.round(10 * d), Math.round(24 * d), Math.round(10 * d));
+        // Sized like a console's Play (it was a size too big next to the logo)
+        play.setMinHeight(Math.round(34 * d));
+        play.setMinWidth(Math.round(100 * d));
+        play.setPadding(Math.round(16 * d), Math.round(8 * d), Math.round(21 * d), Math.round(8 * d));
         play.setShadowLayer(0f, 0f, 0f, 0);
         // Touch presses it; with buttons, the hero takes "focus" without stealing it from the row
         play.setFocusable(false);
         play.setClickable(true);
         play.setTextColor(0xFF0B0B0F);
-        play.setElevation(10 * d);
+        play.setElevation(6 * d);
         play.setClipToOutline(false);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
             play.setOutlineSpotShadowColor(0xFF000000);

@@ -473,7 +473,7 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
             if (com.limelight.pocket.GamePageActivity.ACTION_PLAY.equals(action) && appGridAdapter != null) {
                 for (int i = 0; i < appGridAdapter.getCount(); i++) {
                     if (((AppObject) appGridAdapter.getItem(i)).app.getAppId() == id) {
-                        onItemClicked(i, pocketCardAt(i));
+                        pocketPlay(i);
                         break;
                     }
                 }
@@ -874,7 +874,7 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
             for (int i = 0; i < appGridAdapter.getCount(); i++) {
                 if (((AppObject) appGridAdapter.getItem(i)).app.getAppId() == appId) {
                     pocketFocusApp(appId);
-                    onItemClicked(i, pocketCardAt(i));
+                    pocketPlay(i);
                     return;
                 }
             }
@@ -899,7 +899,7 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
             pos = pocketHeroPos;
         }
         if (pos >= 0 && pos < appGridAdapter.getCount()) {
-            onItemClicked(pos, pocketCardAt(pos));
+            pocketPlay(pos);
         }
     }
 
@@ -938,8 +938,31 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
         });
     }
 
+    /** A: the game's page first (media, details, Play), or back into it when it's running. */
     @Override
     public void onItemClicked(int pos, View itemView) {
+        if (appGridAdapter == null || pos < 0 || pos >= appGridAdapter.getCount()) {
+            return;
+        }
+        AppObject app = (AppObject) appGridAdapter.getItem(pos);
+        if (lastRunningAppId != app.app.getAppId() && pocketOpenGamePage()) {
+            return;
+        }
+        pocketPlay(pos);
+    }
+
+    /** START: play the focused game straight away. */
+    @Override
+    protected boolean onQuickPlay() {
+        int pos = carouselAdapter != null && appCarousel != null ? carouselAdapter.getFocusedPosition() : -1;
+        if (pos < 0) {
+            return false;
+        }
+        pocketPlay(pos);
+        return true;
+    }
+
+    private void pocketPlay(int pos) {
         if (appGridAdapter == null || pos < 0 || pos >= appGridAdapter.getCount()) {
             return;
         }
@@ -1109,12 +1132,11 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
     private void updateHints() {
         boolean running = lastRunningAppId != 0;
         // X: the game's page (closing a running game is there and in the options)
-        setHints(hintA(this, R.string.pocket_hint_play),
-                hintX(this, R.string.pocket_hint_details),
+        setHints(hintA(this, running ? R.string.pocket_hint_play : R.string.pocket_hint_details),
+                hintStart(this, R.string.pocket_hint_quick_play),
                 hintY(this, R.string.pocket_hint_options),
                 new Hint("R1", 0xFFFFFFFF, getString(R.string.pocket_tab_pc_games)),
-                hintSelect(this, R.string.pocket_layout_hint),
-                hintStart(this, R.string.pocket_hint_settings));
+                hintSelect(this, R.string.pocket_layout_hint));
     }
 
     private void updateHero(int position, View card) {
@@ -1518,7 +1540,7 @@ public class AppView extends ConsoleActivity implements CarouselAdapter.Listener
             for (int i = 0; i < appGridAdapter.getCount(); i++) {
                 if (((AppObject) appGridAdapter.getItem(i)).app.getAppId() == entry.app.getAppId()) {
                     pocketFocusApp(entry.app.getAppId());
-                    onItemClicked(i, pocketCardAt(i));
+                    pocketPlay(i);
                     return;
                 }
             }

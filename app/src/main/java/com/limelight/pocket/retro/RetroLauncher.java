@@ -137,6 +137,14 @@ public final class RetroLauncher {
         return best;
     }
 
+    /**
+     * Emulators that get the game shared with them for the launch (read access to just that
+     * file) instead of a storage document address they would need their own grant for.
+     */
+    static boolean sharesFile(String emulator) {
+        return emulator != null && emulator.toUpperCase(java.util.Locale.ROOT).startsWith("CEMU");
+    }
+
     /** The game as an Android document URI (what ES-DE calls %ROMSAF%). */
     public static Uri safUri(File file) {
         String path = file.getAbsolutePath();
@@ -226,8 +234,14 @@ public final class RetroLauncher {
         }
         AndroidEnv env = new AndroidEnv(activity, rom, root, component != null ? component.getPackageName() : null);
         EsdeCommand.Spec spec;
+        String template = cmd.template;
+        if (sharesFile(cmd.emulator) && template.contains("%ROMSAF%")) {
+            // Cemu can't open a storage document it wasn't granted (it says "Unable to launch
+            // game"): the game is shared with it for this launch instead, through this app
+            template = template.replace("%ROMSAF%", "%ROMPROVIDER%");
+        }
         try {
-            spec = EsdeCommand.resolve(cmd.template, env);
+            spec = EsdeCommand.resolve(template, env);
         } catch (RuntimeException e) {
             // e.g. the FileProvider can't share a file on this drive
             return new Result(FAILED, null, String.valueOf(e.getMessage()));

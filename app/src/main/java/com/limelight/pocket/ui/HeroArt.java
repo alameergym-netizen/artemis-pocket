@@ -196,10 +196,19 @@ public final class HeroArt {
             }
         }
         Bitmap b = load(context, pcUuid, appId);
-        if (b != null && isPlaceholder(b)) {
+        if (b != null && !ownCover(context, pcUuid, appId) && isPlaceholder(b)) {
             return PlaceholderArt.render(name, 300);
         }
         return b;
+    }
+
+    /**
+     * A cover found on SteamGridDB or picked by hand (not the PC's own box art): never taken for
+     * a grey placeholder, even when it's black and white.
+     */
+    public static boolean ownCover(Context context, String pcUuid, int appId) {
+        return pcUuid != null && appId != 0
+                && com.limelight.pocket.PocketArt.file(context, pcUuid, appId, com.limelight.pocket.PocketArt.COVER).exists();
     }
 
     /** The card art if it is already in memory (null otherwise: use loadCardAsync). */
@@ -225,7 +234,7 @@ public final class HeroArt {
             return null;
         }
         Bitmap b = CACHE.get(file.getPath() + "@" + file.lastModified());
-        if (b != null && isPlaceholder(b)) {
+        if (b != null && !ownCover(context, pcUuid, appId) && isPlaceholder(b)) {
             return PlaceholderArt.render(name, 300);
         }
         return b;

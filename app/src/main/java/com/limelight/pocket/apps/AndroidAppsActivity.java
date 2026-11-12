@@ -172,12 +172,11 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
         }, R.id.appFragmentContainer);
 
         heroIdle(getString(R.string.pocket_apps_loading));
-        setHints(hintA(this, R.string.pocket_apps_open),
-                hintX(this, R.string.pocket_hint_details),
+        setHints(hintA(this, R.string.pocket_hint_details),
+                hintStart(this, R.string.pocket_hint_quick_play),
                 hintY(this, R.string.pocket_hint_options),
                 new Hint("L2 R2", 0xFFFFFFFF, getString(R.string.pocket_pclib_hint_filter)),
-                hintSelect(this, R.string.pocket_layout_hint),
-                hintStart(this, R.string.pocket_hint_settings));
+                hintSelect(this, R.string.pocket_layout_hint));
         load();
     }
 
@@ -609,12 +608,30 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
         updateHero(position);
     }
 
+    /** A: a game or app opens its page (media, details, Play); settings and the drawer just open. */
     @Override
     public void onItemClicked(int position, View itemView) {
         Entry e = entryAt(position);
-        if (e != null) {
+        if (e == null) {
+            return;
+        }
+        if (e.packageName != null && e.type != TYPE_SETTING) {
+            openPage(e);
+        }
+        else {
             open(e);
         }
+    }
+
+    /** START: straight into it. */
+    @Override
+    protected boolean onQuickPlay() {
+        Entry e = entryAt(heroPos);
+        if (e == null || e.packageName == null || e.type == TYPE_SETTING) {
+            return false;
+        }
+        open(e);
+        return true;
     }
 
     private void open(Entry e) {

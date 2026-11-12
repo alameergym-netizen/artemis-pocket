@@ -197,17 +197,26 @@
                 android:textColor="#B8FFFFFF"
                 android:textSize="10sp" />
 
-            <!-- The game's logo (when there is one) takes the place of its name -->
+            <!-- The game's logo (when there is one) takes the place of its name. Both sit in a
+                 box of one fixed height, so moving from game to game (a tall logo, a wide one, a
+                 name) never moves what's under them -->
+            <FrameLayout
+                android:id="@+id/pocketHeroName"
+                android:layout_width="wrap_content"
+                android:layout_height="74dp"
+                android:layout_marginTop="4dp"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
             <ImageView
                 android:id="@+id/pocketHeroLogo"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:layout_marginBottom="3dp"
+                android:layout_gravity="bottom|start"
                 android:adjustViewBounds="true"
                 android:importantForAccessibility="no"
                 android:maxWidth="340dp"
-                android:maxHeight="66dp"
+                android:maxHeight="72dp"
                 android:scaleType="fitStart"
                 android:visibility="gone" />
 
@@ -215,7 +224,7 @@
                 android:id="@+id/pocketHeroTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
+                android:layout_gravity="bottom|start"
                 android:ellipsize="end"
                 android:fontFamily="@font/inter_semibold"
                 android:letterSpacing="-0.028"
@@ -226,6 +235,7 @@
                 android:shadowRadius="12"
                 android:textColor="@color/pocket_text"
                 android:textSize="28sp" />
+            </FrameLayout>
 
             <!-- Play, status and playtime on one line (console style) -->
             <LinearLayout
@@ -233,6 +243,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
+                android:minHeight="34dp"
                 android:clipChildren="false"
                 android:clipToPadding="false"
                 android:gravity="center_vertical"

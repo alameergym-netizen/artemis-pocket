@@ -57,6 +57,8 @@ public class FocusLens extends RecyclerView.ItemDecoration {
     private float alpha;
 
     private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
+    /** The glow around the line (blurred, in the theme's colour). */
+    private final Paint halo = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint dimPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint sheenPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Matrix sheenMatrix = new Matrix();
@@ -81,6 +83,13 @@ public class FocusLens extends RecyclerView.ItemDecoration {
 
         ring.setStyle(Paint.Style.STROKE);
         ring.setStrokeWidth(STROKE_DP * d);
+        halo.setStyle(Paint.Style.STROKE);
+        halo.setStrokeWidth(5f * d);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            // A soft white line with a glow of light around it (as in the app drawer)
+            ring.setMaskFilter(new android.graphics.BlurMaskFilter(0.9f * d, android.graphics.BlurMaskFilter.Blur.NORMAL));
+            halo.setMaskFilter(new android.graphics.BlurMaskFilter(9f * d, android.graphics.BlurMaskFilter.Blur.NORMAL));
+        }
         dimPaint.setColor(0xFF000000);
 
         int band = 0x38FFFFFF;
@@ -288,10 +297,10 @@ public class FocusLens extends RecyclerView.ItemDecoration {
             rect.set(cx.value - lw / 2f, cy.value - lh / 2f, cx.value + lw / 2f, cy.value + lh / 2f);
             float r = cardRadius * host.focusScale() + GAP_DP * d;
 
-            float glow = 0.5f;
             int a = Math.round(255 * alpha);
-            ring.setColor(PocketTheme.withAlpha(accent, a));
-            ring.setShadowLayer(9 * d, 0, 0, PocketTheme.withAlpha(accent, Math.round(a * glow)));
+            halo.setColor(PocketTheme.withAlpha(accent, Math.round(a * 0.5f)));
+            canvas.drawRoundRect(rect, r, r, halo);
+            ring.setColor(PocketTheme.withAlpha(0xFFFFFFFF, Math.round(a * 0.95f)));
             canvas.drawRoundRect(rect, r, r, ring);
         }
         schedule(moving, breathing);

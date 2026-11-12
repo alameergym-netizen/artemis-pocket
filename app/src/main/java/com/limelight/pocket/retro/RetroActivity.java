@@ -163,7 +163,11 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
             @Override
             public void heroPlay() {
                 Entry e = entryAt(heroPos);
-                if (e != null) {
+                if (e != null && e.kind == KIND_GAME) {
+                    // The hero's Play: straight into the game
+                    play(e.rom, null);
+                }
+                else if (e != null) {
                     activate(e);
                 }
             }
@@ -210,8 +214,8 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                     hintStart(this, R.string.pocket_hint_settings));
         }
         else {
-            setHints(hintA(this, R.string.pocket_hero_play),
-                    hintX(this, R.string.pocket_hint_details),
+            setHints(hintA(this, R.string.pocket_hint_details),
+                    hintStart(this, R.string.pocket_hint_quick_play),
                     hintY(this, R.string.pocket_hint_options),
                     hintB(this, R.string.pocket_hint_back),
                     new Hint("L2 R2", 0xFFFFFFFF, getString(R.string.pocket_retro_hint_systems)),
@@ -917,7 +921,8 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                 }
                 break;
             case KIND_GAME:
-                play(e.rom, null);
+                // Its page first (media, details, achievements, Play); START plays at once
+                openPage(e);
                 break;
             default:
                 if (e.action != null) {
@@ -1092,6 +1097,17 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
     @Override
     protected boolean onGamePageShortcut() {
         return onButtonX();
+    }
+
+    /** START on a game: play it straight away. */
+    @Override
+    protected boolean onQuickPlay() {
+        Entry e = entryAt(heroPos);
+        if (e == null || e.kind != KIND_GAME) {
+            return false;
+        }
+        play(e.rom, null);
+        return true;
     }
 
     private void openPage(Entry e) {

@@ -125,6 +125,8 @@ for mode in grid xmb carousel; do
     key KEYCODE_BUTTON_R1 gamepad 3
     key KEYCODE_BUTTON_R1 gamepad 5; shot "13_android_$mode"
     key KEYCODE_DPAD_RIGHT dpad 2; shot "14_android_${mode}_next"
+    # Where every view is (to check layouts)
+    timeout 40 adb shell uiautomator dump /sdcard/ui.xml > /dev/null 2>&1 && timeout 20 adb pull /sdcard/ui.xml "$SHOTS/ui_android_$mode.xml" > /dev/null 2>&1
   fi
 done
 

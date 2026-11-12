@@ -352,6 +352,28 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         return super.dispatchTouchEvent(event);
     }
 
+    @Override
+    public void onContentChanged() {
+        super.onContentChanged();
+        // Lists draw their games' own rings: an empty list that gets the focus must not show
+        // Android's grey focus box
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            quietFocusBoxes(findViewById(android.R.id.content));
+        }
+    }
+
+    private static void quietFocusBoxes(View v) {
+        if (v instanceof androidx.recyclerview.widget.RecyclerView && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            v.setDefaultFocusHighlightEnabled(false);
+        }
+        if (v instanceof ViewGroup) {
+            ViewGroup g = (ViewGroup) v;
+            for (int i = 0; i < g.getChildCount(); i++) {
+                quietFocusBoxes(g.getChildAt(i));
+            }
+        }
+    }
+
     /** The last thing the user did was press a button (the next screen opens ready for buttons). */
     private static boolean lastInputWasButton = true;
 

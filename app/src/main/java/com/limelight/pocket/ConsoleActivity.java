@@ -130,6 +130,29 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     public void setContentView(int layoutResID) {
         super.setContentView(layoutResID);
         installLiveGlass();
+        applyHeroLogoSize();
+    }
+
+    /** The library heroes' logo box at the size picked in settings (logos bigger or smaller). */
+    private void applyHeroLogoSize() {
+        View box = findViewById(R.id.pocketHeroName);
+        android.widget.ImageView logo = findViewById(R.id.pocketHeroLogo);
+        if (box == null || logo == null) {
+            return;
+        }
+        float f = PocketPrefs.logoScale(this) / 100f;
+        if (Math.abs(f - 1f) < 0.01f) {
+            return;
+        }
+        float d = getResources().getDisplayMetrics().density;
+        // The box keeps one height for every game (nothing under it moves), a little less
+        // generous than the logo can be so the row keeps its room
+        float h = Math.max(48f, Math.min(118f, 74f * f));
+        ViewGroup.LayoutParams lp = box.getLayoutParams();
+        lp.height = Math.round(h * d);
+        box.setLayoutParams(lp);
+        logo.setMaxHeight(Math.round((h - 2f) * d));
+        logo.setMaxWidth(Math.round(Math.min(480f, 340f * f) * d));
     }
 
     /** Views tagged "glass" in the layout become real glass over the screen's backdrop. */
@@ -301,19 +324,77 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
         window.setStatusBarColor(0);
         window.setNavigationBarColor(0);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // No dark scrim behind a bar that is pulled out for a moment
+            window.setNavigationBarContrastEnforced(false);
+            window.setStatusBarContrastEnforced(false);
+        }
         hideSystemBars(activity);
+        keepBarsHidden(activity);
     }
 
+    @SuppressWarnings("deprecation")
+    private static final int IMMERSIVE_FLAGS = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            | View.SYSTEM_UI_FLAG_FULLSCREEN
+            | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
+
+    @SuppressWarnings("deprecation")
     public static void hideSystemBars(android.app.Activity activity) {
-        WindowInsetsControllerCompat controller =
-                WindowCompat.getInsetsController(activity.getWindow(), activity.getWindow().getDecorView());
+        View decor = activity.getWindow().getDecorView();
+        // Both ways of asking: some handhelds' system only honours the older flags for the
+        // navigation handle (the white line at the bottom stayed up)
+        decor.setSystemUiVisibility(IMMERSIVE_FLAGS);
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(activity.getWindow(), decor);
         controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
         controller.hide(WindowInsetsCompat.Type.systemBars());
+        controller.hide(WindowInsetsCompat.Type.navigationBars());
+    }
+
+    /**
+     * Whenever the bars come back (a swipe from the edge, a dialog, the keyboard, the system
+     * deciding to show them), they go away again after a moment while the screen has focus.
+     */
+    @SuppressWarnings("deprecation")
+    private static void keepBarsHidden(final android.app.Activity activity) {
+        final View decor = activity.getWindow().getDecorView();
+        final Runnable again = () -> {
+            if (!activity.isFinishing() && activity.hasWindowFocus()) {
+                hideSystemBars(activity);
+            }
+        };
+        decor.setOnSystemUiVisibilityChangeListener(visibility -> {
+            if ((visibility & (View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN))
+                    != (View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN)) {
+                decor.removeCallbacks(again);
+                decor.postDelayed(again, 1600);
+            }
+        });
+    }
+
+    /** A dialog that keeps the screen full screen (no bars while it's up). */
+    public static void showImmersive(android.app.Dialog dialog) {
+        android.view.Window w = dialog.getWindow();
+        if (w == null) {
+            dialog.show();
+            return;
+        }
+        // Not focusable while it appears, so Android doesn't bring the bars back for it
+        w.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE, WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
+        dialog.show();
+        WindowInsetsControllerCompat c = WindowCompat.getInsetsController(w, w.getDecorView());
+        c.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+        c.hide(WindowInsetsCompat.Type.systemBars());
+        w.clearFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        // Back from a game: no more watching for its achievements
+        com.limelight.pocket.retro.TrophyWatch.stop(this);
         PocketMusic.screenShown(this);
         com.limelight.pocket.home.PlayTime.resumed(this);
         // Just switched layout: which one it is now

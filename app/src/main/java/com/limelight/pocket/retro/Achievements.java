@@ -361,8 +361,8 @@ public final class Achievements {
 
     // ---- RetroAchievements -------------------------------------------------------------------
 
-    private static final String RA = "https://retroachievements.org/API/";
-    private static final String RA_MEDIA = "https://media.retroachievements.org";
+    static final String RA = "https://retroachievements.org/API/";
+    static final String RA_MEDIA = "https://media.retroachievements.org";
 
     private static Set fetchRa(Context c, Target t) throws Exception {
         int game = raGame(c, t);
@@ -424,6 +424,74 @@ public final class Achievements {
         }
         sortTrophies(s);
         return s;
+    }
+
+    /** RetroAchievements' id for the game (blocking; -1 when it isn't known there). */
+    static int raGameId(Context c, Target t) {
+        try {
+            return raGame(c, t);
+        } catch (Exception e) {
+            return -1;
+        }
+    }
+
+    /** Loads them from the internet now and keeps them (blocking; null when that failed). */
+    static Set fetchNow(Context c, Target t) {
+        try {
+            Set s = "ra".equals(t.kind) ? fetchRa(c, t) : fetchSteam(c, t);
+            if (s != null) {
+                s.fetchedAt = System.currentTimeMillis();
+                synchronized (MEMORY) {
+                    MEMORY.put(t.key(), s);
+                }
+                write(file(c, t), s.toJson().toString());
+            }
+            return s;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /**
+     * One just earned while playing (seen live): kept as earned, so the lists and Home's chip
+     * are right straight away. The set as it is now (null when none was kept).
+     */
+    static Set markEarned(Context c, Target t, String title, long at, boolean hardcore) {
+        Set s = cached(c, t);
+        if (s == null || title == null) {
+            return s;
+        }
+        synchronized (MEMORY) {
+            for (Trophy tr : s.trophies) {
+                if (!tr.earned && title.equals(tr.title)) {
+                    tr.earned = true;
+                    tr.hardcore = hardcore;
+                    tr.earnedAt = at;
+                    s.earned++;
+                    s.points += tr.points;
+                    sortTrophies(s);
+                    break;
+                }
+            }
+        }
+        try {
+            write(file(c, t), s.toJson().toString());
+        } catch (Exception ignored) {
+        }
+        return s;
+    }
+
+    /** The achievement of this name in the set (null: not there). */
+    static Trophy find(Set s, String title) {
+        if (s == null || title == null) {
+            return null;
+        }
+        for (Trophy tr : s.trophies) {
+            if (title.equals(tr.title)) {
+                return tr;
+            }
+        }
+        return null;
     }
 
     /** RetroAchievements' id for the game (by the ROM's hash, else by its name; cached). */

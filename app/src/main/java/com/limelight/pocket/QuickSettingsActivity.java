@@ -566,7 +566,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
                             checked = i;
                         }
                     }
-                    new AlertDialog.Builder(this)
+                    com.limelight.pocket.ConsoleActivity.showImmersive(new AlertDialog.Builder(this)
                             .setTitle(getString(ButtonActions.buttonLabel(button)) + " \u00b7 " + getString(R.string.pocket_set_launcher))
                             .setSingleChoiceItems(labels, checked, (d, which) -> {
                                 ButtonActions.setLauncher(this, button, actions[which]);
@@ -574,7 +574,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
                                 refreshRows();
                             })
                             .setNegativeButton(android.R.string.cancel, null)
-                            .show();
+                            .create());
                 });
     }
 
@@ -584,7 +584,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
             recordMacro(slot);
             return;
         }
-        new AlertDialog.Builder(this)
+        com.limelight.pocket.ConsoleActivity.showImmersive(new AlertDialog.Builder(this)
                 .setTitle(getString(R.string.pocket_macro_n, slot + 1))
                 .setItems(new String[]{getString(R.string.pocket_macro_record_again), getString(R.string.pocket_macro_delete)},
                         (d, which) -> {
@@ -597,7 +597,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
                             }
                         })
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create());
     }
 
     private static final int REQUEST_MUSIC = 7501;
@@ -676,7 +676,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 checked = i;
             }
         }
-        new AlertDialog.Builder(this)
+        com.limelight.pocket.ConsoleActivity.showImmersive(new AlertDialog.Builder(this)
                 .setTitle(title)
                 .setSingleChoiceItems(labels, checked, (dialog, which) -> {
                     picked.picked(actions.get(which));
@@ -684,7 +684,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     refreshRows();
                 })
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create());
     }
 
     // ---- Controls -----------------------------------------------------------------------
@@ -1019,6 +1019,23 @@ public class QuickSettingsActivity extends ConsoleActivity {
                         ? com.limelight.pocket.retro.Achievements.raUser(this) : getString(R.string.pocket_art_key_missing),
                 this::askRetroAchievements);
 
+        addToggle(getString(R.string.pocket_set_trophy_live), getString(R.string.pocket_set_trophy_live_sub),
+                () -> com.limelight.pocket.retro.TrophyWatch.enabled(this),
+                value -> {
+                    prefs().edit().putBoolean(com.limelight.pocket.retro.TrophyWatch.KEY_ENABLED, value).apply();
+                    if (value) {
+                        com.limelight.pocket.retro.TrophyWatch.askForOverlay(this);
+                    }
+                });
+
+        addAction(getString(R.string.pocket_set_trophy_overlay), getString(R.string.pocket_set_trophy_overlay_sub),
+                () -> getString(com.limelight.pocket.retro.TrophyWatch.canDrawOver(this)
+                        ? R.string.pocket_trophy_overlay_on : R.string.pocket_trophy_overlay_off),
+                () -> com.limelight.pocket.retro.TrophyWatch.openOverlaySettings(this));
+
+        addAction(getString(R.string.pocket_set_trophy_test), getString(R.string.pocket_set_trophy_test_sub), null,
+                () -> com.limelight.pocket.retro.TrophyWatch.preview(this));
+
         addHeader(R.string.pocket_header_art);
 
         addAction(getString(R.string.pocket_set_sgdb_key), getString(R.string.pocket_set_sgdb_key_sub),
@@ -1032,6 +1049,26 @@ public class QuickSettingsActivity extends ConsoleActivity {
         addToggle(getString(R.string.pocket_set_logos), getString(R.string.pocket_set_logos_sub),
                 () -> PocketArt.logosForNames(this),
                 value -> prefs().edit().putBoolean(PocketArt.KEY_LOGOS, value).apply());
+
+        {
+            final int[] sizes = PocketPrefs.LOGO_SCALES;
+            String[] labels = new String[sizes.length];
+            for (int i = 0; i < sizes.length; i++) {
+                labels[i] = sizes[i] + "%";
+            }
+            addChoice(getString(R.string.pocket_logo_size), getString(R.string.pocket_logo_size_sub), labels,
+                    () -> {
+                        int now = PocketPrefs.logoScale(this);
+                        for (int i = 0; i < sizes.length; i++) {
+                            if (sizes[i] == now) {
+                                return i;
+                            }
+                        }
+                        return 4;
+                    },
+                    index -> prefs().edit().putInt(PocketPrefs.KEY_LOGO_SCALE, sizes[index]).apply(),
+                    null);
+        }
 
         addAction(getString(R.string.pocket_set_clear_art), getString(R.string.pocket_set_clear_art_sub), null, () -> {
             PocketArt.clearAll(this);
@@ -1153,7 +1190,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
         key.setHint(R.string.pocket_ra_key_hint);
         box.addView(user);
         box.addView(key);
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        com.limelight.pocket.ConsoleActivity.showImmersive(new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle(R.string.pocket_set_ra)
                 .setMessage(R.string.pocket_ra_message)
                 .setView(box)
@@ -1181,7 +1218,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     refreshRows();
                 })
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create());
     }
 
     /** IGDB's Twitch app (client ID and secret, free at dev.twitch.tv): checked, then kept. */
@@ -1202,7 +1239,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
         secret.setHint(R.string.pocket_igdb_secret_hint);
         box.addView(id);
         box.addView(secret);
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        com.limelight.pocket.ConsoleActivity.showImmersive(new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle(R.string.pocket_set_igdb)
                 .setMessage(R.string.pocket_igdb_message)
                 .setView(box)
@@ -1223,7 +1260,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     }, "PocketIgdbCheck").start();
                 })
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create());
     }
 
     // ---- Row builders -------------------------------------------------------------------
@@ -1658,7 +1695,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
     }
 
     private void showAccessibilityPrompt() {
-        new AlertDialog.Builder(this)
+        com.limelight.pocket.ConsoleActivity.showImmersive(new AlertDialog.Builder(this)
                 .setTitle(R.string.pocket_a11y_title)
                 .setMessage(R.string.pocket_a11y_message)
                 .setPositiveButton(R.string.pocket_a11y_open, (d, w) -> {
@@ -1668,16 +1705,16 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     }
                 })
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create());
     }
 
     // ---- USB help -------------------------------------------------------------------------
 
     public static void showUsbHelp(Activity activity) {
-        new AlertDialog.Builder(activity)
+        com.limelight.pocket.ConsoleActivity.showImmersive(new AlertDialog.Builder(activity)
                 .setTitle(R.string.pocket_usb_help_title)
                 .setMessage(R.string.pocket_usb_help_body)
                 .setPositiveButton(android.R.string.ok, null)
-                .show();
+                .create());
     }
 }

@@ -943,7 +943,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         pin.setHint("000000");
         pin.setTextSize(22);
         pin.setGravity(Gravity.CENTER);
-        new AlertDialog.Builder(this)
+        com.limelight.pocket.ConsoleActivity.showImmersive(new AlertDialog.Builder(this)
                 .setTitle(R.string.pocket_companion_pin_title)
                 .setMessage(R.string.pocket_companion_pin_body)
                 .setView(pin)
@@ -962,7 +962,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
                             }
                         }))
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create());
     }
 
     /** Art from SteamGridDB, Steam and IGDB for a game that has none (in the background). */
@@ -1084,7 +1084,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
         field.setSingleLine(true);
         field.setText(shownName(g));
         field.setSelectAllOnFocus(true);
-        new android.app.AlertDialog.Builder(this, R.style.PocketDialog)
+        com.limelight.pocket.ConsoleActivity.showImmersive(new android.app.AlertDialog.Builder(this, R.style.PocketDialog)
                 .setTitle(R.string.pocket_rename)
                 .setView(field)
                 .setPositiveButton(android.R.string.ok, (d, w) -> {
@@ -1101,7 +1101,7 @@ public class PcLibraryActivity extends ConsoleActivity implements CarouselAdapte
                     adapter.notifyDataSetChanged();
                 })
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create());
     }
 
     private static int pageId(PcGame g) {

@@ -107,7 +107,7 @@ public final class CrashReporter {
             return;
         }
         try {
-            new AlertDialog.Builder(activity)
+            com.limelight.pocket.ConsoleActivity.showImmersive(new AlertDialog.Builder(activity)
                     .setTitle(R.string.pocket_crash_title)
                     .setMessage(activity.getString(R.string.pocket_crash_body) + "\n\n" + report)
                     .setPositiveButton(R.string.pocket_crash_copy, (dialog, which) -> {
@@ -118,7 +118,7 @@ public final class CrashReporter {
                         }
                     })
                     .setNegativeButton(R.string.pocket_crash_dismiss, null)
-                    .show();
+                    .create());
         } catch (RuntimeException ignored) {
         }
     }

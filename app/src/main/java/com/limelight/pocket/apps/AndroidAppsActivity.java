@@ -709,7 +709,7 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
             field.setSingleLine(true);
             field.setText(e.label);
             field.setSelectAllOnFocus(true);
-            new android.app.AlertDialog.Builder(this, R.style.PocketDialog)
+            com.limelight.pocket.ConsoleActivity.showImmersive(new android.app.AlertDialog.Builder(this, R.style.PocketDialog)
                     .setTitle(R.string.pocket_rename)
                     .setView(field)
                     .setPositiveButton(android.R.string.ok, (d, w) -> {
@@ -721,7 +721,7 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
                         load();
                     })
                     .setNegativeButton(android.R.string.cancel, null)
-                    .show();
+                    .create());
         }));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_apps_add), () -> {
             hideConsolePanel();

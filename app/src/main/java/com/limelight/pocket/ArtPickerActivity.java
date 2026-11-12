@@ -127,7 +127,7 @@ public class ArtPickerActivity extends ConsoleActivity {
         FrameLayout box = new FrameLayout(activity);
         box.setPadding(pad, pad / 2, pad, 0);
         box.addView(input);
-        new AlertDialog.Builder(activity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        com.limelight.pocket.ConsoleActivity.showImmersive(new AlertDialog.Builder(activity, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle(R.string.pocket_art_key_title)
                 .setMessage(R.string.pocket_art_key_message)
                 .setView(box)
@@ -139,7 +139,7 @@ public class ArtPickerActivity extends ConsoleActivity {
                     }
                 })
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create());
     }
 
     // ---- State --------------------------------------------------------------------------------
@@ -588,7 +588,7 @@ public class ArtPickerActivity extends ConsoleActivity {
         FrameLayout box = new FrameLayout(this);
         box.setPadding(dp(20), dp(10), dp(20), 0);
         box.addView(input);
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        com.limelight.pocket.ConsoleActivity.showImmersive(new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
                 .setTitle(R.string.pocket_art_search_title)
                 .setView(box)
                 .setPositiveButton(R.string.pocket_art_search, (d, w) -> {
@@ -598,7 +598,7 @@ public class ArtPickerActivity extends ConsoleActivity {
                     }
                 })
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create());
     }
 
     // ---- Buttons ------------------------------------------------------------------------------

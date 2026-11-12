@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- Achievement pop-ups over the game being played (RetroAchievements) -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.REORDER_TASKS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -422,6 +426,18 @@
                 android:resource="@xml/keyboard_accessibility_service" />
         </service>
 
+
+        <!-- Pocket Nexus: achievements earned while a game plays, shown over it -->
+        <service
+            android:name=".pocket.retro.TrophyWatch"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Pocket Nexus: picking the right game for a game's details -->
+        <activity
+            android:name=".pocket.info.InfoPickerActivity"
+            android:screenOrientation="sensorLandscape"
+            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
 
         <!-- Pocket Nexus: a Quick Settings tile that opens Home -->
         <service

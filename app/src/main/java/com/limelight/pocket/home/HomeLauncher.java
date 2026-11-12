@@ -141,6 +141,8 @@ public final class HomeLauncher {
                 if (r.status == RetroLauncher.OK) {
                     PocketSounds.play(a, PocketSounds.SELECT);
                     RetroLibrary.markPlayed(a, rom);
+                    com.limelight.pocket.retro.TrophyWatch.start(a,
+                            com.limelight.pocket.retro.Achievements.Target.retro(item.a, item.b, item.name));
                 }
                 else if (r.status == RetroLauncher.NOT_INSTALLED) {
                     Toast.makeText(a, a.getString(R.string.pocket_home_emulator_missing,

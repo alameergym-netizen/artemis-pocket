@@ -131,11 +131,23 @@ public class HomeActivity extends ConsoleActivity {
     private final List<HomeStore.Entry> entries = new ArrayList<>();
     private KeyArtStage keyArt;
     private TextView source;
+    private View sourceRow;
+    private TextView whenView;
+    /** Apps' own icons for the source chip (null: none, use the kind's badge). */
+    private final java.util.Map<String, Drawable> sourceIcons = new java.util.HashMap<>();
     private TextView title;
     private TextView desc;
     private TextView play;
     private TextView rowLabel;
     private ImageView logo;
+    /** The logo's room at its usual size (dp), worked out from the screen; the size setting scales it. */
+    private float logoBaseH = 112f;
+    private float logoBaseW = 340f;
+    /** How much taller a logo may get here before it would run into the row (dp). */
+    private float logoRoomH = 112f;
+    private int defaultDescLines = 2;
+    /** The description's lines with this logo (a big logo takes one of them). */
+    private int descLimit = 4;
     private ImageView info;
     private ImageView more;
     private int heroPos = -1;
@@ -200,6 +212,8 @@ public class HomeActivity extends ConsoleActivity {
         SectionBar.attach(this, SectionBar.HOME);
         row = findViewById(R.id.homeRow);
         source = findViewById(R.id.homeSource);
+        sourceRow = findViewById(R.id.homeSourceRow);
+        whenView = findViewById(R.id.homeWhen);
         title = findViewById(R.id.pocketHeroTitle);
         desc = findViewById(R.id.homeDesc);
         play = findViewById(R.id.pocketHeroPlay);
@@ -448,6 +462,153 @@ public class HomeActivity extends ConsoleActivity {
         }
     }
 
+    // ---- Where it comes from ------------------------------------------------------------------
+
+    /**
+     * The line above the name: a glass chip with where it comes from (the app's own icon for a
+     * shortcut or GameNative, else the kind's badge), and, apart from it, when it was last played.
+     */
+    private void setSource(HomeStore.Entry e, boolean welcome) {
+        if (e == null) {
+            source.setCompoundDrawablesRelative(null, null, null, null);
+            source.setBackground(null);
+            source.setPadding(0, 0, 0, 0);
+            source.setText(welcome ? getString(R.string.pocket_home_welcome) : "");
+            source.setVisibility(welcome ? View.VISIBLE : View.GONE);
+            whenView.setVisibility(View.GONE);
+            return;
+        }
+        HomeItem item = e.item;
+        Drawable icon = sourceIcon(item);
+        int bs = Math.round(18 * d);
+        icon.setBounds(0, 0, bs, bs);
+        source.setCompoundDrawablesRelative(icon, null, null, null);
+        source.setText(sourceLabel(e));
+        GradientDrawable chip = new GradientDrawable();
+        chip.setCornerRadius(100 * d);
+        chip.setColor(0x52000000);
+        source.setBackground(chip);
+        source.setPadding(Math.round(5 * d), Math.round(5 * d), Math.round(12 * d), Math.round(5 * d));
+        source.setVisibility(View.VISIBLE);
+        if (e.lastUsed > 0) {
+            Drawable clock = getDrawable(R.drawable.ic_pocket_clock);
+            if (clock != null) {
+                clock = clock.mutate();
+                clock.setTint(0xBFFFFFFF);
+                int cs = Math.round(12 * d);
+                clock.setBounds(0, 0, cs, cs);
+            }
+            whenView.setCompoundDrawablesRelative(clock, null, null, null);
+            whenView.setText(DateUtils.getRelativeTimeSpanString(e.lastUsed, System.currentTimeMillis(),
+                    DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_RELATIVE));
+            whenView.setVisibility(View.VISIBLE);
+        }
+        else {
+            whenView.setVisibility(View.GONE);
+        }
+    }
+
+    /** The chip's words: the app for a shortcut (its icon says it's one), else where() says it. */
+    private String sourceLabel(HomeStore.Entry e) {
+        if (HomeItem.SHORTCUT.equals(e.item.kind)) {
+            return appLabel(e.item.a);
+        }
+        return where(e);
+    }
+
+    /** The app's own icon (rounded) for the chip, or the kind's badge. */
+    private Drawable sourceIcon(final HomeItem i) {
+        String pkg = null;
+        if (HomeItem.SHORTCUT.equals(i.kind)) {
+            pkg = i.a;
+        }
+        else if (HomeItem.NATIVE.equals(i.kind)) {
+            final String which = HomeLauncher.GAMEHUB_LITE.equals(i.a) ? "GAMEHUB-LITE" : "GAMENATIVE";
+            final String slot = "native:" + which;
+            if (!sourceIcons.containsKey(slot)) {
+                sourceIcons.put(slot, null);
+                // ES-DE's emulator list is read once (slow the first time): off the main thread
+                work.execute(() -> {
+                    Drawable found = null;
+                    try {
+                        ComponentName cn = com.limelight.pocket.retro.RetroLauncher.component(this,
+                                com.limelight.pocket.retro.RetroLibrary.config(this), which);
+                        if (cn != null) {
+                            found = roundIcon(getPackageManager().getApplicationIcon(cn.getPackageName()));
+                        }
+                    } catch (Exception ignored) {
+                    }
+                    final Drawable icon = found;
+                    main.post(() -> {
+                        sourceIcons.put(slot, icon);
+                        HomeStore.Entry now = entryAt(heroPos);
+                        if (icon != null && now != null && HomeItem.NATIVE.equals(now.item.kind) && !isFinishing()) {
+                            setSource(now, false);
+                        }
+                    });
+                });
+            }
+            Drawable known = sourceIcons.get(slot);
+            if (known != null) {
+                return known;
+            }
+        }
+        if (pkg != null) {
+            if (!sourceIcons.containsKey(pkg)) {
+                Drawable icon = null;
+                try {
+                    icon = roundIcon(getPackageManager().getApplicationIcon(pkg));
+                } catch (Exception ignored) {
+                }
+                sourceIcons.put(pkg, icon);
+            }
+            Drawable known = sourceIcons.get(pkg);
+            if (known != null) {
+                return known;
+            }
+        }
+        return new KindBadge(i.kind, KindBadge.SQUARE, d);
+    }
+
+    /** An app's icon drawn small with rounded corners (sharp at the chip's size). */
+    private Drawable roundIcon(Drawable icon) {
+        int size = Math.max(1, Math.round(18 * d));
+        Bitmap b = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(b);
+        android.graphics.Path clip = new android.graphics.Path();
+        clip.addRoundRect(new RectF(0, 0, size, size), size * 0.28f, size * 0.28f, android.graphics.Path.Direction.CW);
+        c.clipPath(clip);
+        icon.setBounds(0, 0, size, size);
+        icon.draw(c);
+        return new BitmapDrawable(getResources(), b);
+    }
+
+    /**
+     * The logo at the size picked for this game (or for every game): bigger or smaller than
+     * usual. A big one takes the description's second line rather than run into the row.
+     */
+    private void applyLogoScale(HomeItem item) {
+        if (logo == null) {
+            return;
+        }
+        String uuid = item != null ? artUuid(item) : null;
+        float f = PocketPrefs.logoScale(this, uuid, item != null ? artId(item) : 0) / 100f;
+        float h = logoBaseH * f;
+        int lines = defaultDescLines;
+        if (h > logoBaseH && h > logoRoomH - 18 && lines > 1) {
+            lines = 1;
+        }
+        h = Math.max(36f, Math.min(h, Math.max(logoBaseH, logoRoomH)));
+        float w = Math.min(430f, logoBaseW * f);
+        logo.setMaxHeight(Math.round(h * d));
+        logo.setMaxWidth(Math.round(w * d));
+        descLimit = lines;
+        if (desc != null && desc.getMaxLines() > lines) {
+            desc.setMaxLines(lines);
+        }
+        logo.requestLayout();
+    }
+
     // ---- The hero ------------------------------------------------------------------------------
 
     private void updateHero(int position) {
@@ -464,8 +625,7 @@ public class HomeActivity extends ConsoleActivity {
             boolean empty = entries.size() <= 1;
             setMeta(null, null);
             setGlow(0);
-            source.setCompoundDrawablesRelative(null, null, null, null);
-            source.setText(empty ? getString(R.string.pocket_home_welcome) : "");
+            setSource(null, empty);
             if (changed) {
                 PocketMotion.swapText(title, getString(empty ? R.string.pocket_home_empty : R.string.pocket_home_add), dir);
             }
@@ -483,17 +643,9 @@ public class HomeActivity extends ConsoleActivity {
         }
         HomeItem item = e.item;
         String name = displayName(item);
-        KindBadge badge = new KindBadge(item.kind, KindBadge.SQUARE, d);
-        int bs = Math.round(15 * d);
-        badge.setBounds(0, 0, bs, bs);
-        source.setCompoundDrawablesRelative(badge, null, null, null);
-        String line = where(e);
-        if (e.lastUsed > 0) {
-            line += "  ·  " + DateUtils.getRelativeTimeSpanString(e.lastUsed, System.currentTimeMillis(),
-                    DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_RELATIVE);
-        }
-        source.setText(line);
+        setSource(e, false);
         if (changed) {
+            applyLogoScale(item);
             lastDir = dir;
             String uuid = artUuid(item);
             boolean hasLogo = uuid != null && PocketArt.has(this, uuid, artId(item), PocketArt.LOGO);
@@ -564,7 +716,7 @@ public class HomeActivity extends ConsoleActivity {
         }
         // Two lines under a one-line name, one under a long name or a logo (the row stays clear)
         boolean tall = title.getVisibility() == View.VISIBLE && title.getLineCount() > 1;
-        desc.setMaxLines(tall ? 1 : 2);
+        desc.setMaxLines(tall ? 1 : Math.min(2, descLimit));
         desc.setText(text.trim());
         if (desc.getVisibility() != View.VISIBLE) {
             desc.setVisibility(View.VISIBLE);
@@ -827,7 +979,7 @@ public class HomeActivity extends ConsoleActivity {
         if (!PocketPrefs.animationsEnabled(this)) {
             return;
         }
-        View[] parts = {source, meta, desc};
+        View[] parts = {sourceRow, meta, desc};
         float dx = (dir == 0 ? 1 : dir) * 14 * d;
         for (int i = 0; i < parts.length; i++) {
             View v = parts[i];
@@ -1012,10 +1164,20 @@ public class HomeActivity extends ConsoleActivity {
         }
         row.setLayoutParams(rlp);
         heroView.setLayoutParams(hlp);
-        logo.setMaxWidth(Math.round((shelf ? 340 : 290) * d));
-        logo.setMaxHeight(Math.round(logoMax * d));
+        logoBaseW = shelf ? 340 : 290;
+        logoBaseH = logoMax;
+        logoRoomH = shelf ? logoMax + (descLines > 1 ? 18 : 0) : 150;
+        defaultDescLines = descLines;
+        HomeStore.Entry shownEntry = entryAt(heroPos);
+        if (shownEntry != null) {
+            applyLogoScale(shownEntry.item);
+        }
+        else {
+            logo.setMaxWidth(Math.round(logoBaseW * d));
+            logo.setMaxHeight(Math.round(logoMax * d));
+        }
         title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, shelf ? (logoMax < 80 ? 32f : 38f) : 30f);
-        desc.setMaxLines(descLines);
+        desc.setMaxLines(Math.min(descLines, descLimit));
         if (relayout) {
             TILE_ART.evictAll();
         }
@@ -1187,6 +1349,12 @@ public class HomeActivity extends ConsoleActivity {
         if (requestCode == GamePageActivity.REQUEST && data != null
                 && GamePageActivity.ACTION_PLAY.equals(data.getStringExtra(GamePageActivity.RESULT_ACTION))) {
             activate(heroPos);
+            return;
+        }
+        if (requestCode == com.limelight.pocket.info.InfoPickerActivity.REQUEST && resultCode == RESULT_OK) {
+            // Another game picked for its details: its description, rating and genre again
+            heroKey = null;
+            updateHero(heroPos);
         }
     }
 
@@ -1451,6 +1619,19 @@ public class HomeActivity extends ConsoleActivity {
                 hideConsolePanel();
                 ArtPickerActivity.open(this, uuid, artId(item), RomScanner.searchName(displayName(item)));
             }));
+            // Its logo bigger or smaller, seen straight away behind the menu
+            items.add(StreamMenuView.Item.value(getString(R.string.pocket_logo_size),
+                    PocketPrefs.logoScale(this, uuid, artId(item)) + "%", direction -> {
+                        int now = PocketPrefs.logoScale(this, uuid, artId(item));
+                        int next = PocketPrefs.stepLogoScale(now, direction == 0 ? 1 : direction);
+                        PocketPrefs.setLogoScale(this, uuid, artId(item), next == PocketPrefs.logoScale(this) ? 0 : next);
+                        applyLogoScale(item);
+                        return next + "%";
+                    }));
+            items.add(StreamMenuView.Item.action(getString(R.string.pocket_info_pick), () -> {
+                hideConsolePanel();
+                com.limelight.pocket.info.InfoPickerActivity.open(this, RomScanner.searchName(displayName(item)));
+            }));
         }
         if (position > 0) {
             items.add(StreamMenuView.Item.action(getString(R.string.pocket_home_move_left), () -> {
@@ -1497,7 +1678,7 @@ public class HomeActivity extends ConsoleActivity {
         field.setSingleLine(true);
         field.setText(current);
         field.setSelectAllOnFocus(true);
-        new android.app.AlertDialog.Builder(this, R.style.PocketDialog)
+        com.limelight.pocket.ConsoleActivity.showImmersive(new android.app.AlertDialog.Builder(this, R.style.PocketDialog)
                 .setTitle(R.string.pocket_rename)
                 .setView(field)
                 .setPositiveButton(android.R.string.ok, (dialog, w) -> {
@@ -1515,7 +1696,7 @@ public class HomeActivity extends ConsoleActivity {
                     updateHero(heroPos);
                 })
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create());
     }
 
     private void openSection(HomeItem item) {

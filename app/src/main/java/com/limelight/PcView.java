@@ -1268,7 +1268,103 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
                         com.limelight.pocket.ConnectionTest.run(this, host, port, usb != null, computer.details.name);
                     }));
         }
+        // Where it's reached over Wi-Fi, and on which port (Sunshine / Apollo set to another one)
+        extra.add(com.limelight.pocket.ui.StreamMenuView.Item.action(getString(R.string.pocket_pc_address),
+                () -> {
+                    hideConsolePanel();
+                    askAddress(computer.details);
+                }).withValue(addressOf(computer.details)));
         showOptionsFor(itemView, describeComputer(computer.details, false), extra);
+    }
+
+    /** "192.168.1.20:47989" (what this PC is reached at now), or "". */
+    private static String addressOf(ComputerDetails pc) {
+        ComputerDetails.AddressTuple a = pc.activeAddress != null ? pc.activeAddress
+                : pc.manualAddress != null ? pc.manualAddress : pc.localAddress;
+        if (a == null || a.address == null) {
+            return "";
+        }
+        String host = a.address.contains(":") ? "[" + a.address + "]" : a.address;
+        return host + ":" + a.port;
+    }
+
+    /** Asks for the PC's address and port, then reaches it there (it's kept for next time). */
+    private void askAddress(final ComputerDetails pc) {
+        final android.widget.EditText input = new android.widget.EditText(this);
+        input.setSingleLine(true);
+        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_URI);
+        input.setText(addressOf(pc));
+        input.setSelectAllOnFocus(true);
+        input.setHint("192.168.1.20:47989");
+        android.widget.FrameLayout box = new android.widget.FrameLayout(this);
+        int pad = Math.round(20 * getResources().getDisplayMetrics().density);
+        box.setPadding(pad, pad / 2, pad, 0);
+        box.addView(input);
+        com.limelight.pocket.ConsoleActivity.showImmersive(new android.app.AlertDialog.Builder(this, R.style.PocketDialog)
+                .setTitle(getString(R.string.pocket_pc_address_title, pc.name))
+                .setMessage(R.string.pocket_pc_address_msg)
+                .setView(box)
+                .setPositiveButton(android.R.string.ok, (dlg, w) -> reachAt(pc, input.getText().toString().trim()))
+                .setNeutralButton(R.string.pocket_pc_address_default, (dlg, w) -> {
+                    ComputerDetails.AddressTuple a = pc.activeAddress != null ? pc.activeAddress : pc.localAddress;
+                    if (a != null && a.address != null) {
+                        reachAt(pc, (a.address.contains(":") ? "[" + a.address + "]" : a.address) + ":"
+                                + NvHTTP.DEFAULT_HTTP_PORT);
+                    }
+                })
+                .setNegativeButton(android.R.string.cancel, null)
+                .create());
+    }
+
+    private void reachAt(final ComputerDetails pc, final String raw) {
+        if (raw.isEmpty() || managerBinder == null) {
+            return;
+        }
+        android.net.Uri uri = android.net.Uri.parse("art://" + raw);
+        if (uri.getHost() == null || uri.getHost().isEmpty()) {
+            uri = android.net.Uri.parse("art://[" + raw + "]");
+        }
+        final String host = uri.getHost();
+        if (host == null || host.isEmpty()) {
+            Toast.makeText(this, R.string.addpc_unknown_host, Toast.LENGTH_LONG).show();
+            return;
+        }
+        final int port = uri.getPort() > 0 ? uri.getPort() : NvHTTP.DEFAULT_HTTP_PORT;
+        final ComputerManagerService.ComputerManagerBinder binder = managerBinder;
+        Toast.makeText(this, getString(R.string.pocket_pc_address_trying, host + ":" + port), Toast.LENGTH_SHORT).show();
+        new Thread(() -> {
+            ComputerDetails details = new ComputerDetails();
+            details.manualAddress = new ComputerDetails.AddressTuple(host, port);
+            boolean ok;
+            try {
+                ok = binder.addComputerBlocking(details);
+            } catch (InterruptedException e) {
+                return;
+            } catch (RuntimeException e) {
+                ok = false;
+            }
+            final boolean reached = ok;
+            final boolean same = ok && pc.uuid != null && pc.uuid.equals(details.uuid);
+            final String other = details.name;
+            runOnUiThread(() -> {
+                if (isFinishing()) {
+                    return;
+                }
+                if (!reached) {
+                    Toast.makeText(this, getString(R.string.pocket_pc_address_failed, host + ":" + port),
+                            Toast.LENGTH_LONG).show();
+                }
+                else if (same) {
+                    com.limelight.pocket.PocketSounds.play(this, com.limelight.pocket.PocketSounds.TOGGLE_ON);
+                    Toast.makeText(this, getString(R.string.pocket_pc_address_saved, pc.name, host + ":" + port),
+                            Toast.LENGTH_LONG).show();
+                }
+                else {
+                    Toast.makeText(this, getString(R.string.pocket_pc_address_other, other != null ? other : host),
+                            Toast.LENGTH_LONG).show();
+                }
+            });
+        }, "PocketPcAddress").start();
     }
 
     // ---- Artemis Pocket: wake a sleeping PC and open it when it answers --------------------

@@ -36,6 +36,11 @@ public final class ExtraParsers {
         return "search \"" + clean + "\"; " + IGDB_FIELDS + " limit 10;";
     }
 
+    /** The IGDB query for one game, by its id. */
+    public static String igdbQueryId(long id) {
+        return IGDB_FIELDS + " where id = " + id + ";";
+    }
+
     public static String igdbImage(String imageId, String size) {
         return "https://images.igdb.com/igdb/image/upload/t_" + size + "/" + imageId + ".jpg";
     }
@@ -72,9 +77,24 @@ public final class ExtraParsers {
     /** One IGDB game as the page's information, or null. */
     public static GameInfo parseIgdb(String json, String name) {
         JsonObject g = igdbBest(json, name);
-        if (g == null) {
+        return g == null ? null : parseIgdbGame(g);
+    }
+
+    /** The first game in IGDB's answer (one asked for by its id). */
+    public static GameInfo parseIgdbFirst(String json) {
+        JsonArray games = array(json);
+        if (games == null) {
             return null;
         }
+        for (JsonElement e : games) {
+            if (e.isJsonObject()) {
+                return parseIgdbGame(e.getAsJsonObject());
+            }
+        }
+        return null;
+    }
+
+    static GameInfo parseIgdbGame(JsonObject g) {
         GameInfo info = new GameInfo();
         info.source = GameInfo.SOURCE_IGDB;
         info.title = string(g, "name");

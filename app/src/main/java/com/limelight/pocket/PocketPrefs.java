@@ -503,6 +503,54 @@ public final class PocketPrefs {
         return n != null ? n : fallback;
     }
 
+    // ---- Logo size ------------------------------------------------------------------------------
+
+    public static final String KEY_LOGO_SCALE = "pocket_logo_scale";
+    private static final String KEY_LOGO_SCALE_GAME = "pocket_logo_scale_";
+    /** The sizes a logo can take (percent of its usual size). */
+    public static final int[] LOGO_SCALES = {60, 70, 80, 90, 100, 115, 130, 145, 160};
+
+    /** How big games' logos are in place of their names, in percent (100: as designed). */
+    public static int logoScale(Context context) {
+        int v = prefs(context).getInt(KEY_LOGO_SCALE, 100);
+        return Math.max(LOGO_SCALES[0], Math.min(LOGO_SCALES[LOGO_SCALES.length - 1], v));
+    }
+
+    /** This game's logo size (its own when one was set, else everyone's). */
+    public static int logoScale(Context context, String uuid, int id) {
+        if (uuid != null) {
+            int v = prefs(context).getInt(KEY_LOGO_SCALE_GAME + uuid + "_" + id, 0);
+            if (v > 0) {
+                return Math.max(LOGO_SCALES[0], Math.min(LOGO_SCALES[LOGO_SCALES.length - 1], v));
+            }
+        }
+        return logoScale(context);
+    }
+
+    /** This game's own logo size (0: the same as everyone's). */
+    public static void setLogoScale(Context context, String uuid, int id, int percent) {
+        if (uuid == null) {
+            return;
+        }
+        if (percent <= 0) {
+            prefs(context).edit().remove(KEY_LOGO_SCALE_GAME + uuid + "_" + id).apply();
+        }
+        else {
+            prefs(context).edit().putInt(KEY_LOGO_SCALE_GAME + uuid + "_" + id, percent).apply();
+        }
+    }
+
+    /** The next size up or down from this one. */
+    public static int stepLogoScale(int percent, int direction) {
+        int at = 0;
+        for (int i = 0; i < LOGO_SCALES.length; i++) {
+            if (LOGO_SCALES[i] <= percent) {
+                at = i;
+            }
+        }
+        return LOGO_SCALES[Math.max(0, Math.min(LOGO_SCALES.length - 1, at + direction))];
+    }
+
     /** Renames it (null: back to its own name). Its details are then looked up by the new name. */
     public static void setCustomName(Context context, String uuid, int id, String name) {
         if (name == null || name.trim().isEmpty()) {

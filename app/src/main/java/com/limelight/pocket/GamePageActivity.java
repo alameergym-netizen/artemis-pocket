@@ -1230,73 +1230,26 @@ public class GamePageActivity extends ConsoleActivity {
     // ---- "Not this game?" ---------------------------------------------------------------------
 
     private void askWhichGame() {
-        if (!GameInfoService.isLookupable(name)) {
-            return;
-        }
-        PocketSounds.play(this, PocketSounds.OPEN);
-        GameInfoService.searchSteam(name, results -> {
-            if (isFinishing()) {
-                return;
-            }
-            final List<InfoParsers.Candidate> list = new ArrayList<>(results);
-            List<String> labels = new ArrayList<>();
-            for (InfoParsers.Candidate c : list) {
-                labels.add(c.name);
-            }
-            labels.add(getString(R.string.pocket_page_search_other));
-            new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                    .setTitle(R.string.pocket_page_pick_game)
-                    .setItems(labels.toArray(new String[0]), (d, which) -> {
-                        if (which < list.size()) {
-                            useSteamGame(list.get(which).id);
-                        }
-                        else {
-                            askSearchTerm();
-                        }
-                    })
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .show();
-        });
+        // The details picker: the same name on Steam, IGDB and Wikipedia, with pictures
+        com.limelight.pocket.info.InfoPickerActivity.open(this, name);
     }
 
-    private void askSearchTerm() {
-        final EditText input = new EditText(this);
-        input.setSingleLine(true);
-        input.setText(name);
-        input.setSelectAllOnFocus(true);
-        FrameLayout box = new FrameLayout(this);
-        box.setPadding(dp(20), dp(10), dp(20), 0);
-        box.addView(input);
-        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle(R.string.pocket_page_pick_game)
-                .setView(box)
-                .setPositiveButton(R.string.pocket_art_search, (d, w) -> {
-                    String term = input.getText().toString().trim();
-                    if (term.isEmpty()) {
-                        return;
-                    }
-                    GameInfoService.searchSteam(term, results -> {
-                        if (isFinishing()) {
-                            return;
-                        }
-                        if (results.isEmpty()) {
-                            Toast.makeText(this, R.string.pocket_page_search_none, Toast.LENGTH_SHORT).show();
-                            return;
-                        }
-                        final List<InfoParsers.Candidate> list = new ArrayList<>(results);
-                        String[] labels = new String[list.size()];
-                        for (int i = 0; i < list.size(); i++) {
-                            labels[i] = list.get(i).name;
-                        }
-                        new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                                .setTitle(R.string.pocket_page_pick_game)
-                                .setItems(labels, (d2, which) -> useSteamGame(list.get(which).id))
-                                .setNegativeButton(android.R.string.cancel, null)
-                                .show();
-                    });
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == com.limelight.pocket.info.InfoPickerActivity.REQUEST && resultCode == RESULT_OK) {
+            reloadInfo();
+        }
+    }
+
+    /** The details again, from what was just picked. */
+    private void reloadInfo() {
+        stopBackgroundTrailer(true);
+        infoLoaded = false;
+        skeleton.setAlpha(1f);
+        skeleton.setVisibility(View.VISIBLE);
+        shortText.setAlpha(0f);
+        GameInfoService.get(this, name, true, this::onInfo);
     }
 
     private void useSteamGame(int steamId) {

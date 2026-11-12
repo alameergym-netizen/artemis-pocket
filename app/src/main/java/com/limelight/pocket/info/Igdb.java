@@ -90,6 +90,31 @@ public final class Igdb {
         }
     }
 
+    /** One IGDB game by its id (the raw JSON, blocking). Null when IGDB isn't set up. */
+    public static String byId(Context c, long id) throws IOException {
+        if (!configured(c)) {
+            return null;
+        }
+        try {
+            return queryBody(c, ExtraParsers.igdbQueryId(id), token(c, false));
+        } catch (IOException e) {
+            if (e.getMessage() != null && e.getMessage().contains("401")) {
+                return queryBody(c, ExtraParsers.igdbQueryId(id), token(c, true));
+            }
+            throw e;
+        }
+    }
+
+    private static String queryBody(Context c, String body, String token) throws IOException {
+        Request request = new Request.Builder().url("https://api.igdb.com/v4/games")
+                .header("Client-ID", clientId(c))
+                .header("Authorization", "Bearer " + token)
+                .header("Accept", "application/json")
+                .post(RequestBody.create(body, MediaType.get("text/plain")))
+                .build();
+        return call(request);
+    }
+
     /** Checks the client ID and secret (blocking): true when Twitch gives a token. */
     public static boolean check(Context c) {
         try {

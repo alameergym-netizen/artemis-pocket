@@ -153,25 +153,55 @@
             android:clipToPadding="false"
             android:orientation="vertical">
 
-            <TextView
-                android:id="@+id/homeSource"
+            <!-- Where it comes from (a glass chip with its app's icon) and when it was played,
+                 a clear step above the logo -->
+            <LinearLayout
+                android:id="@+id/homeSourceRow"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:drawablePadding="6dp"
-                android:ellipsize="end"
-                android:fontFamily="@font/inter_medium"
+                android:layout_marginBottom="16dp"
                 android:gravity="center_vertical"
-                android:maxLines="1"
-                android:shadowColor="#80000000"
-                android:shadowRadius="8"
-                android:textColor="#C7FFFFFF"
-                android:textSize="11.5sp" />
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/homeSource"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:drawablePadding="7dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/inter_semibold"
+                    android:gravity="center_vertical"
+                    android:includeFontPadding="false"
+                    android:letterSpacing="0.01"
+                    android:maxLines="1"
+                    android:maxWidth="300dp"
+                    android:shadowColor="#80000000"
+                    android:shadowRadius="8"
+                    android:textColor="#F2FFFFFF"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/homeWhen"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:drawablePadding="5dp"
+                    android:ellipsize="end"
+                    android:fontFamily="@font/inter_medium"
+                    android:gravity="center_vertical"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#99000000"
+                    android:shadowRadius="8"
+                    android:textColor="#BFFFFFFF"
+                    android:textSize="11.5sp"
+                    android:visibility="gone" />
+            </LinearLayout>
 
             <ImageView
                 android:id="@+id/pocketHeroLogo"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
                 android:adjustViewBounds="true"
                 android:importantForAccessibility="no"
                 android:maxWidth="340dp"
@@ -183,7 +213,6 @@
                 android:id="@+id/pocketHeroTitle"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
                 android:ellipsize="end"
                 android:fontFamily="@font/inter_bold"
                 android:letterSpacing="-0.032"

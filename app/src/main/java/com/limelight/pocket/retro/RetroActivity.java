@@ -982,7 +982,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
         field.setSingleLine(true);
         field.setText(rom.name);
         field.setSelectAllOnFocus(true);
-        new android.app.AlertDialog.Builder(this, R.style.PocketDialog)
+        com.limelight.pocket.ConsoleActivity.showImmersive(new android.app.AlertDialog.Builder(this, R.style.PocketDialog)
                 .setTitle(R.string.pocket_rename)
                 .setView(field)
                 .setPositiveButton(android.R.string.ok, (d, w) -> {
@@ -998,7 +998,7 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                     showEntries();
                 })
                 .setNegativeButton(android.R.string.cancel, null)
-                .show();
+                .create());
     }
 
     private void applyCustomName(RomScanner.Rom rom) {
@@ -1021,6 +1021,8 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                 PocketSounds.play(this, PocketSounds.SELECT);
                 RetroLibrary.markPlayed(this, rom);
                 com.limelight.pocket.home.HomeStore.record(this, homeItem(rom));
+                // Its achievements pop up over the game as they're earned
+                TrophyWatch.start(this, Achievements.Target.retro(rom.system, rom.relPath, rom.name));
                 break;
             case RetroLauncher.NOT_INSTALLED: {
                 final String pkg = r.packageName;

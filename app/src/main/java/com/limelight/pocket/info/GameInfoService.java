@@ -49,6 +49,7 @@ public final class GameInfoService {
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final String KEY_STEAM_ID = "pocket_info_steam_";
     private static final String KEY_PLAY_PKG = "pocket_info_play_";
+    private static final String KEY_PICK = "pocket_info_pick_";
 
     private static final OkHttpClient CLIENT = new OkHttpClient.Builder()
             .connectTimeout(8, TimeUnit.SECONDS)
@@ -208,11 +209,43 @@ public final class GameInfoService {
     public static void setSteamId(Context context, String name, int steamAppId) {
         String k = KEY_STEAM_ID + InfoParsers.normalize(name);
         if (steamAppId > 0) {
-            PocketPrefs.prefs(context).edit().putInt(k, steamAppId).apply();
+            PocketPrefs.prefs(context).edit().putInt(k, steamAppId)
+                    .remove(KEY_PICK + InfoParsers.normalize(name)).apply();
         }
         else {
             PocketPrefs.prefs(context).edit().remove(k).apply();
         }
+        forget(context, name);
+    }
+
+    /**
+     * The game picked by hand for this name somewhere other than Steam: "igdb:1234" or
+     * "wiki:en:Page title" (null: none, it's found by its name).
+     */
+    public static String pickFor(Context context, String name) {
+        return PocketPrefs.prefs(context).getString(KEY_PICK + InfoParsers.normalize(name), null);
+    }
+
+    /** What the details of this name come from, picked by hand (see pickFor). */
+    public static void setPick(Context context, String name, String pick) {
+        PocketPrefs.prefs(context).edit().putString(KEY_PICK + InfoParsers.normalize(name), pick)
+                .remove(KEY_STEAM_ID + InfoParsers.normalize(name)).apply();
+        forget(context, name);
+    }
+
+    /** Back to finding it by its name. */
+    public static void resetPick(Context context, String name) {
+        PocketPrefs.prefs(context).edit().remove(KEY_PICK + InfoParsers.normalize(name))
+                .remove(KEY_STEAM_ID + InfoParsers.normalize(name)).apply();
+        forget(context, name);
+    }
+
+    /** True when the details of this name were picked by hand. */
+    public static boolean isPicked(Context context, String name) {
+        return pickFor(context, name) != null || steamIdFor(context, name) > 0;
+    }
+
+    private static void forget(Context context, String name) {
         MEMORY.remove(key(name));
         File f = file(context.getApplicationContext(), key(name));
         if (f.exists()) {
@@ -239,13 +272,63 @@ public final class GameInfoService {
         });
     }
 
+    /** Steam's games for a name (blocking), for the details picker. */
+    public static List<InfoParsers.Candidate> searchSteamNow(String term) throws IOException {
+        return InfoParsers.parseSteamSearch(http("https://store.steampowered.com/api/storesearch/?term="
+                + enc(term) + "&l=english&cc=US"));
+    }
+
+    /** Wikipedia's pages for a game's name in a language (raw JSON with snippets, blocking). */
+    public static String searchWikipediaNow(String term, String lang) throws IOException {
+        return http("https://" + lang + ".wikipedia.org/w/api.php?action=query&list=search&format=json"
+                + "&srprop=snippet&srlimit=6&srsearch=" + enc(term + " video game"));
+    }
+
+    /** The interface language's Wikipedia ("en", "ar"...). */
+    public static String wikiLanguage() {
+        return languages()[1];
+    }
+
     // ---- Looking it up -----------------------------------------------------------------------
+
+    /** The details of the game picked by hand on IGDB or Wikipedia (null: none picked, or gone). */
+    private static GameInfo fromPick(Context context, String pick, String[] lang) throws IOException {
+        if (pick == null) {
+            return null;
+        }
+        if (pick.startsWith("igdb:") && Igdb.configured(context)) {
+            try {
+                return ExtraParsers.parseIgdbFirst(Igdb.byId(context, Long.parseLong(pick.substring(5))));
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
+        if (pick.startsWith("wiki:")) {
+            String[] parts = pick.split(":", 3);
+            if (parts.length == 3) {
+                String base = "https://" + parts[1] + ".wikipedia.org";
+                GameInfo info = InfoParsers.parseWikiSummary(http(base + "/api/rest_v1/page/summary/"
+                        + enc(parts[2].replace(' ', '_')).replace("+", "%20")));
+                if (info != null) {
+                    info.language = parts[1];
+                }
+                return info;
+            }
+        }
+        return null;
+    }
 
     static GameInfo fetch(Context context, String name) throws IOException {
         if (!isLookupable(name)) {
             return null;
         }
         String[] lang = languages();
+        // Picked by hand on IGDB or Wikipedia: that game, and only that one
+        GameInfo picked = fromPick(context, pickFor(context, name), lang);
+        if (picked != null) {
+            String title = picked.title != null && !picked.title.trim().isEmpty() ? picked.title : name;
+            return finish(context, picked, title);
+        }
         int steamId = PocketPrefs.prefs(context).getInt(KEY_STEAM_ID + InfoParsers.normalize(name), 0);
         if (steamId <= 0) {
             List<InfoParsers.Candidate> found = InfoParsers.parseSteamSearch(http(
@@ -292,6 +375,11 @@ public final class GameInfoService {
                 info.shortDescription = wiki.shortDescription;
             }
         }
+        return finish(context, info, name);
+    }
+
+    /** What every answer gets: a trailer and pictures from elsewhere when its source had none. */
+    private static GameInfo finish(Context context, GameInfo info, String name) {
         // No trailer anywhere: the first YouTube result for its trailer (any game, any store)
         if (info != null && info.movies.isEmpty()) {
             try {

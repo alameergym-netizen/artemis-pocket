@@ -1609,6 +1609,10 @@ public class HomeActivity extends ConsoleActivity {
 
     /** A square of side size from the picture (centred across, at yFocus down). */
     private static Bitmap crop(Bitmap src, int size, float yFocus) {
+        src = software(src);
+        if (src == null) {
+            return null;
+        }
         int w = src.getWidth();
         int h = src.getHeight();
         int side = Math.min(w, h);
@@ -1621,8 +1625,24 @@ public class HomeActivity extends ConsoleActivity {
         return out;
     }
 
+    /** A copy software canvases can draw (art is kept as hardware bitmaps on Android 8+). */
+    static Bitmap software(Bitmap b) {
+        if (b != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && b.getConfig() == Bitmap.Config.HARDWARE) {
+            try {
+                return b.copy(Bitmap.Config.ARGB_8888, false);
+            } catch (RuntimeException | OutOfMemoryError e) {
+                return null;
+            }
+        }
+        return b;
+    }
+
     /** The app's icon, big, on a deep version of its own colour (like a console's app tiles). */
     private static Bitmap iconTile(Bitmap icon, int size) {
+        icon = software(icon);
+        if (icon == null) {
+            return null;
+        }
         int base = averageColor(icon);
         float[] hsv = new float[3];
         Color.colorToHSV(base, hsv);

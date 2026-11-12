@@ -165,20 +165,21 @@ public class ServerHelper {
         final Intent intent = createStartIntent(parent, app, computer, managerBinder, withVDisplay);
         if (parent instanceof com.limelight.pocket.ConsoleActivity) {
             final com.limelight.pocket.ConsoleActivity console = (com.limelight.pocket.ConsoleActivity) parent;
-            // Artemis Pocket: never start while Windows is still at its sign-in screen (that can
-            // leave this device's virtual display switched off), then the game's card grows into
-            // the "Starting..." screen
-            console.runWhenSignedIn(intent, () -> {
+            // Pocket Nexus: the press answers at once (the game's card grows into the
+            // "Starting..." screen), and meanwhile it checks Windows isn't still at its sign-in
+            // screen (that can leave this device's virtual display switched off)
+            final Runnable go = () -> console.runWhenSignedIn(intent, () -> {
+                parent.startActivity(intent);
                 if (com.limelight.pocket.PocketPrefs.animationsEnabled(parent)) {
-                    console.playLaunchZoom(() -> {
-                        parent.startActivity(intent);
-                        parent.overridePendingTransition(R.anim.pocket_launch_in, R.anim.pocket_hold);
-                    });
-                }
-                else {
-                    parent.startActivity(intent);
+                    parent.overridePendingTransition(R.anim.pocket_launch_in, R.anim.pocket_hold);
                 }
             }, null);
+            if (com.limelight.pocket.PocketPrefs.animationsEnabled(parent)) {
+                console.playLaunchZoom(go);
+            }
+            else {
+                go.run();
+            }
             return;
         }
         parent.startActivity(intent);

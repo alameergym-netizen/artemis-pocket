@@ -31,10 +31,10 @@ push_seed() {
   adb push "$1"/. /sdcard/Android/data/$PKG/files/preview/ > /dev/null
 }
 # First start creates the app's folders, then the seed goes in and it starts again
-adb shell am start -W -n $PKG/com.limelight.PcView > /dev/null; sleep 6
+adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null; sleep 6
 push_seed /tmp/seed
 adb logcat -c
-adb shell am start -W -n $PKG/com.limelight.PcView; sleep 14
+adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView; sleep 14
 shot 01_home
 key KEYCODE_DPAD_RIGHT dpad 2.5; shot 02_home_next
 key KEYCODE_BUTTON_Y gamepad 2; shot 03_home_options
@@ -58,7 +58,7 @@ for mode in grid xmb; do
   rm -rf /tmp/seed2; mkdir -p /tmp/seed2
   printf 'pref\tstring\tpocket_view_mode\t%s\n' "$mode" > /tmp/seed2/seed.txt
   push_seed /tmp/seed2
-  adb shell am start -W -n $PKG/com.limelight.PcView > /dev/null; sleep 8
+  adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null; sleep 8
   key KEYCODE_BUTTON_R1 gamepad 3
   key KEYCODE_BUTTON_R1 gamepad 3
   key KEYCODE_BUTTON_R1 gamepad 5; shot "13_android_$mode"

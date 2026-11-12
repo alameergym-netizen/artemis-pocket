@@ -565,7 +565,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
         signInChecking = true;
         new Thread(() -> {
-            final boolean signedIn = PcCompanion.run(getApplicationContext(), host, uuid, "PING") != null;
+            final boolean signedIn = PcCompanion.answersQuickly(getApplicationContext(), host, uuid);
             runOnUiThread(() -> {
                 signInChecking = false;
                 if (isFinishing()) {
@@ -1184,7 +1184,54 @@ public abstract class ConsoleActivity extends AppCompatActivity {
                 }
                 return true;
         }
-        return super.dispatchKeyEvent(event);
+        if (super.dispatchKeyEvent(event)) {
+            return true;
+        }
+        // Nothing on screen took the move: Pocket Nexus moves the focus itself, so Android
+        // doesn't play its own navigation click (it ignores the views' sound settings)
+        return event.getAction() == KeyEvent.ACTION_DOWN && moveFocusQuietly(keyCode);
+    }
+
+    private final android.graphics.Rect focusRect = new android.graphics.Rect();
+
+    private boolean moveFocusQuietly(int keyCode) {
+        int direction;
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                direction = View.FOCUS_LEFT;
+                break;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                direction = View.FOCUS_RIGHT;
+                break;
+            case KeyEvent.KEYCODE_DPAD_UP:
+                direction = View.FOCUS_UP;
+                break;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                direction = View.FOCUS_DOWN;
+                break;
+            default:
+                return false;
+        }
+        View root = getWindow().getDecorView();
+        View focused = root.findFocus();
+        if (focused == null || !(root instanceof ViewGroup)) {
+            return false; // nothing focused yet: Android picks the first view
+        }
+        try {
+            if (root.dispatchUnhandledMove(focused, direction)) {
+                return true;
+            }
+            View next = focused.focusSearch(direction);
+            if (next == null || next == focused) {
+                return false;
+            }
+            focused.getFocusedRect(focusRect);
+            ((ViewGroup) root).offsetDescendantRectToMyCoords(focused, focusRect);
+            ((ViewGroup) root).offsetRectIntoDescendantCoords(next, focusRect);
+            return next.requestFocus(direction, focusRect);
+        } catch (RuntimeException e) {
+            return false;
+        }
     }
 
     // ---- Status bar ---------------------------------------------------------------------
@@ -1648,7 +1695,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
                     if (!pausedSinceLaunch && launchLayer != null) {
                         returnFromLaunch();
                     }
-                }, 2500);
+                }, 4500);
             }
         });
         zoom.layout(Math.round(fl), Math.round(ft), Math.round(fl + fw), Math.round(ft + fh));

@@ -120,6 +120,39 @@ public final class PcCompanion {
         }
     }
 
+    /**
+     * Whether the helper answers, fast (blocking, under ~1.6 s): it only runs while someone is
+     * signed in to Windows. Used right before a stream starts, so it must never hold a launch up.
+     */
+    public static boolean answersQuickly(Context context, String host, String pcUuid) {
+        if (host == null) {
+            return false;
+        }
+        Socket socket = new Socket();
+        try {
+            socket.setTcpNoDelay(true);
+            socket.connect(new InetSocketAddress(host, PORT), 800);
+            socket.setSoTimeout(800);
+            String token = PocketPrefs.getCompanionToken(context, pcUuid);
+            OutputStream out = socket.getOutputStream();
+            out.write(("APC1 " + (token != null && !token.isEmpty() ? token : "-") + "\n").getBytes(StandardCharsets.UTF_8));
+            out.flush();
+            String hello = readLine(socket.getInputStream());
+            boolean ok = hello != null && hello.startsWith("OK ");
+            if (ok) {
+                PocketPrefs.markCompanionSeen(context, pcUuid);
+            }
+            return ok;
+        } catch (IOException | RuntimeException e) {
+            return false;
+        } finally {
+            try {
+                socket.close();
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
     /** Runs one command (blocking). Returns the reply line, or null if unreachable. */
     public static String run(Context context, String host, String pcUuid, String command) {
         Session session = open(context, host, pcUuid);

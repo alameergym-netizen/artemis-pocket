@@ -153,13 +153,20 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
-          target: google_apis
+          target: default
           arch: x86_64
-          ram-size: 4096M
+          ram-size: 2560M
+          heap-size: 512M
           disk-size: 6000M
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
+          emulator-options: -no-window -no-snapshot -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none
           disable-animations: false
           script: bash .github/shots/run_shots.sh
+
+      - name: Runner state
+        if: always()
+        run: |
+          free -m || true
+          sudo dmesg 2>/dev/null | grep -iE "killed process|out of memory|oom" | tail -n 10 || true
 
       - name: Push screenshots
         if: always()

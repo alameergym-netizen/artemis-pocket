@@ -20,7 +20,7 @@ if [ -n "${VIEW_MODE:-}" ]; then pref string pocket_view_mode "$VIEW_MODE"; fi
 
 # Real games' library art (public Steam CDN), shown on emulator apps so every layout has art in it
 games=("1145360:Hades" "413150:Stardew Valley" "1091500:Cyberpunk 2077" "367520:Hollow Knight" "1245620:ELDEN RING" "504230:Celeste")
-cands=(com.android.settings com.android.chrome com.android.camera2 com.android.contacts com.google.android.apps.maps com.android.vending com.google.android.youtube com.android.dialer com.google.android.dialer com.android.messaging com.google.android.apps.messaging)
+cands=(com.android.settings com.android.camera2 com.android.contacts com.android.calendar com.android.deskclock com.android.gallery3d com.android.music com.android.messaging com.android.dialer com.android.documentsui com.android.chrome com.google.android.youtube)
 avail=()
 for p in "${cands[@]}"; do grep -qx "$p" "$pkgs" && avail+=("$p"); done
 fetch() { # id file dest

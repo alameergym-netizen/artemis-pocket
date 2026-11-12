@@ -1,0 +1,277 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pocket Nexus Home: the focused game's art fills the screen; its name, where it's from and
+     Play on the left; your games in one row of tiles at the bottom (console style) -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/pocketRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF000000">
+
+    <FrameLayout
+        android:id="@+id/pocketBackdrop"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <com.limelight.pocket.ui.AuroraView
+            android:id="@+id/pocketAurora"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <View
+            android:id="@+id/pocketKeyArtUnderlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            android:background="#FF000000" />
+
+        <FrameLayout
+            android:id="@+id/pocketKeyArtFrame"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0">
+
+            <com.limelight.pocket.ui.KeyArtView
+                android:id="@+id/pocketKeyArtA"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+
+            <com.limelight.pocket.ui.KeyArtView
+                android:id="@+id/pocketKeyArtB"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:alpha="0" />
+        </FrameLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/pocket_home_scrim" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="96dp"
+            android:background="@drawable/pocket_top_scrim" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/pocketMain"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipChildren="false"
+        android:clipToPadding="false">
+
+        <!-- Sections and status -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="26dp"
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingEnd="18dp">
+
+            <LinearLayout
+                android:id="@+id/pocketSectionHost"
+                android:layout_width="wrap_content"
+                android:layout_height="26dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/pocketLinkChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFamily="@font/inter_medium"
+                android:gravity="center_vertical"
+                android:shadowColor="#99000000"
+                android:shadowRadius="8"
+                android:textColor="@color/pocket_text"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/pocketBattery"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:fontFamily="@font/inter_medium"
+                android:shadowColor="#99000000"
+                android:shadowRadius="8"
+                android:textColor="@color/pocket_text"
+                android:textSize="11sp" />
+
+            <TextView
+                android:id="@+id/pocketClock"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:fontFamily="@font/inter_semibold"
+                android:letterSpacing="-0.01"
+                android:shadowColor="#99000000"
+                android:shadowRadius="8"
+                android:textColor="@color/pocket_text"
+                android:textSize="12.5sp" />
+        </LinearLayout>
+
+        <!-- The focused game -->
+        <LinearLayout
+            android:id="@+id/pocketHero"
+            android:layout_width="360dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="28dp"
+            android:layout_marginTop="72dp"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/homeSource"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:drawablePadding="6dp"
+                android:ellipsize="end"
+                android:fontFamily="@font/inter_medium"
+                android:gravity="center_vertical"
+                android:maxLines="1"
+                android:shadowColor="#80000000"
+                android:shadowRadius="8"
+                android:textColor="#B8FFFFFF"
+                android:textSize="10sp" />
+
+            <ImageView
+                android:id="@+id/pocketHeroLogo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:adjustViewBounds="true"
+                android:importantForAccessibility="no"
+                android:maxWidth="280dp"
+                android:maxHeight="60dp"
+                android:scaleType="fitStart"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/pocketHeroTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:ellipsize="end"
+                android:fontFamily="@font/inter_semibold"
+                android:letterSpacing="-0.028"
+                android:lineSpacingMultiplier="0.95"
+                android:maxLines="2"
+                android:shadowColor="#73000000"
+                android:shadowDy="2"
+                android:shadowRadius="18"
+                android:textColor="#FFFFFFFF"
+                android:textSize="28sp" />
+
+            <TextView
+                android:id="@+id/homeDesc"
+                android:layout_width="300dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="7dp"
+                android:ellipsize="end"
+                android:fontFamily="@font/inter_regular"
+                android:lineSpacingMultiplier="1.12"
+                android:maxLines="2"
+                android:shadowColor="#80000000"
+                android:shadowRadius="8"
+                android:textColor="#B3FFFFFF"
+                android:textSize="10.5sp"
+                android:visibility="gone" />
+
+            <LinearLayout
+                android:id="@+id/homeActions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:clipChildren="false"
+                android:clipToPadding="false"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/pocketHeroPlay"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:drawableStart="@drawable/ic_pocket_play"
+                    android:drawablePadding="7dp"
+                    android:focusable="true"
+                    android:fontFamily="@font/inter_semibold"
+                    android:gravity="center"
+                    android:paddingStart="15dp"
+                    android:paddingEnd="19dp"
+                    android:textColor="#FF0B0B0D"
+                    android:textSize="12.5sp" />
+
+                <ImageView
+                    android:id="@+id/homeInfo"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/pocket_round_button"
+                    android:contentDescription="@string/pocket_hint_details"
+                    android:focusable="true"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_pocket_info"
+                    android:tint="@color/pocket_round_icon" />
+
+                <ImageView
+                    android:id="@+id/homeMore"
+                    android:layout_width="30dp"
+                    android:layout_height="30dp"
+                    android:layout_marginStart="8dp"
+                    android:background="@drawable/pocket_round_button"
+                    android:contentDescription="@string/pocket_hint_options"
+                    android:focusable="true"
+                    android:padding="8dp"
+                    android:src="@drawable/ic_pocket_more"
+                    android:tint="@color/pocket_round_icon" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/homeRowLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_marginStart="28dp"
+            android:layout_marginBottom="122dp"
+            android:fontFamily="@font/inter_semibold"
+            android:shadowColor="#80000000"
+            android:shadowRadius="8"
+            android:textColor="#9EFFFFFF"
+            android:textSize="10sp" />
+
+        <!-- Your games -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/homeRow"
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
+            android:layout_gravity="bottom"
+            android:layout_marginBottom="22dp"
+            android:clipChildren="false"
+            android:clipToPadding="false"
+            android:descendantFocusability="afterDescendants"
+            android:overScrollMode="never"
+            android:paddingStart="22dp"
+            android:paddingTop="8dp"
+            android:paddingEnd="220dp"
+            android:paddingBottom="8dp" />
+
+        <LinearLayout
+            android:id="@+id/pocketHintBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="18dp"
+            android:layout_marginBottom="9dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal" />
+    </FrameLayout>
+</FrameLayout>

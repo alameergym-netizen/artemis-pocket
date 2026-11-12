@@ -168,6 +168,10 @@ public final class SteamGridDb {
             case PocketArt.ICON:
                 path = "/icons/game/" + gameId + "?types=static&nsfw=false&humor=false";
                 break;
+            case PocketArt.SQUARE:
+                // Square capsules, the shape of a console home screen's tiles
+                path = "/grids/game/" + gameId + "?dimensions=512x512,1024x1024&types=static&nsfw=false&humor=false";
+                break;
             default:
                 // Portrait covers, the shape of the library's cards
                 path = "/grids/game/" + gameId + "?dimensions=600x900,342x482,660x930&types=static&nsfw=false&humor=false";

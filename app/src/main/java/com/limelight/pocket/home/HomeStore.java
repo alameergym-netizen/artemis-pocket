@@ -17,8 +17,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * What Home shows: the games and apps pinned to it, and (unless turned off) what was played
- * last from anywhere: streamed games, cloud services, retro games, Android apps, shortcuts.
+ * What Home shows: only the games and apps you put on it (streamed games, a PC's library games,
+ * cloud services, retro games, Android apps, GameNative / GameHub games, other apps' shortcuts),
+ * in your order, each with when it was last played.
  */
 public final class HomeStore {
     private HomeStore() {}
@@ -59,11 +60,35 @@ public final class HomeStore {
         return pins(context).contains(item);
     }
 
-    /** Pins it to Home (in front). */
+    /** Pins it to Home (at the end of the row, next to "Add"). */
     public static void pin(Context context, HomeItem item) {
         List<HomeItem> pins = pins(context);
+        if (pins.contains(item)) {
+            return;
+        }
+        pins.add(item);
+        savePins(context, pins);
+    }
+
+    /** Moves it one place left (-1) or right (+1) on Home. True when it moved. */
+    public static boolean move(Context context, HomeItem item, int delta) {
+        List<HomeItem> pins = pins(context);
+        int at = pins.indexOf(item);
+        int to = at + delta;
+        if (at < 0 || to < 0 || to >= pins.size()) {
+            return false;
+        }
+        pins.remove(at);
+        pins.add(to, item);
+        savePins(context, pins);
+        return true;
+    }
+
+    /** Puts a pin back where it was (undo of a removal). */
+    public static void pinAt(Context context, HomeItem item, int index) {
+        List<HomeItem> pins = pins(context);
         pins.remove(item);
-        pins.add(0, item);
+        pins.add(Math.max(0, Math.min(index, pins.size())), item);
         savePins(context, pins);
     }
 
@@ -99,8 +124,9 @@ public final class HomeStore {
         return s;
     }
 
+    /** Home shows only what you put there: nothing is added by itself. */
     public static boolean showRecent(Context context) {
-        return PocketPrefs.prefs(context).getBoolean(KEY_SHOW_RECENT, true);
+        return false;
     }
 
     public static void setShowRecent(Context context, boolean on) {
@@ -240,25 +266,8 @@ public final class HomeStore {
                 all.put(h.key(), new Entry(h, t != null ? t : 0, false, pcNames.get(h.a)));
             }
         }
-        List<Entry> out = new ArrayList<>(all.values());
-        // Played most recently first; pins never played keep their order after them
-        Collections.sort(out, (x, y) -> {
-            if ((x.lastUsed > 0) != (y.lastUsed > 0)) {
-                return x.lastUsed > 0 ? -1 : 1;
-            }
-            return Long.compare(y.lastUsed, x.lastUsed);
-        });
-        // Only what was used, or pinned
-        List<Entry> shown = new ArrayList<>();
-        for (Entry e : out) {
-            if (e.pinned || e.lastUsed > 0) {
-                shown.add(e);
-            }
-            if (shown.size() >= MAX_SHOWN) {
-                break;
-            }
-        }
-        return shown;
+        // The pins, in the order you put them
+        return new ArrayList<>(all.values());
     }
 
     /** The paired PCs (uuid, name, address) for "PC games" and the PC widget. Blocking. */

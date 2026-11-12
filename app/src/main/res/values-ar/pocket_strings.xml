@@ -976,10 +976,10 @@
     <string name="pocket_home_welcome">أهلاً فيك</string>
     <string name="pocket_home_welcome_sub">ألعابك من كل مكان بتطلع هون</string>
     <string name="pocket_home_empty">ما في إشي لسا</string>
-    <string name="pocket_home_empty_sub">العب إشي، أو اضغط A على + وضيف ألعاب من أي قسم</string>
+    <string name="pocket_home_empty_sub">اضغط A على «إضافة» عشان تحط ألعاب وتطبيقات من أي قسم هون</string>
     <string name="pocket_home_add">ضيف للرئيسية</string>
     <string name="pocket_home_add_short">ضيف</string>
-    <string name="pocket_home_add_sub">لعبة ستريم، خدمة سحابية، لعبة ريترو، تطبيق أندرويد، لعبة GameNative أو GameHub، اختصار أو ويدجت</string>
+    <string name="pocket_home_add_sub">لعبة ستريم، لعبة من مكتبة الكمبيوتر، خدمة كلاود، لعبة ريترو، تطبيق أندرويد، لعبة GameNative أو GameHub، أو اختصار</string>
     <string name="pocket_home_add_streamed">لعبة ستريم…</string>
     <string name="pocket_home_add_cloud">خدمة سحابية…</string>
     <string name="pocket_home_add_retro">لعبة ريترو…</string>
@@ -988,9 +988,9 @@
     <string name="pocket_home_add_shortcut">اختصار (Winlator و GameHub…)</string>
     <string name="pocket_home_add_widget">ويدجت</string>
     <string name="pocket_home_add_from_section">دوّر على اللعبة وبعدين Y ← ضيف للرئيسية</string>
-    <string name="pocket_home_add_from_section_pc">أو افتح ألعاب الكمبيوتر واستعمل Y ← ضيف للرئيسية</string>
+    <string name="pocket_home_add_from_section_pc">أو اضغط A على كمبيوتر بخانة الستريمنق، وبعدين Y على اللعبة ← أضف للهوم</string>
     <string name="pocket_home_pc_games">ألعاب الكمبيوتر · %1$s</string>
-    <string name="pocket_home_pc_apps">تطبيقات Apollo · %1$s</string>
+    <string name="pocket_home_pc_apps">ألعاب وتطبيقات · %1$s</string>
     <string name="pocket_home_pc_games_sub">مكتبة الكمبيوتر (Steam و Epic و GOG…)</string>
     <string name="pocket_home_pc_no_list">افتح هالكمبيوتر مرة من الستريم عشان تنعرف ألعابه</string>
     <string name="pocket_home_no_pcs">ما في كمبيوتر لسا</string>
@@ -1103,4 +1103,15 @@
     <string name="pocket_theme_ocean">محيط</string>
     <string name="pocket_theme_mono">أحادي</string>
     <string name="pocket_tile_label">هوم Pocket Nexus</string>
+    <string name="pocket_home_connecting">عم يتصل</string>
+    <string name="pocket_home_connecting_sub">عم يتأكد من الكمبيوتر…</string>
+    <string name="pocket_home_need_pair">اربط هالكمبيوتر من خانة الستريمنق أول</string>
+    <string name="pocket_home_running_title">%1$s شغالة</string>
+    <string name="pocket_home_running_resume">كمّل %1$s</string>
+    <string name="pocket_home_running_switch">سكّرها والعب %1$s</string>
+    <string name="pocket_home_move_left">حرّك لليسار</string>
+    <string name="pocket_home_move_right">حرّك لليمين</string>
+    <string name="pocket_home_loading_list">عم يجيب ألعاب الكمبيوتر…</string>
+    <string name="pocket_home_list_failed">ما قدر يجيب ألعاب الكمبيوتر. هو شغال؟</string>
+    <string name="pocket_home_pc_list_offline">شغّل الكمبيوتر (أو صحّيه من خانة الستريمنق) عشان تشوف ألعابه</string>
 </resources>

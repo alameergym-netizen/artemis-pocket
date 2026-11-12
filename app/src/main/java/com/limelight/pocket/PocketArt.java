@@ -36,9 +36,11 @@ public final class PocketArt {
     public static final int WIDE = 3;
     /** A square icon (SteamGridDB's icons), for the small icon cards. */
     public static final int ICON = 4;
+    /** A square capsule (SteamGridDB's 512x512 / 1024x1024 grids), for Home's tiles. */
+    public static final int SQUARE = 5;
 
-    private static final String[] FILES = {"cover.jpg", "hero.jpg", "logo.png", "wide.jpg", "icon.png"};
-    private static final int[] MAX_WIDTH = {600, 1920, 800, 920, 512};
+    private static final String[] FILES = {"cover.jpg", "hero.jpg", "logo.png", "wide.jpg", "icon.png", "square.jpg"};
+    private static final int[] MAX_WIDTH = {600, 1920, 800, 920, 512, 512};
     private static final int MAX_DOWNLOAD = 12 * 1024 * 1024;
 
     public static final String KEY_SGDB_KEY = "pocket_sgdb_key";
@@ -421,6 +423,41 @@ public final class PocketArt {
             got |= fetchFirst(app, key, uuid, appId, gameId, ICON);
         }
         return got;
+    }
+
+    /**
+     * SteamGridDB's favourite art of one kind for this item (a sure match only), when it has none
+     * yet and wasn't looked for lately. Blocking; true when something was saved.
+     */
+    public static boolean fetchOne(Context context, String uuid, int appId, String name, int kind) {
+        Context app = context.getApplicationContext();
+        if (uuid == null || appId == 0 || !hasKey(app) || has(app, uuid, appId, kind) || neverAuto(name)) {
+            return false;
+        }
+        SharedPreferences prefs = PocketPrefs.prefs(app);
+        String tried = KEY_TRIED + uuid + "_" + appId + "_k" + kind;
+        if (System.currentTimeMillis() - prefs.getLong(tried, 0) < RETRY_AFTER_MS) {
+            return false;
+        }
+        try {
+            String key = apiKey(app);
+            int gameId = matchedGame(app, uuid, appId);
+            if (gameId == 0) {
+                for (SteamGridDb.Game g : SteamGridDb.search(key, name)) {
+                    if (SteamGridDb.sameGame(name, g.name)) {
+                        gameId = g.id;
+                        break;
+                    }
+                }
+                if (gameId != 0) {
+                    setMatchedGame(app, uuid, appId, gameId);
+                }
+            }
+            prefs.edit().putLong(tried, System.currentTimeMillis()).apply();
+            return gameId != 0 && fetchFirst(app, key, uuid, appId, gameId, kind);
+        } catch (IOException | RuntimeException e) {
+            return false;
+        }
     }
 
     /**

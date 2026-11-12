@@ -39,8 +39,8 @@ public final class PocketUi {
         play.setTag(com.limelight.R.id.pocketHeroPlay, Boolean.TRUE);
         Context c = play.getContext();
         float d = c.getResources().getDisplayMetrics().density;
-        // Like the new consoles' and streaming apps' Play: solid white, black label, a soft
-        // rounded rectangle (not a glass pill), the one bright thing on the screen
+        // Like the new consoles' and streaming apps' Play: solid white, black label, a capsule,
+        // the one bright thing on the screen
         android.graphics.drawable.GradientDrawable face = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[]{0xFFFFFFFF, 0xFFF1F1F4});
         face.setCornerRadius(PLAY_RADIUS_DP * d);
@@ -49,9 +49,12 @@ public final class PocketUi {
             play.setForeground(null);
         }
         play.setTypeface(PocketFonts.semibold());
-        play.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13.5f);
+        play.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 12.5f);
         play.setLetterSpacing(-0.005f);
-        play.setPadding(Math.round(16 * d), Math.round(7 * d), Math.round(20 * d), Math.round(7 * d));
+        play.setIncludeFontPadding(false);
+        play.setGravity(android.view.Gravity.CENTER);
+        play.setMinHeight(Math.round(30 * d));
+        play.setPadding(Math.round(15 * d), Math.round(8 * d), Math.round(19 * d), Math.round(8 * d));
         play.setShadowLayer(0f, 0f, 0f, 0);
         // Touch presses it; with buttons, the hero takes "focus" without stealing it from the row
         play.setFocusable(false);
@@ -65,8 +68,8 @@ public final class PocketUi {
         }
     }
 
-    /** The corner of Play and the hero's buttons (dp). */
-    public static final float PLAY_RADIUS_DP = 9f;
+    /** The corner of Play and the hero's buttons (dp): a capsule. */
+    public static final float PLAY_RADIUS_DP = 100f;
 
     public static Context wrapWithUiScale(Context base) {
         int percent;

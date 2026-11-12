@@ -118,6 +118,10 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         createdWithLook = lookSignature();
         bootOnLaunch = savedInstanceState == null && isTaskRoot() && allowsAutoResume()
                 && getIntent() != null && Intent.ACTION_MAIN.equals(getIntent().getAction());
+        if (bootOnLaunch) {
+            // A fresh launch of the app: the boot plays once (on whichever screen comes up first)
+            introShown = false;
+        }
         PocketSounds.preload(this);
         applyFullscreenWindow(this);
     }
@@ -141,7 +145,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         com.limelight.pocket.ui.LiveGlass.Backdrop backdrop = null;
         if (source != null && com.limelight.pocket.ui.LiveGlass.supported() && PocketPrefs.liveGlass(this)) {
             boolean frost = PocketPrefs.frost(this);
-            backdrop = new com.limelight.pocket.ui.LiveGlass.Backdrop(source, frost ? 34f : 22f, frost);
+            backdrop = new com.limelight.pocket.ui.LiveGlass.Backdrop(source, frost ? 44f : 22f, frost);
         }
         liveGlassBackdrop = backdrop;
         com.limelight.pocket.ui.LiveGlass.attachTagged(main, backdrop);
@@ -603,10 +607,15 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     private boolean bootOnLaunch;
     private com.limelight.pocket.ui.BootOverlay bootOverlay;
 
+    /** This screen hands the boot to the screen it opens straight away (Streaming opens Home). */
+    protected boolean deferIntro() {
+        return false;
+    }
+
     private void maybeShowIntro() {
-        // Every fresh launch of the app plays it, even if Android kept the app's process alive
-        // from before (that used to skip it); coming back from a game or a menu doesn't
-        if ((introShown && !bootOnLaunch) || !allowsAutoResume()) {
+        // Once per launch of the app, on the first screen that stays; never again when coming
+        // back to a screen (a section, a game, a menu)
+        if (introShown || !allowsAutoResume() || deferIntro()) {
             return;
         }
         introShown = true;
@@ -753,8 +762,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
         bootOverlay = null;
         afterBoot.clear();
-        introShown = false;
-        bootOnLaunch = true;
+        // Left mid-boot: it doesn't come back on the next screen (it would replay every time a
+        // section opens)
         PocketSounds.releaseBoot();
         ViewGroup parent = (ViewGroup) overlay.getParent();
         if (parent != null) {
@@ -784,9 +793,14 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         if (consolePanel == null) {
             consolePanel = new StreamMenuView(this);
             consolePanel.setConfirmLabel(getString(R.string.pocket_sm_confirm));
+            // Options sit at the right, like a console's options menu over its home screen
+            consolePanel.setPlacement(true, 292);
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                // The screen behind is blurred while the panel is open: let it show through
-                consolePanel.setBaseColor(0x800E0E10);
+                // The screen behind is blurred while the panel is open: acrylic, it shows through
+                consolePanel.setBaseColor(0xBF1C1C1F);
+            }
+            else {
+                consolePanel.setBaseColor(0xF21C1C1F);
             }
             consolePanel.setListener(() -> PocketUi.setBackdropBlur(blurTarget(), false));
             ViewGroup content = findViewById(android.R.id.content);
@@ -799,6 +813,11 @@ public abstract class ConsoleActivity extends AppCompatActivity {
 
     /** The screen behind a panel, softly blurred while the panel is open. */
     private View blurTarget() {
+        // The whole screen (art and all) blurs behind the acrylic panel
+        View root = findViewById(R.id.pocketRoot);
+        if (root != null && root != consolePanel) {
+            return root;
+        }
         View main = findViewById(R.id.pocketMain);
         if (main != null) {
             return main;
@@ -1311,28 +1330,29 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             item.setGravity(Gravity.CENTER_VERTICAL);
             LinearLayout.LayoutParams itemLp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            itemLp.setMarginStart((int) (14 * density));
+            itemLp.setMarginStart((int) (13 * density));
             item.setLayoutParams(itemLp);
 
+            // The button: a small white key with a dark letter (console style, no colours)
             TextView glyph = new TextView(context);
-            boolean pill = hint.glyph.length() > 1;
-            int size = (int) (18 * density);
+            boolean pill = hint.glyph.length() > 1 && !hint.glyph.equals("◀▶");
+            int size = Math.round(15 * density);
             glyph.setLayoutParams(new LinearLayout.LayoutParams(
-                    pill ? ViewGroup.LayoutParams.WRAP_CONTENT : size, size));
-            if (pill) {
-                glyph.setPadding((int) (8 * density), 0, (int) (8 * density), 0);
+                    pill || hint.glyph.length() > 1 ? ViewGroup.LayoutParams.WRAP_CONTENT : size, size));
+            if (pill || hint.glyph.length() > 1) {
+                glyph.setPadding(Math.round(5 * density), 0, Math.round(5 * density), 0);
             }
             glyph.setGravity(Gravity.CENTER);
+            glyph.setIncludeFontPadding(false);
             glyph.setText(hint.glyph);
-            glyph.setTextSize(TypedValue.COMPLEX_UNIT_SP, pill ? 8.5f : 10);
-            glyph.setTextColor(0xFF000000);
-            glyph.setTypeface(glyph.getTypeface(), android.graphics.Typeface.BOLD);
+            glyph.setTextSize(TypedValue.COMPLEX_UNIT_SP, hint.glyph.length() > 1 ? 7.5f : 8.5f);
+            glyph.setTextColor(0xFF0B0B0D);
+            glyph.setTypeface(com.limelight.pocket.ui.PocketFonts.bold());
+            glyph.setLetterSpacing(0.02f);
             GradientDrawable bg = new GradientDrawable();
-            bg.setShape(pill ? GradientDrawable.RECTANGLE : GradientDrawable.OVAL);
-            if (pill) {
-                bg.setCornerRadius(size);
-            }
-            bg.setColor(hint.color);
+            bg.setShape(GradientDrawable.RECTANGLE);
+            bg.setCornerRadius(size / 2f);
+            bg.setColor(0xEBFFFFFF);
             glyph.setBackground(bg);
             glyph.setTag("hint:" + hint.glyph);
             item.addView(glyph);
@@ -1340,11 +1360,13 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             TextView label = new TextView(context);
             LinearLayout.LayoutParams labelLp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-            labelLp.setMarginStart((int) (6 * density));
+            labelLp.setMarginStart(Math.round(5 * density));
             label.setLayoutParams(labelLp);
             label.setText(hint.label);
-            label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
-            label.setTextColor(ContextCompat.getColor(context, R.color.pocket_text_dim));
+            label.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
+            label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f);
+            label.setTextColor(0xC7FFFFFF);
+            label.setShadowLayer(6 * density, 0, 0, 0x99000000);
             item.addView(label);
 
             bar.addView(item);

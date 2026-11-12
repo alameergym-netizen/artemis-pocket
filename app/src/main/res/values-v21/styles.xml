@@ -6,6 +6,8 @@
         res/values-v21/styles.xml on API 21+ devices.
     -->
     <style name="AppBaseTheme" parent="Theme.MaterialComponents.NoActionBar">
+        <!-- Pocket Nexus plays its own sounds: no Android clicks while moving around -->
+        <item name="android:soundEffectsEnabled">false</item>
         <!-- API 21 theme customizations can go here. -->
     </style>
 

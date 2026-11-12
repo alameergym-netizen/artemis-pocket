@@ -7,6 +7,8 @@
 
     -->
     <style name="AppBaseTheme" parent="Theme.MaterialComponents.NoActionBar">
+        <!-- Pocket Nexus plays its own sounds: no Android clicks while moving around -->
+        <item name="android:soundEffectsEnabled">false</item>
         <!--
             Theme customizations available in newer API levels can go in
             res/values-vXX/styles.xml, while customizations related to
@@ -43,6 +45,7 @@
 
     <!-- Artemis Pocket: dark rounded dialogs (context menus, the in-stream quick menu, prompts) -->
     <style name="PocketDialog" parent="@android:style/Theme.Material.Dialog.Alert">
+        <item name="android:soundEffectsEnabled">false</item>
         <item name="android:fontFamily">@font/pocket_inter</item>
         <item name="android:windowBackground">@drawable/pocket_dialog_bg</item>
         <item name="android:textColorPrimary">@color/pocket_text</item>
@@ -54,6 +57,7 @@
     </style>
 
     <style name="PocketDialogCompat" parent="ThemeOverlay.MaterialComponents.Dialog.Alert">
+        <item name="android:soundEffectsEnabled">false</item>
         <item name="android:fontFamily">@font/pocket_inter</item>
         <item name="fontFamily">@font/pocket_inter</item>
         <item name="android:windowBackground">@drawable/pocket_dialog_bg</item>
@@ -69,6 +73,7 @@
     </style>
 
     <style name="StreamBaseTheme" parent="AppBaseTheme">
+        <item name="android:soundEffectsEnabled">false</item>
         <item name="android:fontFamily">@font/pocket_inter</item>
         <item name="fontFamily">@font/pocket_inter</item>
         <!-- Transparent streaming background to avoid extra overdraw -->
@@ -95,6 +100,8 @@
     </style>
 
     <style name="SettingsTheme" parent="Theme.AppCompat.NoActionBar">
+        <!-- Pocket Nexus plays its own sounds: no Android clicks while moving around -->
+        <item name="android:soundEffectsEnabled">false</item>
         <item name="android:fontFamily">@font/pocket_inter</item>
         <item name="fontFamily">@font/pocket_inter</item>
         <item name="android:statusBarColor">@android:color/transparent</item>

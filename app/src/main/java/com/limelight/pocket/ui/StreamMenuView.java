@@ -197,12 +197,12 @@ public class StreamMenuView extends FrameLayout {
         scrim.setOnClickListener(v -> hide());
         addView(scrim, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        float r = 26 * d;
+        float r = RADIUS_DP * d;
         card = new FrameLayout(context);
         card.setClickable(true);
         GradientDrawable base = new GradientDrawable();
         base.setCornerRadius(r);
-        base.setColor(0xE60E0E10);
+        base.setColor(0xEB1C1C1F);
         card.setBackground(base);
         card.setClipToOutline(true);
         card.setElevation(24 * d);
@@ -218,40 +218,42 @@ public class StreamMenuView extends FrameLayout {
 
         panel = new LinearLayout(context);
         panel.setOrientation(LinearLayout.VERTICAL);
-        GradientDrawable body = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0x66141416, 0x8C0A0A0C});
-        body.setCornerRadius(r);
-        GradientDrawable sheen = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0x1FFFFFFF, 0x05FFFFFF, 0x00FFFFFF});
-        sheen.setCornerRadius(r);
-        GradientDrawable edge = new GradientDrawable();
-        edge.setCornerRadius(r);
-        edge.setColor(0x00000000);
-        edge.setStroke(Math.max(1, Math.round(d)), 0x3DFFFFFF);
-        panel.setBackground(new LayerDrawable(new android.graphics.drawable.Drawable[]{body, sheen, edge}));
-        panel.setPadding(dp(20), dp(18), dp(14), dp(12));
+        // Acrylic: the smoky base (the card), a fine grain and a hairline edge
+        panel.setBackground(new AcrylicFinish(r, d));
+        panel.setPadding(dp(14), dp(16), dp(10), dp(10));
         card.addView(panel, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        titleView = text(19, 0xFFFFFFFF, true);
+        titleView = text(15.5f, 0xFFFFFFFF, true);
+        titleView.setTypeface(PocketFonts.semibold());
+        titleView.setLetterSpacing(-0.015f);
+        titleView.setPadding(dp(6), 0, 0, 0);
         titleView.setSingleLine(true);
         titleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
         panel.addView(titleView);
-        subtitleView = text(11.5f, 0xA3FFFFFF, false);
+        subtitleView = text(10.5f, 0x94FFFFFF, false);
         subtitleView.setSingleLine(true);
         subtitleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        subtitleView.setPadding(0, dp(2), 0, 0);
+        subtitleView.setPadding(dp(6), dp(2), 0, 0);
         panel.addView(subtitleView);
-        statsView = text(10.5f, 0x73FFFFFF, false);
+        statsView = text(10, 0x73FFFFFF, false);
         statsView.setMaxLines(2);
         statsView.setLineSpacing(0, 1.15f);
         statsView.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        statsView.setPadding(0, dp(2), 0, dp(10));
+        statsView.setPadding(dp(6), dp(2), 0, 0);
         panel.addView(statsView);
 
-        pageTitleView = text(10, 0xA3FFFFFF, true);
+        // A hairline under the title
+        View rule = new View(context);
+        rule.setBackgroundColor(0x1FFFFFFF);
+        LinearLayout.LayoutParams ruleLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                Math.max(1, Math.round(0.6f * d)));
+        ruleLp.setMargins(dp(6), dp(10), dp(4), dp(6));
+        panel.addView(rule, ruleLp);
+
+        pageTitleView = text(9.5f, 0x99FFFFFF, true);
         pageTitleView.setAllCaps(true);
-        pageTitleView.setLetterSpacing(0.18f);
-        pageTitleView.setPadding(dp(4), dp(2), 0, dp(6));
+        pageTitleView.setLetterSpacing(0.12f);
+        pageTitleView.setPadding(dp(8), dp(2), 0, dp(6));
         pageTitleView.setVisibility(GONE);
         panel.addView(pageTitleView);
 
@@ -264,14 +266,13 @@ public class StreamMenuView extends FrameLayout {
         listFrame.setClipChildren(false);
 
         // The lit pill behind the selected row: it glides from row to row
+        // Windows 11 style: a soft light fill with a short bar at its start, in the accent
         pill = new View(context);
-        GradientDrawable pillBg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{PocketTheme.withAlpha(accent, 0xFA), PocketTheme.withAlpha(accent, 0xE6)});
-        pillBg.setCornerRadius(14 * d);
-        pill.setBackground(pillBg);
+        pill.setBackground(new SelectionPill(d, accent == 0xFFFFFFFF ? 0xFFFFFFFF : accent,
+                context.getResources().getConfiguration().getLayoutDirection() == LAYOUT_DIRECTION_RTL));
         pill.setPivotX(0);
         pill.setVisibility(INVISIBLE);
-        listFrame.addView(pill, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(42)));
+        listFrame.addView(pill, new LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(36)));
 
         list = new LinearLayout(context);
         list.setOrientation(LinearLayout.VERTICAL);
@@ -283,8 +284,125 @@ public class StreamMenuView extends FrameLayout {
         hints = new LinearLayout(context);
         hints.setOrientation(LinearLayout.HORIZONTAL);
         hints.setGravity(Gravity.CENTER_VERTICAL);
-        hints.setPadding(0, dp(8), 0, 0);
+        hints.setPadding(dp(2), dp(8), 0, dp(2));
         panel.addView(hints);
+    }
+
+    private static final float RADIUS_DP = 16f;
+    private boolean endSide;
+
+    /**
+     * Where the card sits: at the end (right) of the screen, like a console's options menu over
+     * its home screen, or at the start (the in-stream menu). Width in dp.
+     */
+    public void setPlacement(boolean atEnd, int widthDp) {
+        endSide = atEnd;
+        LayoutParams lp = (LayoutParams) card.getLayoutParams();
+        lp.width = dp(widthDp);
+        lp.gravity = atEnd ? Gravity.END : Gravity.START;
+        lp.setMargins(atEnd ? 0 : dp(10), dp(10), atEnd ? dp(10) : 0, dp(10));
+        lp.setMarginStart(atEnd ? 0 : dp(10));
+        lp.setMarginEnd(atEnd ? dp(10) : 0);
+        card.setLayoutParams(lp);
+    }
+
+    /** True when the card comes in from the right edge of the screen. */
+    private boolean fromRight() {
+        boolean rtl = getLayoutDirection() == LAYOUT_DIRECTION_RTL;
+        return endSide != rtl;
+    }
+
+    /** The grain and hairline edge of the acrylic card. */
+    private static final class AcrylicFinish extends android.graphics.drawable.Drawable {
+        private final float radius;
+        private final android.graphics.Paint grain = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint edge = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.RectF rect = new android.graphics.RectF();
+
+        AcrylicFinish(float radius, float d) {
+            this.radius = radius;
+            grain.setShader(LiveGlass.grain());
+            grain.setAlpha(100);
+            edge.setStyle(android.graphics.Paint.Style.STROKE);
+            edge.setStrokeWidth(Math.max(1f, 0.75f * d));
+        }
+
+        @Override
+        protected void onBoundsChange(@androidx.annotation.NonNull android.graphics.Rect bounds) {
+            float inset = edge.getStrokeWidth() / 2f;
+            rect.set(bounds.left + inset, bounds.top + inset, bounds.right - inset, bounds.bottom - inset);
+            edge.setShader(new android.graphics.LinearGradient(0, bounds.top, 0, bounds.bottom,
+                    new int[]{0x33FFFFFF, 0x17FFFFFF, 0x12FFFFFF}, new float[]{0f, 0.35f, 1f},
+                    android.graphics.Shader.TileMode.CLAMP));
+        }
+
+        @Override
+        public void draw(@androidx.annotation.NonNull android.graphics.Canvas canvas) {
+            canvas.drawRoundRect(rect, radius, radius, grain);
+            canvas.drawRoundRect(rect, radius, radius, edge);
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+        }
+
+        @Override
+        public void setColorFilter(android.graphics.ColorFilter colorFilter) {
+        }
+
+        @Override
+        public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
+        }
+    }
+
+    /** The selected row: a soft light fill and a short bar at its start. */
+    private static final class SelectionPill extends android.graphics.drawable.Drawable {
+        private final float d;
+        private final boolean rtl;
+        private final android.graphics.Paint fill = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint bar = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.RectF rect = new android.graphics.RectF();
+        private final android.graphics.RectF barRect = new android.graphics.RectF();
+
+        SelectionPill(float d, int accent, boolean rtl) {
+            this.d = d;
+            this.rtl = rtl;
+            fill.setColor(0x1FFFFFFF);
+            bar.setColor(accent);
+        }
+
+        @Override
+        public void draw(@androidx.annotation.NonNull android.graphics.Canvas canvas) {
+            android.graphics.Rect b = getBounds();
+            rect.set(b);
+            canvas.drawRoundRect(rect, 8 * d, 8 * d, fill);
+            float h = Math.min(16 * d, b.height() * 0.45f);
+            float top = b.centerY() - h / 2f;
+            float w = 3 * d;
+            if (rtl) {
+                barRect.set(b.right - w, top, b.right, top + h);
+            }
+            else {
+                barRect.set(b.left, top, b.left + w, top + h);
+            }
+            canvas.drawRoundRect(barRect, w / 2f, w / 2f, bar);
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            fill.setAlpha(Math.round(0x1F * alpha / 255f));
+            bar.setAlpha(alpha);
+        }
+
+        @Override
+        public void setColorFilter(android.graphics.ColorFilter colorFilter) {
+        }
+
+        @Override
+        public int getOpacity() {
+            return android.graphics.PixelFormat.TRANSLUCENT;
+        }
     }
 
     public void setListener(Listener listener) {
@@ -297,7 +415,7 @@ public class StreamMenuView extends FrameLayout {
      */
     public void setBaseColor(int color) {
         GradientDrawable base = new GradientDrawable();
-        base.setCornerRadius(26 * d);
+        base.setCornerRadius(RADIUS_DP * d);
         base.setColor(color);
         card.setBackground(base);
     }
@@ -414,13 +532,13 @@ public class StreamMenuView extends FrameLayout {
         card.animate().cancel();
         scrim.animate().cancel();
         setVisibility(VISIBLE);
-        boolean rtl = getLayoutDirection() == LAYOUT_DIRECTION_RTL;
-        scrim.setBackground(new GradientDrawable(rtl ? GradientDrawable.Orientation.RIGHT_LEFT
-                : GradientDrawable.Orientation.LEFT_RIGHT, new int[]{0xB3000000, 0x73000000, 0x40000000}));
+        boolean right = fromRight();
+        scrim.setBackground(new GradientDrawable(right ? GradientDrawable.Orientation.RIGHT_LEFT
+                : GradientDrawable.Orientation.LEFT_RIGHT, new int[]{0x99000000, 0x59000000, 0x33000000}));
         if (animated() && !wasShowing) {
             scrim.setAlpha(0f);
             scrim.animate().alpha(1f).setDuration(180).start();
-            card.setTranslationX(rtl ? dp(48) : -dp(48));
+            card.setTranslationX(right ? dp(48) : -dp(48));
             card.setAlpha(0f);
             card.setScaleX(0.97f);
             card.setScaleY(0.97f);
@@ -446,8 +564,7 @@ public class StreamMenuView extends FrameLayout {
         handler.removeCallbacks(stickRepeat);
         if (animated()) {
             scrim.animate().alpha(0f).setDuration(150).start();
-            boolean rtl = getLayoutDirection() == LAYOUT_DIRECTION_RTL;
-            card.animate().translationX(rtl ? dp(36) : -dp(36)).alpha(0f).scaleX(0.98f).scaleY(0.98f).setDuration(160)
+            card.animate().translationX(fromRight() ? dp(36) : -dp(36)).alpha(0f).scaleX(0.98f).scaleY(0.98f).setDuration(160)
                     .setInterpolator(PocketUi.EASE)
                     .withEndAction(() -> {
                         setVisibility(GONE);
@@ -528,11 +645,12 @@ public class StreamMenuView extends FrameLayout {
     }
 
     private View buildHeader(Item item) {
-        TextView h = text(9.5f, 0x8CFFFFFF, true);
+        TextView h = text(9f, 0x80FFFFFF, true);
+        h.setTypeface(PocketFonts.semibold());
         h.setText(item.title);
         h.setAllCaps(true);
-        h.setLetterSpacing(0.18f);
-        h.setPadding(dp(8), list.getChildCount() == 0 ? 0 : dp(14), 0, dp(5));
+        h.setLetterSpacing(0.1f);
+        h.setPadding(dp(10), list.getChildCount() == 0 ? 0 : dp(12), 0, dp(4));
         return h;
     }
 
@@ -540,11 +658,11 @@ public class StreamMenuView extends FrameLayout {
         LinearLayout row = new LinearLayout(getContext());
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
-        row.setMinimumHeight(dp(42));
-        row.setPadding(dp(12), dp(6), dp(12), dp(6));
+        row.setMinimumHeight(dp(36));
+        row.setPadding(dp(12), dp(5), dp(10), dp(5));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.bottomMargin = dp(2);
+        lp.bottomMargin = dp(1);
         row.setLayoutParams(lp);
         row.setClickable(true);
         row.setFocusable(false);
@@ -558,14 +676,14 @@ public class StreamMenuView extends FrameLayout {
         RowViews views = new RowViews();
         if (item.icon != null) {
             views.icon = new ImageView(getContext());
-            views.icon.setImageDrawable(PocketIcons.drawable(item.icon, dp(20), 0xFFFFFFFF));
-            LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(20), dp(20));
-            ilp.setMarginEnd(dp(12));
+            views.icon.setImageDrawable(PocketIcons.drawable(item.icon, dp(17), 0xFFFFFFFF));
+            LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(dp(17), dp(17));
+            ilp.setMarginEnd(dp(10));
             row.addView(views.icon, ilp);
         }
 
         boolean note = item.isNote();
-        views.title = text(note ? 12f : 13.5f, 0xFFFFFFFF, false);
+        views.title = text(note ? 11f : 12.5f, 0xFFFFFFFF, !note);
         views.title.setText(item.title);
         if (note) {
             // A plain note (tips, explanations): wrap instead of cutting it off
@@ -579,7 +697,7 @@ public class StreamMenuView extends FrameLayout {
         views.title.setEllipsize(android.text.TextUtils.TruncateAt.END);
         row.addView(views.title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
-        views.value = text(12, 0xA3FFFFFF, true);
+        views.value = text(11, 0x99FFFFFF, true);
         views.value.setSingleLine(true);
         views.value.setPadding(dp(8), 0, 0, 0);
         row.addView(views.value);
@@ -624,11 +742,11 @@ public class StreamMenuView extends FrameLayout {
             View row = rowViews.get(i);
             boolean selected = i == page.selected;
             RowViews views = (RowViews) row.getTag();
-            int fg = selected ? 0xFF0A0A0A : 0xFFFFFFFF;
-            views.title.setTextColor(fg);
-            views.value.setTextColor(selected ? 0xA6000000 : (item.armed ? 0xFFFFFFFF : 0xA3FFFFFF));
+            int fg = 0xFFFFFFFF;
+            views.title.setTextColor(selected ? fg : 0xE6FFFFFF);
+            views.value.setTextColor(item.armed ? 0xFFFFFFFF : (selected ? 0xD9FFFFFF : 0x99FFFFFF));
             if (views.icon != null) {
-                views.icon.setColorFilter(fg, PorterDuff.Mode.SRC_IN);
+                views.icon.setColorFilter(selected ? fg : 0xD9FFFFFF, PorterDuff.Mode.SRC_IN);
             }
             if (!selected && item.armed) {
                 item.armed = false;

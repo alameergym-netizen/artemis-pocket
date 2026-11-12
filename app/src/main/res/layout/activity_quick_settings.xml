@@ -139,8 +139,6 @@
                 android:id="@+id/pocketHintBar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/pocket_glass_pill"
-                android:tag="glass"
                 android:paddingStart="2dp"
                 android:paddingTop="6dp"
                 android:paddingEnd="14dp"

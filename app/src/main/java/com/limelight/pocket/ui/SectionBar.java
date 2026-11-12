@@ -20,7 +20,7 @@ import com.limelight.pocket.PocketSounds;
  * The sections across the top of the main screens, console style: Home (everything you pinned
  * or played, and widgets), Streaming (the PCs and their games), Cloud (Xbox Cloud Gaming,
  * GeForce NOW ...), Android (the handheld's own games and apps) and Retro (the emulated systems,
- * like ES-DE). Plain words, no frame: the one you're in is bright with a short bar under it.
+ * like ES-DE). One acrylic capsule across the top; the section you're in is a white capsule.
  * L1 / R1 go from one to the next; B in any section goes Home.
  */
 public final class SectionBar {
@@ -39,9 +39,20 @@ public final class SectionBar {
     public static void attach(final Activity activity, final int active) {
         ViewGroup row = null;
         int index = 0;
+        View host = activity.findViewById(R.id.pocketSectionHost);
         View brand = activity.findViewById(R.id.pocketBrand);
-        if (brand != null && brand.getParent() instanceof ViewGroup) {
+        if (host instanceof ViewGroup) {
+            row = (ViewGroup) host;
+            index = 0;
+        }
+        else if (brand != null && brand.getParent() instanceof ViewGroup) {
             row = (ViewGroup) brand.getParent();
+            // The tabs sit where every section has them: the wordmark makes way
+            brand.setVisibility(View.GONE);
+            View mark = activity.findViewById(R.id.pocketBrandLogo);
+            if (mark != null) {
+                mark.setVisibility(View.GONE);
+            }
             index = row.indexOfChild(brand) + 1;
         }
         else {
@@ -59,73 +70,88 @@ public final class SectionBar {
         }
         float d = activity.getResources().getDisplayMetrics().density;
         int accent = PocketTheme.accent(activity);
+        // One acrylic capsule; the section you're in is a white capsule inside it
         LinearLayout bar = new LinearLayout(activity);
         bar.setTag("pocket_sections");
         bar.setOrientation(LinearLayout.HORIZONTAL);
         bar.setGravity(Gravity.CENTER_VERTICAL);
-        bar.setClipChildren(false);
-        bar.setClipToPadding(false);
+        bar.setPadding(Math.round(3 * d), 0, Math.round(3 * d), 0);
+        bar.setMinimumHeight(Math.round(26 * d));
+        GradientDrawable plain = new GradientDrawable();
+        plain.setCornerRadius(13 * d);
+        plain.setColor(0xD91C1C1F);
+        plain.setStroke(Math.max(1, Math.round(0.75f * d)), 0x26FFFFFF);
+        bar.setBackground(plain);
 
         bar.addView(glyph(activity, "L1", d));
         for (int s = 0; s < COUNT; s++) {
             final int section = s;
             boolean on = s == active;
-            FrameLayout cell = new FrameLayout(activity);
-            cell.setClipChildren(false);
             TextView tab = new TextView(activity);
             tab.setText(LABELS[s]);
-            tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, on ? 15.5f : 14f);
-            tab.setTypeface(on ? PocketFonts.bold() : PocketFonts.medium());
-            tab.setLetterSpacing(-0.01f);
-            tab.setTextColor(on ? 0xFFFFFFFF : 0x8CFFFFFF);
-            tab.setShadowLayer(8 * d, 0, 0, 0x99000000);
-            tab.setPadding(Math.round(11 * d), Math.round(6 * d), Math.round(11 * d), Math.round(8 * d));
-            tab.setOnClickListener(v -> go(activity, active, section));
-            cell.addView(tab, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT));
+            tab.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
+            tab.setTypeface(on ? PocketFonts.semibold() : PocketFonts.medium());
+            tab.setLetterSpacing(-0.005f);
+            tab.setIncludeFontPadding(false);
+            tab.setGravity(Gravity.CENTER);
+            tab.setTextColor(on ? 0xFF0B0B0D : 0xA6FFFFFF);
+            tab.setPadding(Math.round(10 * d), 0, Math.round(10 * d), 0);
+            tab.setMinHeight(Math.round(20 * d));
             if (on) {
-                // A short bar under the section you're in, in the accent
-                View underline = new View(activity);
-                GradientDrawable u = new GradientDrawable();
-                u.setCornerRadius(2 * d);
-                u.setColor(accent == 0xFFFFFFFF ? 0xFFFFFFFF : accent);
-                underline.setBackground(u);
-                FrameLayout.LayoutParams ulp = new FrameLayout.LayoutParams(Math.round(18 * d), Math.round(3 * d),
-                        Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
-                cell.addView(underline, ulp);
+                GradientDrawable chip = new GradientDrawable();
+                chip.setCornerRadius(10 * d);
+                chip.setColor(accent == 0xFFFFFFFF ? 0xFFFFFFFF : accent);
+                tab.setBackground(chip);
+                tab.setElevation(2 * d);
                 if (PocketPrefs.animationsEnabled(activity)) {
-                    underline.setScaleX(0.2f);
-                    underline.animate().scaleX(1f).setDuration(320).setInterpolator(PocketMotion.DECELERATE).start();
+                    tab.setScaleX(0.9f);
+                    tab.setScaleY(0.9f);
+                    tab.animate().scaleX(1f).scaleY(1f).setDuration(320).setInterpolator(PocketMotion.DECELERATE).start();
                 }
             }
-            bar.addView(cell, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT));
+            tab.setOnClickListener(v -> go(activity, active, section));
+            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    Math.round(20 * d));
+            tlp.setMargins(Math.round(0.5f * d), 0, Math.round(0.5f * d), 0);
+            bar.addView(tab, tlp);
         }
         bar.addView(glyph(activity, "R1", d));
 
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMarginStart(Math.round(brand != null ? 12 * d : 0));
+                Math.round(26 * d));
         lp.gravity = Gravity.CENTER_VERTICAL;
-        row.addView(bar, index, lp);
+        if (row instanceof LinearLayout) {
+            row.addView(bar, index, lp);
+        }
+        else {
+            row.addView(bar, index, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    Math.round(26 * d), Gravity.CENTER_VERTICAL | Gravity.START));
+        }
+        if (activity instanceof com.limelight.pocket.ConsoleActivity) {
+            // Real acrylic over the screen's art (when the device can blur live)
+            ((com.limelight.pocket.ConsoleActivity) activity).makeGlass(bar);
+        }
     }
 
     /** The shoulder button, drawn as a small outlined key. */
     private static TextView glyph(Activity a, String text, float d) {
         TextView g = new TextView(a);
         g.setText(text);
-        g.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f);
+        g.setTextSize(TypedValue.COMPLEX_UNIT_SP, 7.5f);
         g.setTypeface(PocketFonts.bold());
-        g.setTextColor(0xD9FFFFFF);
+        g.setTextColor(0xC7FFFFFF);
+        g.setIncludeFontPadding(false);
+        g.setGravity(Gravity.CENTER);
         GradientDrawable bg = new GradientDrawable();
-        bg.setCornerRadius(5 * d);
-        bg.setColor(0x1FFFFFFF);
-        bg.setStroke(Math.max(1, Math.round(d)), 0x40FFFFFF);
+        bg.setCornerRadius(4 * d);
+        bg.setColor(0x00000000);
+        bg.setStroke(Math.max(1, Math.round(0.75f * d)), 0x59FFFFFF);
         g.setBackground(bg);
-        g.setPadding(Math.round(6 * d), Math.round(1.5f * d), Math.round(6 * d), Math.round(1.5f * d));
+        g.setPadding(Math.round(4.5f * d), Math.round(2 * d), Math.round(4.5f * d), Math.round(2 * d));
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-        lp.setMargins(Math.round(4 * d), 0, Math.round(4 * d), 0);
+        lp.setMargins(Math.round(5 * d), 0, Math.round(5 * d), 0);
+        lp.gravity = Gravity.CENTER_VERTICAL;
         g.setLayoutParams(lp);
         return g;
     }

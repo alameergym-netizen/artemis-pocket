@@ -1,5 +1,7 @@
 <resources>
     <style name="AppBaseTheme" parent="Theme.Material3.Dark.NoActionBar">
+        <!-- Pocket Nexus plays its own sounds: no Android clicks while moving around -->
+        <item name="android:soundEffectsEnabled">false</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <!-- Avoid some systems like MIUI which break the visibility of games title -->
@@ -7,5 +9,7 @@
     </style>
 
     <style name="SettingsTheme" parent="AppTheme">
+        <!-- Pocket Nexus plays its own sounds: no Android clicks while moving around -->
+        <item name="android:soundEffectsEnabled">false</item>
     </style>
 </resources>

@@ -91,9 +91,10 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingTop="12dp"
-            android:paddingEnd="22dp">
+            android:minHeight="26dp"
+            android:layout_marginTop="10dp"
+            android:paddingStart="14dp"
+            android:paddingEnd="18dp">
 
             <LinearLayout
                 android:layout_width="wrap_content"
@@ -137,10 +138,7 @@
                 android:layout_height="wrap_content"
                 android:gravity="center_vertical"
                 android:orientation="horizontal"
-                android:paddingStart="6dp"
-                android:paddingTop="3dp"
-                android:paddingEnd="12dp"
-                android:paddingBottom="3dp">
+                android:paddingStart="6dp">
 
                 <TextView
                     android:id="@+id/pocketLinkChip"
@@ -157,9 +155,9 @@
                     android:id="@+id/pocketBattery"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
-                    android:textColor="@color/pocket_text_dim"
-                    android:textSize="12.5sp"
+                    android:layout_marginStart="12dp"
+                    android:textColor="@color/pocket_text"
+                    android:textSize="11sp"
                     android:fontFamily="@font/inter_medium"
                     android:shadowColor="#99000000"
                     android:shadowRadius="8" />
@@ -168,10 +166,10 @@
                     android:id="@+id/pocketClock"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="16dp"
+                    android:layout_marginStart="12dp"
                     android:fontFamily="@font/inter_semibold"
                     android:textColor="@color/pocket_text"
-                    android:textSize="15.5sp"
+                    android:textSize="12.5sp"
                     android:letterSpacing="-0.01"
                     android:shadowColor="#99000000"
                     android:shadowRadius="8" />
@@ -374,14 +372,8 @@
                 android:id="@+id/pocketHintBar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@drawable/pocket_glass_pill"
-                android:tag="glass"
                 android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="2dp"
-                android:paddingTop="6dp"
-                android:paddingEnd="14dp"
-                android:paddingBottom="6dp" />
+                android:orientation="horizontal" />
         </LinearLayout>
     </LinearLayout>
 </FrameLayout>

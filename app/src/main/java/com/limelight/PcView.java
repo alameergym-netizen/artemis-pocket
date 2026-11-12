@@ -215,20 +215,17 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
         pcCarousel = findViewById(R.id.pocketPcCarousel);
         pcCarousel.setLayoutManager(new com.limelight.pocket.ui.AnchoredLayoutManager(this));
         pcCarousel.setItemAnimator(null);
-        carouselAdapter = new CarouselAdapter(pcGridAdapter, this, 20);
+        carouselAdapter = new CarouselAdapter(pcGridAdapter, this, 14);
         pcCarousel.setAdapter(carouselAdapter);
 
-        // "Jump back in": the games played last on the focused PC, right after the PCs
-        pocketRecentCarousel = findViewById(R.id.pocketRecentCarousel);
-        if (pocketRecentCarousel != null) {
-            pocketRecentCarousel.setLayoutManager(new com.limelight.pocket.ui.AnchoredLayoutManager(this));
-            pocketRecentCarousel.setItemAnimator(null);
-            if (pocketRecentCarousel instanceof com.limelight.pocket.ui.CarouselRow) {
-                ((com.limelight.pocket.ui.CarouselRow) pocketRecentCarousel).setStartDivider(true);
-            }
-            pocketRecentAdapter = new com.limelight.pocket.ui.RecentGamesAdapter(this);
-            pocketRecentCarousel.setAdapter(new CarouselAdapter(pocketRecentAdapter, pocketRecentListener, 14));
+        // Streaming shows the PCs only: a PC's games open when you press A on it (and from
+        // there any of them can go on Home)
+        View recentRow = findViewById(R.id.pocketRecentCarousel);
+        if (recentRow != null) {
+            recentRow.setVisibility(View.GONE);
         }
+        pocketRecentCarousel = null;
+        pocketRecentAdapter = null;
         // UP from the row lifts the hero: big Play / Open, the art and the logo take the screen
         heroFocus = com.limelight.pocket.ui.HeroFocus.install(this, new com.limelight.pocket.ui.HeroFocus.Host() {
             @Override
@@ -283,7 +280,8 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
         com.limelight.pocket.ui.SectionBar.attach(this, com.limelight.pocket.ui.SectionBar.STREAMING);
         View appsButton = findViewById(R.id.pocketAppsButton);
         if (appsButton != null) {
-            appsButton.setOnClickListener(v -> com.limelight.pocket.apps.AndroidAppsActivity.open(PcView.this));
+            // The Android section is a tab now
+            appsButton.setVisibility(View.GONE);
         }
 
         // Amazon review didn't like the help button because the wiki was not entirely
@@ -370,6 +368,7 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
         if (savedInstanceState == null && hostname == null && com.limelight.pocket.PocketPrefs.consoleHome(this)
                 && (Intent.ACTION_MAIN.equals(intent.getAction()) || intent.getBooleanExtra(EXTRA_SHOW_HOME, false))) {
             intent.removeExtra(EXTRA_SHOW_HOME);
+            pocketHomeOnTop = true;
             pocketOpenHome(false);
         }
         pocketTakeHomeLaunch(intent);
@@ -387,6 +386,14 @@ public class PcView extends ConsoleActivity implements CarouselAdapter.Listener,
             }
         }
         pocketTakeHomeLaunch(intent);
+    }
+
+    /** Home was opened over this screen as the app started: Home plays the boot, not this. */
+    private boolean pocketHomeOnTop;
+
+    @Override
+    protected boolean deferIntro() {
+        return pocketHomeOnTop;
     }
 
     /** Pocket Nexus's Home, over this screen. */

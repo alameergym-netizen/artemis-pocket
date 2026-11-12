@@ -221,6 +221,7 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
             }
             content.setActivated(holder.frame.hasFocus());
             LibraryLayout.sizeCard(holder.frame.getContext(), content);
+            LibraryLayout.frame(holder.frame, content);
             LibraryLayout.label(holder.frame, content);
             return;
         }
@@ -242,6 +243,7 @@ public class CarouselAdapter extends RecyclerView.Adapter<CarouselAdapter.Holder
         holder.boundGeneration = generation;
         content.setDuplicateParentStateEnabled(false);
         LibraryLayout.sizeCard(holder.frame.getContext(), content);
+        LibraryLayout.frame(holder.frame, content);
         LibraryLayout.label(holder.frame, content);
 
         final FrameLayout frame = holder.frame;

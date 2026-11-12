@@ -6,6 +6,7 @@
       me as of Android 7.1
     -->
     <style name="StreamBaseTheme" parent="AppBaseTheme">
+        <item name="android:soundEffectsEnabled">false</item>
         <item name="android:fontFamily">@font/pocket_inter</item>
         <item name="android:windowBackground">@android:color/black</item>
     </style>

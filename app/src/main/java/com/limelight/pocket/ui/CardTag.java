@@ -102,6 +102,16 @@ public final class CardTag {
             return;
         }
         tag.setVisibility(View.VISIBLE);
+        // A small card (the grid, icons, the list) has no room for words: just the dot
+        boolean compact = LibraryLayout.cardWidthDp(host.getContext()) < 100f;
+        if (compact) {
+            tag.setPadding(Math.round(4 * d), Math.round(4 * d), Math.round(4 * d), Math.round(4 * d));
+            tag.setCompoundDrawablePadding(0);
+        }
+        else {
+            tag.setPadding(Math.round(6 * d), Math.round(2.5f * d), Math.round(7 * d), Math.round(2.5f * d));
+            tag.setCompoundDrawablePadding(Math.round(5 * d));
+        }
         GradientDrawable dotShape = new GradientDrawable();
         dotShape.setShape(GradientDrawable.OVAL);
         dotShape.setColor(dot);
@@ -110,7 +120,8 @@ public final class CardTag {
         dotShape.setBounds(0, 0, size, size);
         tag.setCompoundDrawablesRelative(dotShape, null, null, null);
         String text = state != null && !state.isEmpty() ? label + "  " + state : label;
-        tag.setText(text);
+        tag.setText(compact ? (state != null && !state.isEmpty() ? state : "") : text);
+        tag.setContentDescription(text);
         tag.setAlpha(state != null && state.startsWith("↓") ? 0.86f : 1f);
     }
 

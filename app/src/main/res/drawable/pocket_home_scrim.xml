@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home: the art stays bright at the top right; the left (the title) and the bottom (the row)
+     go dark for legibility -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="0"
+                android:centerColor="#5C000000"
+                android:centerX="0.42"
+                android:endColor="#00000000"
+                android:startColor="#C4000000" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:centerColor="#00000000"
+                android:centerY="0.46"
+                android:endColor="#E6000000"
+                android:startColor="#00000000" />
+        </shape>
+    </item>
+</layer-list>

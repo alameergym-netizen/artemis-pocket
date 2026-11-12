@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The focused tile's ring: white, a little gap from the art (console style) -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:inset="1.5dp">
+    <shape android:shape="rectangle">
+        <corners android:radius="18.5dp" />
+        <stroke
+            android:width="2dp"
+            android:color="#FFFFFFFF" />
+        <solid android:color="#00000000" />
+    </shape>
+</inset>

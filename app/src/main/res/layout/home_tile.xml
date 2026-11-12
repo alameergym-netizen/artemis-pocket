@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One tile of Home's row: 72dp art with rounded corners, where it's from in a small badge,
+     and a white ring (a little apart from the art) when focused -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="84dp"
+    android:layout_height="84dp"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:focusable="true">
+
+    <ImageView
+        android:id="@+id/grid_image"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_gravity="center"
+        android:background="#FF1E1E22"
+        android:importantForAccessibility="no"
+        android:scaleType="centerCrop" />
+
+    <TextView
+        android:id="@+id/homeTileLabel"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_gravity="center"
+        android:drawablePadding="3dp"
+        android:fontFamily="@font/inter_medium"
+        android:gravity="center"
+        android:textColor="#D9FFFFFF"
+        android:textSize="9.5sp"
+        android:visibility="gone" />
+
+    <ImageView
+        android:id="@+id/homeTileBadge"
+        android:layout_width="16dp"
+        android:layout_height="16dp"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="11dp"
+        android:layout_marginBottom="11dp"
+        android:importantForAccessibility="no" />
+
+    <View
+        android:id="@+id/homeTileRing"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:alpha="0"
+        android:background="@drawable/pocket_tile_ring" />
+</FrameLayout>

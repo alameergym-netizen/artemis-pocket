@@ -979,10 +979,10 @@
     <string name="pocket_home_welcome">Welcome</string>
     <string name="pocket_home_welcome_sub">Your games from everywhere show up here</string>
     <string name="pocket_home_empty">Nothing here yet</string>
-    <string name="pocket_home_empty_sub">Play something, or press A on + to add games from any section</string>
+    <string name="pocket_home_empty_sub">Press A on Add to put games and apps from any section here</string>
     <string name="pocket_home_add">Add to Home</string>
     <string name="pocket_home_add_short">Add</string>
-    <string name="pocket_home_add_sub">A streamed game, a cloud service, a retro game, an Android app, a GameNative or GameHub game, a shortcut or a widget</string>
+    <string name="pocket_home_add_sub">A streamed game, a PC library game, a cloud service, a retro game, an Android app, a GameNative or GameHub game, or a shortcut</string>
     <string name="pocket_home_add_streamed">Streamed game…</string>
     <string name="pocket_home_add_cloud">Cloud service…</string>
     <string name="pocket_home_add_retro">Retro game…</string>
@@ -991,9 +991,9 @@
     <string name="pocket_home_add_shortcut">Shortcut (Winlator, GameHub…)</string>
     <string name="pocket_home_add_widget">Widget</string>
     <string name="pocket_home_add_from_section">Find the game, then Y → Add to Home</string>
-    <string name="pocket_home_add_from_section_pc">Or open a PC\'s games and use Y → Add to Home</string>
+    <string name="pocket_home_add_from_section_pc">Or press A on a PC in Streaming, then Y on a game → Add to Home</string>
     <string name="pocket_home_pc_games">PC games · %1$s</string>
-    <string name="pocket_home_pc_apps">Apollo apps · %1$s</string>
+    <string name="pocket_home_pc_apps">Games and apps · %1$s</string>
     <string name="pocket_home_pc_games_sub">The PC\'s library (Steam, Epic, GOG…)</string>
     <string name="pocket_home_pc_no_list">Open this PC once in Streaming so its games are known</string>
     <string name="pocket_home_no_pcs">No PC yet</string>
@@ -1102,4 +1102,15 @@
     <string name="pocket_theme_ocean">Ocean</string>
     <string name="pocket_theme_mono">Mono</string>
     <string name="pocket_tile_label">Pocket Nexus Home</string>
+    <string name="pocket_home_connecting">Connecting</string>
+    <string name="pocket_home_connecting_sub">Checking the PC…</string>
+    <string name="pocket_home_need_pair">Pair this PC in Streaming first</string>
+    <string name="pocket_home_running_title">%1$s is running</string>
+    <string name="pocket_home_running_resume">Resume %1$s</string>
+    <string name="pocket_home_running_switch">Quit it and play %1$s</string>
+    <string name="pocket_home_move_left">Move left</string>
+    <string name="pocket_home_move_right">Move right</string>
+    <string name="pocket_home_loading_list">Getting the PC\'s games…</string>
+    <string name="pocket_home_list_failed">Couldn\'t get the PC\'s games. Is it on?</string>
+    <string name="pocket_home_pc_list_offline">Turn the PC on (or wake it from Streaming) to see its games</string>
 </resources>

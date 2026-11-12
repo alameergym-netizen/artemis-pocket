@@ -28,9 +28,9 @@ import java.util.List;
 
 /**
  * Real glass for the console screens (Android 12+): panels show a live, blurred copy of whatever
- * is behind them (the backdrop art and lights). Two materials: Frost (the default: a deep blur,
- * a milky veil and a fine grain, like frosted glass) and Glass (a lighter blur, more colour, a
- * top sheen and a bright rim, like clear glass catching light at its edge).
+ * is behind them (the backdrop art and lights). Two materials: Frost (the default: acrylic, like
+ * Windows 11's Start menu: a deep blur under a dark smoky tint, a fine grain and a hairline edge)
+ * and Glass (a lighter blur, more colour, a top sheen and a bright rim).
  *
  * The backdrop is recorded each frame into a small RenderNode (a quarter of the size, so the
  * blur costs next to nothing) and every glass panel draws that one node through its own
@@ -267,22 +267,23 @@ public final class LiveGlass {
             super.onBoundsChange(bounds);
             rect.set(bounds);
             float h = bounds.height();
-            radius = style == STYLE_PILL ? h / 2f : Math.min(22 * d, h / 2f);
+            radius = style == STYLE_PILL ? h / 2f : Math.min((frost ? 14 : 22) * d, h / 2f);
             float inset = rim.getStrokeWidth() / 2f;
             rimRect.set(rect.left + inset, rect.top + inset, rect.right - inset, rect.bottom - inset);
             boolean live = backdrop != null && supported();
             if (frost) {
-                // Frost: a dark base for legibility under a milky veil, a hairline edge, no sheen
-                veilBase = live ? 0x47 : 0x99;
-                veil.setColor(live ? 0x47121218 : 0x99141419);
+                // Acrylic (like Windows 11's Start menu): a deep blur under a dark smoky tint,
+                // the faintest lift of light, a fine grain and a hairline edge. No milkiness.
+                veilBase = live ? 0xB8 : 0xE6;
+                veil.setColor(live ? 0xB81C1C1F : 0xE61C1C1F);
                 veil.setAlpha(Math.round(veilBase * alpha / 255f));
                 tint.setShader(new LinearGradient(0, rect.top, 0, rect.bottom,
-                        style == STYLE_PILL ? 0x2EFFFFFF : 0x21FFFFFF,
-                        style == STYLE_PILL ? 0x1FFFFFFF : 0x14FFFFFF, Shader.TileMode.CLAMP));
+                        0x0DFFFFFF, 0x05FFFFFF, Shader.TileMode.CLAMP));
                 sheen.setShader(null);
                 sheen.setColor(0x00000000);
                 rim.setShader(new LinearGradient(0, rect.top, 0, rect.bottom,
-                        new int[]{0x33FFFFFF, 0x14FFFFFF, 0x1AFFFFFF}, new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+                        new int[]{0x30FFFFFF, 0x17FFFFFF, 0x12FFFFFF}, new float[]{0f, 0.4f, 1f}, Shader.TileMode.CLAMP));
+                noise.setAlpha(Math.round(alpha * 0.4f));
                 if (hasFace) {
                     face.setShader(new LinearGradient(0, rect.top, 0, rect.bottom, faceTop, faceBottom, Shader.TileMode.CLAMP));
                 }
@@ -320,7 +321,7 @@ public final class LiveGlass {
                 canvas.scale(1f / SCALE, 1f / SCALE);
                 Api31.draw(canvas, backdrop.node);
                 canvas.restoreToCount(save);
-                if (style == STYLE_PANEL) {
+                if (style == STYLE_PANEL && !frost) {
                     // A deeper panel: darken a touch for legibility
                     canvas.drawColor(0x33000000);
                 }
@@ -352,7 +353,7 @@ public final class LiveGlass {
             sheen.setAlpha(alpha);
             rim.setAlpha(alpha);
             veil.setAlpha(Math.round(veilBase * alpha / 255f));
-            noise.setAlpha(alpha);
+            noise.setAlpha(frost ? Math.round(alpha * 0.4f) : alpha);
             invalidateSelf();
         }
 
@@ -376,9 +377,9 @@ public final class LiveGlass {
         static Object createNode(float blurPx, boolean frost) {
             RenderNode node = new RenderNode("PocketGlass");
             ColorMatrix vibrancy = new ColorMatrix();
-            vibrancy.setSaturation(frost ? 1.12f : 1.45f);
+            vibrancy.setSaturation(frost ? 1.3f : 1.45f);
             ColorMatrix lift = new ColorMatrix();
-            float l = frost ? 1.02f : 1.08f;
+            float l = frost ? 1f : 1.08f;
             lift.setScale(l, l, l, 1f);
             vibrancy.postConcat(lift);
             node.setRenderEffect(RenderEffect.createChainEffect(

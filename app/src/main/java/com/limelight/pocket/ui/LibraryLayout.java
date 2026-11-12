@@ -92,13 +92,45 @@ public final class LibraryLayout {
         float d = c.getResources().getDisplayMetrics().density;
         int w = Math.round(cardWidthDp(c) * d);
         int h = Math.round(cardHeightDp(c) * d);
+        // In the grid the card sits in the middle of its column (not at its start)
+        int gravity = MODE_GRID.equals(viewMode(c)) ? Gravity.CENTER_HORIZONTAL : FrameLayout.LayoutParams.UNSPECIFIED_GRAVITY;
         if (lp == null) {
-            card.setLayoutParams(new FrameLayout.LayoutParams(w, h));
+            FrameLayout.LayoutParams flp = new FrameLayout.LayoutParams(w, h);
+            flp.gravity = gravity;
+            card.setLayoutParams(flp);
         }
-        else if (lp.width != w || lp.height != h) {
+        else if (lp.width != w || lp.height != h
+                || (lp instanceof FrameLayout.LayoutParams && ((FrameLayout.LayoutParams) lp).gravity != gravity)) {
             lp.width = w;
             lp.height = h;
+            if (lp instanceof FrameLayout.LayoutParams) {
+                ((FrameLayout.LayoutParams) lp).gravity = gravity;
+            }
             card.setLayoutParams(lp);
+        }
+    }
+
+    /**
+     * The card's frame in the list: as wide as its column in the grid (so the card centres in
+     * it), and scaled around the card itself in the list (not around the card and its name), so
+     * the focus ring stays exactly on the card.
+     */
+    public static void frame(View frame, View card) {
+        if (!(frame instanceof FrameLayout) || card == null || card.findViewById(R.id.grid_mask) == null) {
+            return;
+        }
+        Context c = frame.getContext();
+        String mode = viewMode(c);
+        ViewGroup.LayoutParams lp = frame.getLayoutParams();
+        int want = MODE_GRID.equals(mode) ? ViewGroup.LayoutParams.MATCH_PARENT : ViewGroup.LayoutParams.WRAP_CONTENT;
+        if (lp != null && lp.width != want) {
+            lp.width = want;
+            frame.setLayoutParams(lp);
+        }
+        if (MODE_XMB.equals(mode)) {
+            float d = c.getResources().getDisplayMetrics().density;
+            frame.setPivotX(frame.getPaddingLeft() + cardWidthDp(c) * d / 2f);
+            frame.setPivotY(frame.getPaddingTop() + cardHeightDp(c) * d / 2f);
         }
     }
 
@@ -121,14 +153,16 @@ public final class LibraryLayout {
             label = new TextView(c);
             label.setTag(LABEL_TAG);
             label.setTypeface(PocketFonts.semibold());
-            label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
+            label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+            label.setLetterSpacing(-0.01f);
             label.setTextColor(0xFFFFFFFF);
             label.setShadowLayer(8 * d, 0, 0, 0x99000000);
             label.setMaxLines(1);
             label.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(Math.round(420 * d),
+            // Next to the card, past the room its focus ring and zoom take
+            FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(Math.round(380 * d),
                     ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL | Gravity.START);
-            lp.setMarginStart(Math.round((cardWidthDp(c) + 18 + 14) * d));
+            lp.setMarginStart(Math.round(f.getPaddingLeft() + (cardWidthDp(c) * 1.13f + 16) * d));
             f.addView(label, lp);
         }
         CharSequence name = card.getContentDescription();
@@ -137,10 +171,10 @@ public final class LibraryLayout {
             name = t != null ? t.getText() : "";
         }
         label.setText(name);
-        label.setAlpha(frame.hasFocus() ? 1f : 0.6f);
-        label.setScaleX(frame.hasFocus() ? 1.06f : 1f);
-        label.setScaleY(frame.hasFocus() ? 1.06f : 1f);
-        label.setPivotX(0f);
+        // The frame itself grows around the card: the name only brightens
+        label.setAlpha(frame.hasFocus() ? 1f : 0.55f);
+        label.setScaleX(1f);
+        label.setScaleY(1f);
     }
 
     /** A list or grid that keeps the card you're on in the middle of the screen. */

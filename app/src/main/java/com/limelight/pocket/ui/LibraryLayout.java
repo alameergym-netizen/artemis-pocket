@@ -226,9 +226,19 @@ public final class LibraryLayout {
             return;
         }
         float d = a.getResources().getDisplayMetrics().density;
-        View hero = a.findViewById(R.id.pocketHero);
+        final View hero = a.findViewById(R.id.pocketHero);
         if (hero != null) {
+            // Gone for good: the screens show and hide their hero as the focus moves, and a hero
+            // that came back pushed the whole grid / list down the screen
+            ViewGroup.LayoutParams hlp = hero.getLayoutParams();
+            hlp.height = 0;
+            hero.setLayoutParams(hlp);
             hero.setVisibility(View.GONE);
+            hero.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+                if (hero.getVisibility() != View.GONE) {
+                    hero.setVisibility(View.GONE);
+                }
+            });
         }
         View indicator = a.findViewById(R.id.pocketRowIndicator);
         if (indicator != null) {

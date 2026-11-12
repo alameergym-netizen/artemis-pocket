@@ -770,10 +770,34 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
             return;
         }
         final int gameId = e.rom.id();
+        final String system = e.rom.system;
         PocketArt.load(this, RetroLibrary.UUID, gameId, PocketArt.HERO, bitmap -> {
-            if (key.equals(heroKey) && keyArt != null) {
-                keyArt.show(bitmap);
+            if (!key.equals(heroKey) || keyArt == null) {
+                return;
             }
+            if (bitmap != null || !SystemArt.enabled(this)) {
+                keyArt.show(bitmap);
+                return;
+            }
+            // No background for the game: its console's
+            Bitmap known = BACKDROPS.get(system);
+            if (known != null) {
+                keyArt.show(known);
+                return;
+            }
+            final int bw = Math.max(640, getResources().getDisplayMetrics().widthPixels * 2 / 3);
+            final int color = colorOf(system);
+            systemWork.execute(() -> {
+                final Bitmap back = SystemArt.backdrop(this, system, color, bw, Math.round(bw * 9f / 16f));
+                if (back != null) {
+                    BACKDROPS.put(system, back);
+                }
+                main.post(() -> {
+                    if (!isFinishing() && key.equals(heroKey) && keyArt != null) {
+                        keyArt.show(back);
+                    }
+                });
+            });
         });
         PocketArt.load(this, RetroLibrary.UUID, gameId, PocketArt.LOGO, bitmap -> {
             if (key.equals(heroKey) && bitmap != null && logo != null && title != null) {
@@ -1552,7 +1576,13 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
             work.execute(() -> {
                 Bitmap cover = HeroArt.loadCard(RetroActivity.this, RetroLibrary.UUID, id, name);
                 final boolean real = cover != null;
-                final Bitmap made = real ? cover : PlaceholderArt.render(RomScanner.searchName(name), 300);
+                Bitmap stand = null;
+                if (!real && SystemArt.enabled(RetroActivity.this)) {
+                    // No cover yet: the game's name on its console's art (with the console's logo)
+                    stand = SystemArt.gameCard(RetroActivity.this, e.rom.system, RomScanner.searchName(name),
+                            colorOf(e.rom.system), w, h);
+                }
+                final Bitmap made = real ? cover : stand != null ? stand : PlaceholderArt.render(RomScanner.searchName(name), 300);
                 main.post(() -> {
                     if (made != null && tag.equals(image.getTag())) {
                         boolean fresh = image.getDrawable() == null;

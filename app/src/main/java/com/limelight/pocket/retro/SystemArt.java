@@ -429,6 +429,95 @@ public final class SystemArt {
         return out;
     }
 
+    /** A game's card while it has no cover: its name on its console's art, the console's logo under it. Blocking. */
+    public static Bitmap gameCard(Context c, String system, String title, int fallbackColor, int w, int h) {
+        Bitmap strip = strip(c, system, SCREENSHOTS);
+        if (strip == null) {
+            strip = strip(c, system, ARTWORK);
+        }
+        if (strip == null) {
+            return null;
+        }
+        Info info = info(c, system);
+        int color = info != null && info.color != 0 ? info.color : fallbackColor;
+        Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(out);
+        cv.drawColor(darker(color, 0.25f));
+        float scale = w * 1.3f / strip.getWidth();
+        float sh = strip.getHeight() * scale;
+        Matrix mx = new Matrix();
+        mx.setScale(scale, scale);
+        mx.postTranslate((w - strip.getWidth() * scale) / 2f, Math.max(h - sh, Math.min(0, h * 0.5f - sh * 0.5f)));
+        Paint art = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+        art.setAlpha(0x8C);
+        cv.drawBitmap(strip, mx, art);
+        Paint shade = new Paint(Paint.ANTI_ALIAS_FLAG);
+        shade.setShader(new LinearGradient(0, 0, 0, h, new int[]{0x66000000, 0x99000000, 0xE6000000},
+                new float[]{0f, 0.5f, 1f}, Shader.TileMode.CLAMP));
+        cv.drawRect(0, 0, w, h, shade);
+        Paint tint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        tint.setShader(new LinearGradient(0, 0, w, h, withAlpha(color, 0x55), 0x00000000, Shader.TileMode.CLAMP));
+        cv.drawRect(0, 0, w, h, tint);
+
+        // The name: big, left aligned, up to four lines
+        Paint t = new Paint(Paint.ANTI_ALIAS_FLAG);
+        t.setColor(0xFFFFFFFF);
+        t.setTypeface(com.limelight.pocket.ui.PocketFonts.bold());
+        t.setLetterSpacing(-0.01f);
+        float size = h * 0.085f;
+        t.setTextSize(size);
+        float maxW = w * 0.84f;
+        java.util.List<String> lines = wrap(title, t, maxW);
+        while ((lines.size() > 4 || widest(lines, t) > maxW) && size > h * 0.045f) {
+            size *= 0.9f;
+            t.setTextSize(size);
+            lines = wrap(title, t, maxW);
+        }
+        float y = h * 0.16f + size;
+        for (int i = 0; i < lines.size() && i < 4; i++) {
+            String l = lines.get(i);
+            if (i == 3 && lines.size() > 4) {
+                l = l + "…";
+            }
+            cv.drawText(l, w * 0.08f, y, t);
+            y += size * 1.12f;
+        }
+        Bitmap logo = logo(c, system, Math.round(w * 0.56f), Math.round(h * 0.085f));
+        if (logo != null) {
+            Paint lp = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+            lp.setAlpha(0xE6);
+            cv.drawBitmap(logo, w * 0.08f, h * 0.9f - logo.getHeight(), lp);
+        }
+        return out;
+    }
+
+    private static java.util.List<String> wrap(String text, Paint p, float maxW) {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        StringBuilder line = new StringBuilder();
+        for (String word : text.split("\\s+")) {
+            String next = line.length() == 0 ? word : line + " " + word;
+            if (p.measureText(next) > maxW && line.length() > 0) {
+                lines.add(line.toString());
+                line = new StringBuilder(word);
+            }
+            else {
+                line = new StringBuilder(next);
+            }
+        }
+        if (line.length() > 0) {
+            lines.add(line.toString());
+        }
+        return lines;
+    }
+
+    private static float widest(java.util.List<String> lines, Paint p) {
+        float m = 0;
+        for (String l : lines) {
+            m = Math.max(m, p.measureText(l));
+        }
+        return m;
+    }
+
     /**
      * The system's backdrop (w x h): its colours glowing on the left behind the text, and three of
      * its strips standing side by side on the right (the theme's own look). Blocking.

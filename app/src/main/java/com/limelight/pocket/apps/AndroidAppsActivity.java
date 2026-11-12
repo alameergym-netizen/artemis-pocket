@@ -762,11 +762,67 @@ public class AndroidAppsActivity extends ConsoleActivity implements CarouselAdap
 
     // ---- Cards ------------------------------------------------------------------------------
 
+    /** "All apps": a few of the handheld's own icons in a grid on dark glass (like a console's library tile). */
+    private Bitmap drawerCard(int w, int h) {
+        List<String> pkgs = new ArrayList<>();
+        try {
+            for (Entry x : new ArrayList<>(all)) {
+                if (x.packageName != null && pkgs.size() < 9) {
+                    pkgs.add(x.packageName);
+                }
+            }
+        } catch (RuntimeException ignored) {
+        }
+        Bitmap card = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(card);
+        Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
+        bg.setShader(new LinearGradient(0, 0, w * 0.4f, h, 0xFF2C2C34, 0xFF0E0E12, Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, h, bg);
+        Paint sheen = new Paint(Paint.ANTI_ALIAS_FLAG);
+        sheen.setShader(new android.graphics.RadialGradient(w * 0.8f, 0, w, 0x33FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+        c.drawRect(0, 0, w, h, sheen);
+        float cell = w * 0.22f;
+        float gap = w * 0.05f;
+        float gridW = cell * 3 + gap * 2;
+        float left = (w - gridW) / 2f;
+        float top = h * 0.36f - gridW / 2f;
+        Paint slot = new Paint(Paint.ANTI_ALIAS_FLAG);
+        slot.setColor(0x1FFFFFFF);
+        Paint iconPaint = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+        for (int i = 0; i < 9; i++) {
+            float x = left + (i % 3) * (cell + gap);
+            float y = top + (i / 3) * (cell + gap);
+            Drawable icon = null;
+            if (i < pkgs.size()) {
+                try {
+                    icon = getPackageManager().getApplicationIcon(pkgs.get(i));
+                } catch (PackageManager.NameNotFoundException | RuntimeException ignored) {
+                }
+            }
+            if (icon == null) {
+                c.drawRoundRect(x, y, x + cell, y + cell, cell * 0.28f, cell * 0.28f, slot);
+                continue;
+            }
+            Bitmap b = Bitmap.createBitmap(Math.round(cell), Math.round(cell), Bitmap.Config.ARGB_8888);
+            icon.setBounds(0, 0, b.getWidth(), b.getHeight());
+            icon.draw(new Canvas(b));
+            c.drawBitmap(b, x, y, iconPaint);
+        }
+        return card;
+    }
+
     /** The app's icon on a card of its own colour. */
     private Bitmap cardFor(Entry e, int w, int h) {
         Bitmap cached = ICONS.get(e.key);
         if (cached != null) {
             return cached;
+        }
+        if (DRAWER.equals(e.settingsAction)) {
+            Bitmap made = drawerCard(w, h);
+            if (made != null) {
+                ICONS.put(e.key, made);
+            }
+            return made;
         }
         Drawable icon;
         try {

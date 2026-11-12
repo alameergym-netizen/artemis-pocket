@@ -1450,6 +1450,10 @@ public class HomeActivity extends ConsoleActivity {
             openSection(item);
         }));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_home_add_more), this::showAddPanel));
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_drawer_title), () -> {
+            hideConsolePanel();
+            com.limelight.pocket.apps.AppDrawerActivity.open(this);
+        }));
         PocketSounds.play(this, PocketSounds.OPEN);
         showConsolePanel(displayName(item), where(e), null, items);
     }

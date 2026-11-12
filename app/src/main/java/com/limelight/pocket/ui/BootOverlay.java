@@ -146,7 +146,7 @@ public final class BootOverlay extends FrameLayout {
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-        markSize = Math.max(64 * d, Math.min(150 * d, h * 0.22f));
+        markSize = Math.max(64 * d, Math.min(160 * d, h * 0.24f));
         unit = markSize / (M_Y1 - M_Y0);
         float textSize = word.text.getTextSize();
         float block = markSize + 34 * d + textSize * 0.75f + 40 * d;
@@ -409,14 +409,14 @@ public final class BootOverlay extends FrameLayout {
             }
 
             // ...and a ring of light that runs outwards
-            float rg = seg(time, CHORD, CHORD + 0.95f);
+            float rg = seg(time, CHORD, CHORD + 0.8f);
             if (rg > 0 && rg < 1) {
-                float sc = 1.12f + 0.75f * ease(rg);
+                float sc = 1.1f + 0.42f * ease(rg);
                 float hw = (M_X1 - M_X0) * unit / 2f * sc + 10 * d;
                 float hh = (M_Y1 - M_Y0) * unit / 2f * sc + 10 * d;
                 box.set(mcx - hw, mcy - hh, mcx + hw, mcy + hh);
                 ring.setStrokeWidth((2.4f - 1.8f * rg) * d);
-                ring.setAlpha(Math.round(150 * (1 - rg) * (1 - rg)));
+                ring.setAlpha(Math.round(130 * (1 - rg) * (1 - rg)));
                 float r = Math.min(hw, hh) * 0.46f;
                 canvas.drawRoundRect(box, r, r, ring);
             }

@@ -635,7 +635,7 @@ public class AppDrawerActivity extends ConsoleActivity {
         if (shown.isEmpty()) {
             return true;
         }
-        int from = Math.max(0, focusPos);
+        int from = Math.max(0, Math.min(shown.size() - 1, focusPos));
         int target;
         if (sort == SORT_NAME) {
             String now = shown.get(from).letter;

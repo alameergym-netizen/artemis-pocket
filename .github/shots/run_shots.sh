@@ -57,7 +57,7 @@ launch() {
   adb shell am force-stop $PKG
   adb shell input dpad keyevent KEYCODE_DPAD_DOWN
   timeout 60 adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n $PKG/com.limelight.PcView > /dev/null
-  sleep 13
+  sleep 8
 }
 
 scene() { # name

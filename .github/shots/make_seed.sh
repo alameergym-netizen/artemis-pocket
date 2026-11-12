@@ -16,6 +16,7 @@ for t in pcs games stream; do pref bool "pocket_tip_seen_$t" true; done
 pref string pocket_music off
 # The emulator's video decoding crashes it: trailers stay still
 pref bool pocket_trailer_autoplay false
+pref bool pocket_preview_no_boot true
 if [ -n "${VIEW_MODE:-}" ]; then pref string pocket_view_mode "$VIEW_MODE"; fi
 
 # Real games' library art (public Steam CDN), shown on emulator apps so every layout has art in it

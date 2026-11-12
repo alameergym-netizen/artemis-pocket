@@ -615,7 +615,7 @@ public abstract class ConsoleActivity extends AppCompatActivity {
     private void maybeShowIntro() {
         // Once per launch of the app, on the first screen that stays; never again when coming
         // back to a screen (a section, a game, a menu)
-        if (introShown || !allowsAutoResume() || deferIntro()) {
+        if (introShown || !allowsAutoResume() || deferIntro() || PreviewSeed.skipsBoot(this)) {
             return;
         }
         introShown = true;

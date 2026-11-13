@@ -1262,4 +1262,9 @@
     <string name="pocket_trophy_last">آخر إنجاز: %1$s · %2$s</string>
     <string name="pocket_rating_critics">متوسط النقاد</string>
     <string name="pocket_rating_review">مراجعة</string>
+    <string name="pocket_ambient">شاشة الانتظار</string>
+    <string name="pocket_ambient_sub">لما تترك الهوم: صور ألعابك بتمر مع الساعة بإضاءة خفيفة (وما في إشي بيثبت بمكانه)</string>
+    <string name="pocket_minutes_short">%1$d د</string>
+    <string name="pocket_ambient_wake">اضغط أي زر</string>
+    <string name="pocket_surprise">فاجئني</string>
 </resources>

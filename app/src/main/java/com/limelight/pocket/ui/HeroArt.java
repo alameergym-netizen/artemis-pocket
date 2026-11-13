@@ -39,6 +39,49 @@ public final class HeroArt {
     // Worked out once per bitmap (by the loaders, off the main thread: see prepare())
     private static final Map<Bitmap, Boolean> PLACEHOLDER = Collections.synchronizedMap(new WeakHashMap<Bitmap, Boolean>());
     private static final Map<Bitmap, Integer> VIBRANT = Collections.synchronizedMap(new WeakHashMap<Bitmap, Integer>());
+    private static final Map<Bitmap, Float> LUMA = Collections.synchronizedMap(new WeakHashMap<Bitmap, Float>());
+
+    /**
+     * How bright the art is where the hero's words sit (its left two thirds, lower half),
+     * 0..1, or -1 when it isn't known (a hardware bitmap seen for the first time). Bright art
+     * gets a deeper shade behind the words.
+     */
+    public static float brightness(Bitmap bitmap) {
+        if (bitmap == null || bitmap.isRecycled()) {
+            return -1f;
+        }
+        Float known = LUMA.get(bitmap);
+        if (known != null) {
+            return known;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && bitmap.getConfig() == Bitmap.Config.HARDWARE) {
+            return -1f;
+        }
+        float value = -1f;
+        try {
+            Bitmap small = Bitmap.createScaledBitmap(bitmap, 24, 14, true);
+            int[] px = new int[24 * 14];
+            small.getPixels(px, 0, 24, 0, 0, 24, 14);
+            double sum = 0;
+            int n = 0;
+            for (int y = 5; y < 14; y++) {
+                for (int x = 0; x < 16; x++) {
+                    int c = px[y * 24 + x];
+                    sum += (0.2126 * ((c >> 16) & 0xFF) + 0.7152 * ((c >> 8) & 0xFF) + 0.0722 * (c & 0xFF)) / 255.0;
+                    n++;
+                }
+            }
+            if (small != bitmap) {
+                small.recycle();
+            }
+            value = n > 0 ? (float) (sum / n) : -1f;
+        } catch (RuntimeException | OutOfMemoryError ignored) {
+        }
+        if (value >= 0f) {
+            LUMA.put(bitmap, value);
+        }
+        return value;
+    }
 
     /**
      * Gets art ready to be drawn without costing a frame. It works out the art's colours while
@@ -53,7 +96,13 @@ public final class HeroArt {
         }
         boolean placeholder = isPlaceholder(bitmap);
         int vibrant = vibrantColor(bitmap);
+        brightness(bitmap);
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || bitmap.getConfig() == Bitmap.Config.HARDWARE) {
+            return bitmap;
+        }
+        if (com.limelight.pocket.PreviewSeed.isEmulator()) {
+            // The emulator's software GPU loses hardware bitmaps (and crashes): kept in memory
+            bitmap.prepareToDraw();
             return bitmap;
         }
         Bitmap hardware;
@@ -69,6 +118,10 @@ public final class HeroArt {
         }
         PLACEHOLDER.put(hardware, placeholder);
         VIBRANT.put(hardware, vibrant);
+        Float luma = LUMA.get(bitmap);
+        if (luma != null) {
+            LUMA.put(hardware, luma);
+        }
         if (recycleSource) {
             bitmap.recycle();
         }

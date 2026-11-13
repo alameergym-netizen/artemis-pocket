@@ -1257,4 +1257,9 @@
     <string name="pocket_trophy_last">Last unlocked: %1$s · %2$s</string>
     <string name="pocket_rating_critics">Critics\' average</string>
     <string name="pocket_rating_review">Review</string>
+    <string name="pocket_ambient">Ambient screen</string>
+    <string name="pocket_ambient_sub">Home left alone: your games\' art drifts by with the time, dimmed (nothing stays in one place)</string>
+    <string name="pocket_minutes_short">%1$d min</string>
+    <string name="pocket_ambient_wake">Press any button</string>
+    <string name="pocket_surprise">Surprise me</string>
 </resources>

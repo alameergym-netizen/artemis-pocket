@@ -829,6 +829,27 @@ public class QuickSettingsActivity extends ConsoleActivity {
                     rowsContainer.postDelayed(this::recreate, 420);
                 }, getString(R.string.pocket_value_custom));
 
+        {
+            // Home left alone: the games' art drifts by with the time (dimmed)
+            final int[] mins = com.limelight.pocket.home.AmbientScreen.MINUTES;
+            String[] labels = new String[mins.length];
+            for (int i = 0; i < mins.length; i++) {
+                labels[i] = mins[i] == 0 ? getString(R.string.pocket_off) : getString(R.string.pocket_minutes_short, mins[i]);
+            }
+            addChoice(getString(R.string.pocket_ambient), getString(R.string.pocket_ambient_sub), labels,
+                    () -> {
+                        int now = prefs().getInt(com.limelight.pocket.home.AmbientScreen.KEY_MINUTES, 2);
+                        for (int i = 0; i < mins.length; i++) {
+                            if (mins[i] == now) {
+                                return i;
+                            }
+                        }
+                        return 2;
+                    },
+                    index -> prefs().edit().putInt(com.limelight.pocket.home.AmbientScreen.KEY_MINUTES, mins[index]).apply(),
+                    null);
+        }
+
         final String[] focusValues = {PocketPrefs.FOCUS_RING_ZOOM, PocketPrefs.FOCUS_RING, PocketPrefs.FOCUS_ZOOM};
         final String[] focusLabels = {getString(R.string.pocket_focus_ring_zoom), getString(R.string.pocket_focus_ring),
                 getString(R.string.pocket_focus_zoom)};

@@ -1163,6 +1163,13 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
         if (requestCode == GamePageActivity.REQUEST && data != null
                 && GamePageActivity.ACTION_PLAY.equals(data.getStringExtra(GamePageActivity.RESULT_ACTION))) {
             int id = data.getIntExtra(GamePageActivity.RESULT_APP_ID, 0);
+            // The surprise game first (it may be in a system not open here)
+            if (surprise != null && surprise.id() == id) {
+                RomScanner.Rom r = surprise;
+                surprise = null;
+                play(r, null);
+                return;
+            }
             for (int i = 0; i < adapter.getCount(); i++) {
                 Entry e = adapter.getItem(i);
                 if (e.kind == KIND_GAME && e.rom.id() == id) {
@@ -1280,8 +1287,40 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                 }));
     }
 
+    /** The game "Surprise me" picked (played when its page asks to). */
+    private RomScanner.Rom surprise;
+
+    /**
+     * Surprise me: a game picked at random (from this system, or from all of them), its page
+     * opened, ready to play.
+     */
+    private void surpriseMe() {
+        if (lib == null) {
+            return;
+        }
+        List<RomScanner.Rom> pool = new ArrayList<>();
+        if (inSystem != null && !inSystem.startsWith("@")) {
+            pool.addAll(romsOf(inSystem));
+        }
+        else {
+            for (List<RomScanner.Rom> l : lib.games.values()) {
+                pool.addAll(l);
+            }
+        }
+        if (pool.isEmpty()) {
+            return;
+        }
+        hideConsolePanel();
+        RomScanner.Rom r = pool.get(new java.util.Random().nextInt(pool.size()));
+        surprise = r;
+        EsdeConfig.SystemDef s = cfg.system(r.system);
+        GamePageActivity.open(this, null, RetroLibrary.UUID, r.id(), RomScanner.searchName(r.name),
+                s != null ? s.fullName : getString(R.string.pocket_retro_title), false, false, null);
+    }
+
     /** The ROM folder's settings (in every options menu here). */
     private void addLibraryItems(List<StreamMenuView.Item> items) {
+        items.add(StreamMenuView.Item.action(getString(R.string.pocket_surprise), this::surpriseMe));
         items.add(StreamMenuView.Item.action(getString(R.string.pocket_retro_rescan), () -> {
             Toast.makeText(this, R.string.pocket_retro_looking, Toast.LENGTH_SHORT).show();
             RetroLibrary.reloadConfig();

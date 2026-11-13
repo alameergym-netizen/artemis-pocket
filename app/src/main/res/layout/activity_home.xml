@@ -55,6 +55,14 @@
             android:layout_height="match_parent"
             android:background="@drawable/pocket_home_scrim" />
 
+        <!-- A second shade that comes up over bright art only (the words stay readable) -->
+        <View
+            android:id="@+id/homeScrimBoost"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:alpha="0"
+            android:background="@drawable/pocket_home_scrim" />
+
         <!-- Grid and list: the details sit on the right, over their own shade -->
         <View
             android:id="@+id/homeSideScrim"
@@ -64,6 +72,7 @@
             android:visibility="gone" />
 
         <View
+            android:id="@+id/homeTopScrim"
             android:layout_width="match_parent"
             android:layout_height="96dp"
             android:background="@drawable/pocket_top_scrim" />

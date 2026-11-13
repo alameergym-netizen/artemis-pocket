@@ -261,6 +261,7 @@ public class HomeActivity extends ConsoleActivity {
     protected void onResume() {
         super.onResume();
         resumed = true;
+        scheduleAmbient();
         if (binder != null) {
             startPolling();
         }
@@ -278,6 +279,10 @@ public class HomeActivity extends ConsoleActivity {
     protected void onPause() {
         super.onPause();
         resumed = false;
+        main.removeCallbacks(startAmbient);
+        if (ambient != null && ambient.showing()) {
+            ambient.hide();
+        }
         stopPolling();
     }
 
@@ -785,6 +790,7 @@ public class HomeActivity extends ConsoleActivity {
         PocketArt.load(this, uuid, id, PocketArt.HERO, bitmap -> {
             if (key.equals(heroKey) && keyArt != null) {
                 keyArt.show(bitmap);
+                adaptShade(bitmap);
             }
         });
         PocketArt.load(this, uuid, id, PocketArt.LOGO, bitmap -> {
@@ -1012,6 +1018,103 @@ public class HomeActivity extends ConsoleActivity {
 
     private android.animation.ValueAnimator glowAnim;
 
+    /**
+     * Bright art gets a deeper shade behind the words (white on a white sky stays readable);
+     * dark art keeps all of its colour.
+     */
+    private void adaptShade(Bitmap art) {
+        View boost = findViewById(R.id.homeScrimBoost);
+        if (boost == null) {
+            return;
+        }
+        float luma = art != null ? com.limelight.pocket.ui.HeroArt.brightness(art) : -1f;
+        float target = luma < 0f ? 0f : Math.max(0f, Math.min(0.75f, (luma - 0.42f) * 2.2f));
+        boost.animate().cancel();
+        boost.animate().alpha(target).setDuration(PocketPrefs.animationsEnabled(this) ? 500 : 0).start();
+    }
+
+    // ---- The ambient screen (Home left alone) ---------------------------------------------------
+
+    private com.limelight.pocket.home.AmbientScreen ambient;
+    private final Runnable startAmbient = this::startAmbient;
+
+    private void scheduleAmbient() {
+        main.removeCallbacks(startAmbient);
+        int minutes = com.limelight.pocket.home.AmbientScreen.minutes(this);
+        if (minutes > 0 && resumed) {
+            main.postDelayed(startAmbient, minutes * 60_000L);
+        }
+    }
+
+    private void startAmbient() {
+        if (!resumed || isFinishing()) {
+            return;
+        }
+        if (isConsolePanelShowing() || entries.isEmpty()) {
+            scheduleAmbient();
+            return;
+        }
+        List<com.limelight.pocket.home.AmbientScreen.Item> games = new ArrayList<>();
+        int start = 0;
+        for (int i = 0; i < entries.size(); i++) {
+            HomeStore.Entry e = entries.get(i);
+            if (e == null || artUuid(e.item) == null) {
+                continue;
+            }
+            if (i == heroPos) {
+                start = games.size();
+            }
+            games.add(new com.limelight.pocket.home.AmbientScreen.Item(artUuid(e.item), artId(e.item), displayName(e.item)));
+        }
+        if (games.isEmpty()) {
+            return;
+        }
+        if (ambient == null) {
+            ambient = new com.limelight.pocket.home.AmbientScreen(this);
+        }
+        ambient.show(games, start);
+    }
+
+    private boolean wakeFromAmbient() {
+        if (ambient != null && ambient.showing()) {
+            ambient.hide();
+            scheduleAmbient();
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void onUserInteraction() {
+        super.onUserInteraction();
+        if (ambient == null || !ambient.showing()) {
+            scheduleAmbient();
+        }
+    }
+
+    @Override
+    public boolean dispatchKeyEvent(KeyEvent event) {
+        if (ambient != null && ambient.showing()) {
+            // The button that wakes Home does nothing else
+            if (event.getAction() == KeyEvent.ACTION_UP) {
+                wakeFromAmbient();
+            }
+            return true;
+        }
+        return super.dispatchKeyEvent(event);
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent event) {
+        if (ambient != null && ambient.showing()) {
+            if (event.getActionMasked() == android.view.MotionEvent.ACTION_UP) {
+                wakeFromAmbient();
+            }
+            return true;
+        }
+        return super.dispatchTouchEvent(event);
+    }
+
     /** The game's own colour glowing up from the bottom left (Harbor / Xbox style); 0: none. */
     private void setGlow(int color) {
         if (glow == null) {
@@ -1172,6 +1275,13 @@ public class HomeActivity extends ConsoleActivity {
                 logoMax = Math.round(Math.max(48, Math.min(112, roomP)));
                 hlp.bottomMargin = Math.round(44 * d);
                 rowLabel.setVisibility(View.GONE);
+            }
+            View topShade = findViewById(R.id.homeTopScrim);
+            if (topShade != null) {
+                // The tiles sit on the art at the top: a deeper shade there
+                ViewGroup.LayoutParams tl = topShade.getLayoutParams();
+                tl.height = Math.round((portal ? 210 : 96) * d);
+                topShade.setLayoutParams(tl);
             }
         }
         else {
@@ -2020,6 +2130,7 @@ public class HomeActivity extends ConsoleActivity {
         final TextView name;
         float ringRadius = -1;
         String boundKey;
+        com.limelight.pocket.ui.Sheen sheen;
 
         TileHolder(View v, TextView name) {
             super(v);
@@ -2050,6 +2161,11 @@ public class HomeActivity extends ConsoleActivity {
             ((ViewGroup) v).addView(name, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.CENTER_VERTICAL | Gravity.START));
             final TileHolder h = new TileHolder(v, name);
+            // A band of light sweeps over the tile when it's chosen
+            h.sheen = new com.limelight.pocket.ui.Sheen(tileRadius);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                h.image.setForeground(h.sheen);
+            }
             ViewOutlineProvider rounded = new ViewOutlineProvider() {
                 @Override
                 public void getOutline(View view, Outline outline) {
@@ -2279,6 +2395,9 @@ public class HomeActivity extends ConsoleActivity {
         rlp.gravity = gravity;
         rlp.setMarginStart(list ? start : 0);
         h.ring.setLayoutParams(rlp);
+        if (h.sheen != null) {
+            h.sheen.setRadius(tileRadius);
+        }
         if (h.ringRadius != tileRadius) {
             h.ringRadius = tileRadius;
             h.ring.setBackground(com.limelight.pocket.ui.SoftRing.forTheme(this, tileRadius, false));
@@ -2336,6 +2455,19 @@ public class HomeActivity extends ConsoleActivity {
     }
 
     private void focusLook(TileHolder h, boolean focused, boolean animate) {
+        if (h.sheen != null) {
+            if (focused && animate && PocketPrefs.animationsEnabled(this)) {
+                final TileHolder held = h;
+                h.itemView.postDelayed(() -> {
+                    if (held.itemView.hasFocus() && held.sheen != null) {
+                        held.sheen.play();
+                    }
+                }, 240);
+            }
+            else if (!focused) {
+                h.sheen.stop();
+            }
+        }
         if (layout != null && layout.arrange == com.limelight.pocket.ui.Layouts.PORTAL) {
             // The tile itself doesn't lift: the chosen one grows in place (portalLook); the glow
             // shows while the row has the focus

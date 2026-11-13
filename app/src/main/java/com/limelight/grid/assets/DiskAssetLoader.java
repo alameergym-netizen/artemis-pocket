@@ -99,7 +99,9 @@ public class DiskAssetLoader {
                 options.inPreferredConfig = Bitmap.Config.RGB_565;
                 options.inDither = true;
             }
-            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                    && !com.limelight.pocket.PreviewSeed.isEmulator()) {
+                // (Not on the emulator: its software GPU loses hardware bitmaps and crashes)
                 options.inPreferredConfig = Bitmap.Config.HARDWARE;
             }
 

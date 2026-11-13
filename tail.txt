@@ -1,0 +1,313 @@
+
+Welcome to Gradle 8.13!
+
+Here are the highlights of this release:
+ - Daemon JVM auto-provisioning
+ - Enhancements for Scala plugin and JUnit testing
+ - Improvements for build authors and plugin developers
+
+For more details see https://docs.gradle.org/8.13/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+WARNING: BuildType 'debug' is both debuggable and has 'isMinifyEnabled' set to true.
+All code optimizations and obfuscation are disabled for debuggable builds.
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preNonRoot_gameReleaseBuild UP-TO-DATE
+> Task :app:configureNdkBuildRelease[arm64-v8a]
+> Task :app:buildNdkBuildRelease[arm64-v8a]
+> Task :app:mergeNonRoot_gameReleaseJniLibFolders
+> Task :app:mergeNonRoot_gameReleaseNativeLibs
+> Task :app:checkNonRoot_gameReleaseDuplicateClasses
+> Task :app:generateNonRoot_gameReleaseBuildConfig
+> Task :app:javaPreCompileNonRoot_gameRelease
+
+> Task :app:stripNonRoot_gameReleaseDebugSymbols
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+
+> Task :app:checkNonRoot_gameReleaseAarMetadata
+
+> Task :app:extractNonRoot_gameReleaseNativeDebugMetadata
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+
+> Task :app:processNonRoot_gameReleaseNavigationResources
+> Task :app:compileNonRoot_gameReleaseNavigationResources
+> Task :app:generateNonRoot_gameReleaseResValues
+> Task :app:mergeNonRoot_gameReleaseNativeDebugMetadata
+> Task :app:mapNonRoot_gameReleaseSourceSetPaths
+> Task :app:generateNonRoot_gameReleaseResources
+
+> Task :app:mergeNonRoot_gameReleaseResources
+/home/runner/work/artemis-pocket/artemis-pocket/app/src/main/res/values-ar/pocket_strings.xml:89:4: Multiple substitutions specified in non-positional format of string resource string/pocket_set_battery_alerts_sub. Did you mean to add the formatted="false" attribute?
+/home/runner/work/artemis-pocket/artemis-pocket/app/src/main/res/values-ru/strings.xml:672:4: Multiple substitutions specified in non-positional format of string resource string/title_render_mode_balance_shift_description. Did you mean to add the formatted="false" attribute?
+
+> Task :app:packageNonRoot_gameReleaseResources
+> Task :app:createNonRoot_gameReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksNonRoot_gameRelease
+> Task :app:parseNonRoot_gameReleaseLocalResources
+> Task :app:processNonRoot_gameReleaseMainManifest
+> Task :app:processNonRoot_gameReleaseManifest
+> Task :app:extractProguardFiles
+> Task :app:processNonRoot_gameReleaseManifestForPackage
+> Task :app:processNonRoot_gameReleaseJavaRes NO-SOURCE
+
+> Task :app:mergeNonRoot_gameReleaseResources
+/home/runner/work/artemis-pocket/artemis-pocket/app/src/main/res/values-zh-rTW/strings.xml:441:1: Multiple substitutions specified in non-positional format of string resource string/title_render_mode_balance_shift_description. Did you mean to add the formatted="false" attribute?
+/home/runner/work/artemis-pocket/artemis-pocket/app/src/main/res/values-zh-rCN/strings.xml:706:4: Multiple substitutions specified in non-positional format of string resource string/title_render_mode_balance_shift_description. Did you mean to add the formatted="false" attribute?
+
+> Task :app:mergeNonRoot_gameReleaseArtProfile
+> Task :app:mergeNonRoot_gameReleaseStartupProfile
+> Task :app:mergeNonRoot_gameReleaseShaders
+> Task :app:compileNonRoot_gameReleaseShaders NO-SOURCE
+> Task :app:generateNonRoot_gameReleaseAssets UP-TO-DATE
+> Task :app:mergeNonRoot_gameReleaseAssets
+> Task :app:compressNonRoot_gameReleaseAssets
+> Task :app:extractNonRoot_gameReleaseVersionControlInfo
+> Task :app:collectNonRoot_gameReleaseDependencies
+> Task :app:sdkNonRoot_gameReleaseDependencyData
+> Task :app:validateSigningNonRoot_gameRelease
+> Task :app:writeNonRoot_gameReleaseAppMetadata
+> Task :app:writeNonRoot_gameReleaseSigningConfigVersions
+> Task :app:mergeNonRoot_gameReleaseJavaResource
+> Task :app:processNonRoot_gameReleaseResources
+
+> Task :app:compileNonRoot_gameReleaseJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :app:mergeNonRoot_gameReleaseGeneratedProguardFiles
+> Task :app:optimizeNonRoot_gameReleaseResources
+> Task :app:expandNonRoot_gameReleaseArtProfileWildcards
+> Task :app:minifyNonRoot_gameReleaseWithR8
+> Task :app:compileNonRoot_gameReleaseArtProfile
+> Task :app:packageNonRoot_gameRelease
+> Task :app:createNonRoot_gameReleaseApkListingFileRedirect
+> Task :app:assembleNonRoot_gameRelease
+
+[Incubating] Problems report is available at: file:///home/runner/work/artemis-pocket/artemis-pocket/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 1m 25s
+46 actionable tasks: 46 executed
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+WARNING: BuildType 'debug' is both debuggable and has 'isMinifyEnabled' set to true.
+All code optimizations and obfuscation are disabled for debuggable builds.
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+WARNING: [CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+[CXX5106] NDK was located by using ndk.dir property. This method is deprecated and will be removed in a future release. Please delete ndk.dir from local.properties and set android.ndkVersion to [27.0.12077973] in all native modules in the project. https://developer.android.com/r/studio-ui/ndk-dir
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preNonRoot_gameReleaseBuild UP-TO-DATE
+> Task :app:generateNonRoot_gameReleaseBuildConfig UP-TO-DATE
+> Task :app:javaPreCompileNonRoot_gameRelease UP-TO-DATE
+> Task :app:checkNonRoot_gameReleaseAarMetadata UP-TO-DATE
+> Task :app:processNonRoot_gameReleaseNavigationResources UP-TO-DATE
+> Task :app:compileNonRoot_gameReleaseNavigationResources UP-TO-DATE
+> Task :app:generateNonRoot_gameReleaseResValues UP-TO-DATE
+> Task :app:mapNonRoot_gameReleaseSourceSetPaths UP-TO-DATE
+> Task :app:generateNonRoot_gameReleaseResources UP-TO-DATE
+> Task :app:mergeNonRoot_gameReleaseResources UP-TO-DATE
+> Task :app:packageNonRoot_gameReleaseResources UP-TO-DATE
+> Task :app:parseNonRoot_gameReleaseLocalResources UP-TO-DATE
+> Task :app:createNonRoot_gameReleaseCompatibleScreenManifests UP-TO-DATE
+> Task :app:extractDeepLinksNonRoot_gameRelease UP-TO-DATE
+> Task :app:processNonRoot_gameReleaseMainManifest UP-TO-DATE
+> Task :app:processNonRoot_gameReleaseManifest UP-TO-DATE
+> Task :app:processNonRoot_gameReleaseManifestForPackage UP-TO-DATE
+> Task :app:processNonRoot_gameReleaseResources UP-TO-DATE
+> Task :app:compileNonRoot_gameReleaseJavaWithJavac UP-TO-DATE
+> Task :app:preNonRoot_gameReleaseUnitTestBuild UP-TO-DATE
+> Task :app:mergeNonRoot_gameReleaseShaders UP-TO-DATE
+> Task :app:compileNonRoot_gameReleaseShaders NO-SOURCE
+> Task :app:generateNonRoot_gameReleaseAssets UP-TO-DATE
+> Task :app:javaPreCompileNonRoot_gameReleaseUnitTest
+> Task :app:mergeNonRoot_gameReleaseAssets UP-TO-DATE
+> Task :app:bundleNonRoot_gameReleaseClassesToRuntimeJar
+> Task :app:bundleNonRoot_gameReleaseClassesToCompileJar
+> Task :app:packageNonRoot_gameReleaseUnitTestForUnitTest
+
+> Task :app:compileNonRoot_gameReleaseUnitTestJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :app:processNonRoot_gameReleaseUnitTestManifest
+> Task :app:processNonRoot_gameReleaseJavaRes NO-SOURCE
+> Task :app:processNonRoot_gameReleaseUnitTestJavaRes NO-SOURCE
+> Task :app:generateNonRoot_gameReleaseUnitTestConfig
+
+> Task :app:testNonRoot_gameReleaseUnitTest
+
+MacroTest > actions_macroSlots PASSED
+
+MacroTest > parse_rejectsGarbageAndEmpty PASSED
+
+MacroTest > encodeAndParse_roundTrip PASSED
+
+MacroTest > padMapping_controllerButtonsAndPairs PASSED
+
+MacroTest > recording_neverGoesBackInTimeOrPastTheLimits PASSED
+
+MacroTest > gestures_anyControllerButtonCanBeHeldLive PASSED
+
+MacroTest > recording_startsAtFirstPressAndEndsReleased PASSED
+
+MacroTest > describe_listsPressesInOrder PASSED
+
+MacroTest > padMapping_changedBitsOneByOne PASSED
+
+DeviceInfoPanelTest > makers PASSED
+
+DeviceInfoPanelTest > chipNames PASSED
+
+ExtraParsersTest > youtube_firstVideoOfResults PASSED
+
+ExtraParsersTest > play_fallsBackToMetaTags PASSED
+
+ExtraParsersTest > igdb_nothingWhenNoSameName PASSED
+
+ExtraParsersTest > igdb_picksTheMainGameAndReadsEverything PASSED
+
+ExtraParsersTest > play_readsTheAppPage PASSED
+
+InfoParsersTest > bestMatch_aDifferentGameIsNoMatch PASSED
+
+InfoParsersTest > steamDetails_readsEverythingThePageShows PASSED
+
+InfoParsersTest > bestMatch_editionsAndMarksDontMatter PASSED
+
+InfoParsersTest > wikipedia_searchAndBestTitle PASSED
+
+InfoParsersTest > htmlToText_keepsParagraphsAndLists PASSED
+
+InfoParsersTest > bestMatch_exactNameWins PASSED
+
+InfoParsersTest > gameInfo_releaseYearAndTrailer PASSED
+
+InfoParsersTest > bestMatch_skipsSoundtracksDemosAndDlc PASSED
+
+InfoParsersTest > normalize_tidiesNames PASSED
+
+InfoParsersTest > wikipedia_summary PASSED
+
+InfoParsersTest > steamDetails_trailers_preferHighlightAndPlayableStreams PASSED
+
+InfoParsersTest > steamDetails_failureOrWrongIdIsNull PASSED
+
+InfoParsersTest > steamSearch_keepsAppsInOrder PASSED
+
+RatingsTest > platformColumns PASSED
+
+RatingsTest > steamWords PASSED
+
+RatingsTest > aggregatesFirstThenCritics PASSED
+
+RatingsTest > noBox PASSED
+
+PcLibraryTest > parse_installingAndOtherStores PASSED
+
+PcLibraryTest > parse_readsEveryField PASSED
+
+PcLibraryTest > parse_rejectsGarbage PASSED
+
+PcLibraryTest > merge_addsOwnedGamesNotOnThePc PASSED
+
+PcLibraryTest > labels PASSED
+
+PcLibraryTest > webApi_vanityAndOwnedGames PASSED
+
+PcLibraryTest > sortAndFilter PASSED
+
+PcLibraryTest > accountInput_readsWhatPeopleType PASSED
+
+PcLibraryTest > parse_playtimeKindAndNewSources PASSED
+
+PcLibraryTest > normalize_matchesNamesFromDifferentPlaces PASSED
+
+RetroTest > retroArchCommand PASSED
+
+RetroTest > standaloneCommands PASSED
+
+RetroTest > customSystemsReplaceAndAdd PASSED
+
+RetroTest > cleansNames PASSED
+
+RetroTest > readsGamelist PASSED
+
+RetroTest > scansLikeEsde PASSED
+
+RetroTest > quotedValuesAndArrays PASSED
+
+RetroTest > readsEsdeFiles PASSED
+
+[Incubating] Problems report is available at: file:///home/runner/work/artemis-pocket/artemis-pocket/build/reports/problems/problems-report.html
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD SUCCESSFUL in 13s
+28 actionable tasks: 8 executed, 20 up-to-date

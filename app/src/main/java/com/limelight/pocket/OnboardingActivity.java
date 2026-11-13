@@ -712,7 +712,7 @@ public class OnboardingActivity extends ConsoleActivity {
                 getString(R.string.pocket_accent_rose), getString(R.string.pocket_accent_amber),
                 getString(R.string.pocket_accent_coral), getString(R.string.pocket_accent_lime),
                 getString(R.string.pocket_accent_cyan), getString(R.string.pocket_accent_violet),
-                getString(R.string.pocket_accent_neon)};
+                getString(R.string.pocket_accent_neon), getString(R.string.pocket_accent_portal)};
         Option accent = new Option(accentLabels, () -> {
             int current = PocketPrefs.accentColor(this);
             for (int i = 0; i < accents.length; i++) {

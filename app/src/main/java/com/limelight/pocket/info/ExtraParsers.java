@@ -28,7 +28,7 @@ public final class ExtraParsers {
     public static final String IGDB_FIELDS = "fields name,summary,storyline,first_release_date,genres.name,"
             + "involved_companies.developer,involved_companies.publisher,involved_companies.company.name,"
             + "screenshots.image_id,artworks.image_id,videos.video_id,videos.name,cover.image_id,"
-            + "aggregated_rating,url,category,version_parent;";
+            + "aggregated_rating,aggregated_rating_count,rating,rating_count,url,category,version_parent;";
 
     /** The IGDB query for a name (quotes in it can't break out of the search string). */
     public static String igdbQuery(String name) {
@@ -127,8 +127,19 @@ public final class ExtraParsers {
                 info.publishers.add(n);
             }
         }
-        double rating = decimal(g, "aggregated_rating");
-        info.metacritic = rating > 0 ? (int) Math.round(rating) : 0;
+        // IGDB's critics and players (not Metacritic: its own averages)
+        double critics = decimal(g, "aggregated_rating");
+        if (critics > 0) {
+            int n = (int) decimal(g, "aggregated_rating_count");
+            info.addRating(new GameInfo.Rating("IGDB", String.valueOf((int) Math.round(critics)),
+                    (int) Math.round(critics), n > 0 ? n + " critics" : "critics", true, false));
+        }
+        double players = decimal(g, "rating");
+        if (players > 0) {
+            int n = (int) decimal(g, "rating_count");
+            info.addRating(new GameInfo.Rating("IGDB players", String.valueOf((int) Math.round(players)),
+                    (int) Math.round(players), n > 0 ? n + " ratings" : null, true, true));
+        }
         info.pageUrl = string(g, "url");
         for (JsonObject v : objects(g, "videos")) {
             String id = string(v, "video_id");
@@ -224,6 +235,9 @@ public final class ExtraParsers {
         public String icon;
         public String featureGraphic;
         public List<String> screenshots = new ArrayList<>();
+        /** Its stars on Google Play (0: none) and how many people gave them. */
+        public double rating;
+        public long ratingCount;
 
         public boolean isGame() {
             return category != null && category.toUpperCase(Locale.ROOT).startsWith("GAME");
@@ -257,6 +271,11 @@ public final class ExtraParsers {
             app.icon = string(o, "image");
             if (o.has("author") && o.get("author").isJsonObject()) {
                 app.developer = string(o.getAsJsonObject("author"), "name");
+            }
+            if (o.has("aggregateRating") && o.get("aggregateRating").isJsonObject()) {
+                JsonObject ar = o.getAsJsonObject("aggregateRating");
+                app.rating = decimal(ar, "ratingValue");
+                app.ratingCount = (long) decimal(ar, "ratingCount");
             }
             break;
         }
@@ -335,7 +354,56 @@ public final class ExtraParsers {
         }
         info.background = app.featureGraphic;
         info.headerImage = app.featureGraphic;
+        if (app.rating > 0) {
+            info.addRating(new GameInfo.Rating("Google Play", String.format(Locale.ROOT, "%.1f", app.rating),
+                    (int) Math.round(app.rating * 20), app.ratingCount > 0 ? count(app.ratingCount) + " ratings" : null,
+                    true, true));
+        }
         return info;
+    }
+
+    /** Steam's players' score from its reviews summary (null: none yet). */
+    public static GameInfo.Rating parseSteamReviews(String json) {
+        JsonObject o = object(json);
+        if (o == null || !o.has("query_summary") || !o.get("query_summary").isJsonObject()) {
+            return null;
+        }
+        JsonObject q = o.getAsJsonObject("query_summary");
+        long positive = (long) decimal(q, "total_positive");
+        long total = (long) decimal(q, "total_reviews");
+        if (total < 10) {
+            return null;
+        }
+        int pct = (int) Math.round(positive * 100.0 / total);
+        String words = string(q, "review_score_desc");
+        if (words == null || words.isEmpty() || words.matches(".*\\d.*")) {
+            words = Ratings.steamWords(pct, (int) Math.min(Integer.MAX_VALUE, total));
+        }
+        return new GameInfo.Rating("Steam", pct + "%", pct,
+                (words != null ? words + "  \u00b7  " : "") + count(total) + " reviews", true, true);
+    }
+
+    /** The article's wikitext in Wikipedia's parse answer (formatversion 2), or null. */
+    public static String wikitext(String json) {
+        JsonObject o = object(json);
+        if (o == null || !o.has("parse") || !o.get("parse").isJsonObject()) {
+            return null;
+        }
+        return string(o.getAsJsonObject("parse"), "wikitext");
+    }
+
+    /** 1234567 -> "1.2M", 12345 -> "12K", 987 -> "987". */
+    static String count(long n) {
+        if (n >= 1_000_000) {
+            return String.format(Locale.ROOT, "%.1fM", n / 1_000_000.0);
+        }
+        if (n >= 10_000) {
+            return (n / 1000) + "K";
+        }
+        if (n >= 1000) {
+            return String.format(Locale.ROOT, "%.1fK", n / 1000.0);
+        }
+        return String.valueOf(n);
     }
 
     // ---- Helpers ---------------------------------------------------------------------------

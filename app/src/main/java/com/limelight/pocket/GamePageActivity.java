@@ -202,6 +202,7 @@ public class GamePageActivity extends ConsoleActivity {
         }
         setContentView(R.layout.activity_game_page);
         findViews();
+        buildSections();
         backgroundTrailer = new TrailerPlayer(this, trailerView);
         viewerTrailer = new TrailerPlayer(this, viewerVideo);
 
@@ -479,7 +480,8 @@ public class GamePageActivity extends ConsoleActivity {
         }
         String line = TextUtils.join("  ·  ", parts);
         PocketMotion.swapText(metaLine, line, 0);
-        if (found.metacritic > 0) {
+        fillRatings(found);
+        if (found.metacritic > 0 && (found.ratings == null || found.ratings.isEmpty())) {
             metacritic.setText(String.valueOf(found.metacritic));
             GradientDrawable chip = new GradientDrawable();
             chip.setCornerRadius(dp(4));
@@ -738,6 +740,7 @@ public class GamePageActivity extends ConsoleActivity {
     }
 
     private void showTrophies(com.limelight.pocket.retro.Achievements.Set set) {
+        fillTrophies(set);
         String label = getString(R.string.pocket_trophy_title);
         if (set != null && set.total > 0) {
             label = set.earned + " / " + set.total;
@@ -958,12 +961,448 @@ public class GamePageActivity extends ConsoleActivity {
     }
 
     private StateListDrawable panelRing() {
-        GradientDrawable ring = new GradientDrawable();
-        ring.setCornerRadius(dp(22));
-        ring.setStroke(dp(2), 0xCCFFFFFF);
+        // The same soft glow as every focused thing (no hard outline)
         StateListDrawable s = new StateListDrawable();
-        s.addState(new int[]{android.R.attr.state_focused}, ring);
+        s.addState(new int[]{android.R.attr.state_focused}, com.limelight.pocket.ui.SoftRing.forTheme(this, dp(22), false));
+        s.setEnterFadeDuration(160);
+        s.setExitFadeDuration(120);
         return s;
+    }
+
+    // ---- Achievements and ratings, as sections of the page ------------------------------------
+
+    private LinearLayout ratingsRow;
+    private LinearLayout trophyPanel;
+    private TextView trophyCount;
+    private TextView trophyLast;
+    private ProgressLine trophyBar;
+    private LinearLayout trophyBadges;
+    private LinearLayout ratingsPanel;
+    private LinearLayout ratingsGrid;
+
+    /** The hero's ratings line, and the Achievements and Ratings panels above About. */
+    private void buildSections() {
+        ViewGroup heroGroup = (ViewGroup) hero;
+        View metaRow = findViewById(R.id.pageMeta);
+        ratingsRow = new LinearLayout(this);
+        ratingsRow.setOrientation(LinearLayout.HORIZONTAL);
+        ratingsRow.setGravity(Gravity.CENTER_VERTICAL);
+        ratingsRow.setVisibility(View.GONE);
+        LinearLayout.LayoutParams rl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        rl.topMargin = dp(10);
+        heroGroup.addView(ratingsRow, Math.max(0, heroGroup.indexOfChild(metaRow) + 1), rl);
+
+        ViewGroup page = (ViewGroup) content;
+        page.setClipChildren(false);
+        int at = page.indexOfChild(infoRow);
+
+        // Achievements: how far along, a bar, the latest badges; A opens them all
+        trophyPanel = panel();
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(sectionTitle(R.string.pocket_page_achievements));
+        head.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+        trophyCount = new TextView(this);
+        trophyCount.setTypeface(com.limelight.pocket.ui.PocketFonts.semibold());
+        trophyCount.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
+        trophyCount.setTextColor(0xFFFFFFFF);
+        head.addView(trophyCount);
+        trophyPanel.addView(head);
+        trophyBar = new ProgressLine(this);
+        LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(6));
+        bl.topMargin = dp(12);
+        trophyPanel.addView(trophyBar, bl);
+        trophyBadges = new LinearLayout(this);
+        trophyBadges.setOrientation(LinearLayout.HORIZONTAL);
+        trophyBadges.setClipChildren(false);
+        LinearLayout.LayoutParams tbl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(46));
+        tbl.topMargin = dp(14);
+        trophyPanel.addView(trophyBadges, tbl);
+        trophyLast = new TextView(this);
+        trophyLast.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f);
+        trophyLast.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.pocket_text_dim));
+        trophyLast.setMaxLines(1);
+        trophyLast.setEllipsize(TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams ll = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        ll.topMargin = dp(10);
+        trophyPanel.addView(trophyLast, ll);
+        trophyPanel.setOnClickListener(v -> {
+            com.limelight.pocket.retro.Achievements.Target t =
+                    com.limelight.pocket.retro.Achievements.forPage(this, uuid, appId, name, info);
+            if (t != null) {
+                com.limelight.pocket.retro.AchievementsActivity.open(this, t, uuid, appId);
+            }
+        });
+        page.addView(trophyPanel, at, panelParams());
+
+        // Ratings: every source that rates it, as tiles
+        ratingsPanel = panel();
+        LinearLayout rhead = new LinearLayout(this);
+        rhead.setOrientation(LinearLayout.HORIZONTAL);
+        rhead.setGravity(Gravity.CENTER_VERTICAL);
+        rhead.addView(sectionTitle(R.string.pocket_page_ratings));
+        ratingsPanel.addView(rhead);
+        ratingsGrid = new LinearLayout(this);
+        ratingsGrid.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams gl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        gl.topMargin = dp(6);
+        ratingsPanel.addView(ratingsGrid, gl);
+        page.addView(ratingsPanel, at + 1, panelParams());
+
+        for (final View p : new View[]{trophyPanel, ratingsPanel}) {
+            p.setOnFocusChangeListener((v, has) -> {
+                if (has) {
+                    PocketUi.tick(this);
+                    scroll.glideTo(Math.max(0, p.getTop() - dp(22)));
+                }
+            });
+        }
+    }
+
+    private LinearLayout panel() {
+        LinearLayout p = new LinearLayout(this);
+        p.setOrientation(LinearLayout.VERTICAL);
+        p.setPadding(dp(20), dp(18), dp(20), dp(18));
+        p.setFocusable(true);
+        p.setClickable(true);
+        GradientDrawable bg = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0x991C1C22, 0xB3141418});
+        bg.setCornerRadius(dp(22));
+        bg.setStroke(Math.max(1, dp(0.8f)), 0x1FFFFFFF);
+        p.setBackground(bg);
+        makeGlass(p);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            p.setForeground(panelRing());
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            p.setDefaultFocusHighlightEnabled(false);
+        }
+        p.setVisibility(View.GONE);
+        return p;
+    }
+
+    private LinearLayout.LayoutParams panelParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMarginStart(dp(40));
+        lp.setMarginEnd(dp(40));
+        lp.topMargin = dp(14);
+        return lp;
+    }
+
+    private TextView sectionTitle(int text) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setAllCaps(true);
+        t.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
+        t.setLetterSpacing(0.2f);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f);
+        t.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.pocket_text_dim));
+        return t;
+    }
+
+    /** The achievements panel: how far along, the bar, the latest badges, the last one earned. */
+    private void fillTrophies(com.limelight.pocket.retro.Achievements.Set set) {
+        if (trophyPanel == null) {
+            return;
+        }
+        if (set == null || set.total <= 0) {
+            trophyPanel.setVisibility(View.GONE);
+            return;
+        }
+        boolean was = trophyPanel.getVisibility() == View.VISIBLE;
+        trophyPanel.setVisibility(View.VISIBLE);
+        int pct = Math.round(set.earned * 100f / set.total);
+        boolean done = set.earned >= set.total;
+        trophyCount.setText(getString(R.string.pocket_trophy_count_pct, set.earned, set.total, pct));
+        trophyCount.setTextColor(done ? 0xFFFFC94D : 0xFFFFFFFF);
+        trophyBar.setColors(done ? 0xFFFFE08A : 0xFF6FB8FF, done ? 0xFFFFC94D : 0xFFC08CFF);
+        trophyBar.setFraction(set.earned / (float) set.total, !was);
+        trophyBadges.removeAllViews();
+        int shown = 0;
+        com.limelight.pocket.retro.Achievements.Trophy last = null;
+        for (final com.limelight.pocket.retro.Achievements.Trophy t : set.trophies) {
+            if (t.earned && t.earnedAt > 0 && (last == null || t.earnedAt > last.earnedAt)) {
+                last = t;
+            }
+            if (shown >= 12) {
+                continue;
+            }
+            final ImageView badge = new ImageView(this);
+            badge.setScaleType(ImageView.ScaleType.CENTER_CROP);
+            GradientDrawable bb = new GradientDrawable();
+            bb.setColor(0xFF24242A);
+            bb.setCornerRadius(dp(10));
+            badge.setBackground(bb);
+            badge.setOutlineProvider(new ViewOutlineProvider() {
+                @Override
+                public void getOutline(View view, Outline outline) {
+                    outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), dp(10));
+                }
+            });
+            badge.setClipToOutline(true);
+            if (!t.earned) {
+                android.graphics.ColorMatrix m = new android.graphics.ColorMatrix();
+                m.setSaturation(0f);
+                badge.setColorFilter(new android.graphics.ColorMatrixColorFilter(m));
+                badge.setAlpha(0.45f);
+            }
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(44), dp(44));
+            lp.setMarginEnd(dp(8));
+            trophyBadges.addView(badge, lp);
+            String url = t.earned ? t.icon : (t.iconLocked != null ? t.iconLocked : t.icon);
+            if (url != null) {
+                RemoteImages.load(this, url, dp(44), b -> {
+                    if (b != null && !isFinishing()) {
+                        badge.setImageBitmap(b);
+                    }
+                });
+            }
+            if (!was && PocketPrefs.animationsEnabled(this)) {
+                badge.setAlpha(0f);
+                badge.setTranslationY(dp(6));
+                badge.animate().alpha(t.earned ? 1f : 0.45f).translationY(0).setStartDelay(60L + shown * 35L)
+                        .setDuration(260).setInterpolator(PocketMotion.DECELERATE).start();
+            }
+            shown++;
+        }
+        if (last != null) {
+            trophyLast.setText(getString(R.string.pocket_trophy_last, last.title,
+                    android.text.format.DateUtils.getRelativeTimeSpanString(last.earnedAt, System.currentTimeMillis(),
+                            android.text.format.DateUtils.MINUTE_IN_MILLIS)));
+            trophyLast.setVisibility(View.VISIBLE);
+        }
+        else {
+            trophyLast.setVisibility(View.GONE);
+        }
+    }
+
+    /** The hero's line of ratings (critics, players, one critic) and the Ratings panel (all of them). */
+    private void fillRatings(GameInfo found) {
+        if (ratingsRow == null) {
+            return;
+        }
+        ratingsRow.removeAllViews();
+        ratingsGrid.removeAllViews();
+        List<GameInfo.Rating> all = found != null && found.ratings != null ? found.ratings : new ArrayList<>();
+        if (all.isEmpty()) {
+            ratingsRow.setVisibility(View.GONE);
+            ratingsPanel.setVisibility(View.GONE);
+            return;
+        }
+        // The hero: the critics' score, the players', and the best known critic
+        List<GameInfo.Rating> top = new ArrayList<>();
+        GameInfo.Rating critics = found.criticScore();
+        GameInfo.Rating players = found.playerScore();
+        if (critics != null) {
+            top.add(critics);
+        }
+        if (players != null) {
+            top.add(players);
+        }
+        for (GameInfo.Rating r : all) {
+            if (top.size() >= 3) {
+                break;
+            }
+            if (!r.aggregate && r.score >= 0) {
+                top.add(r);
+                break;
+            }
+        }
+        for (GameInfo.Rating r : top) {
+            ratingsRow.addView(ratingPill(r));
+        }
+        ratingsRow.setVisibility(top.isEmpty() ? View.GONE : View.VISIBLE);
+        if (!top.isEmpty() && PocketPrefs.animationsEnabled(this)) {
+            ratingsRow.setAlpha(0f);
+            ratingsRow.setTranslationY(dp(4));
+            ratingsRow.animate().alpha(1f).translationY(0).setDuration(320).setStartDelay(60)
+                    .setInterpolator(PocketMotion.DECELERATE).start();
+        }
+        // The panel: three to a row
+        LinearLayout row = null;
+        int i = 0;
+        for (GameInfo.Rating r : all) {
+            if (i % 3 == 0) {
+                row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+                lp.topMargin = dp(10);
+                ratingsGrid.addView(row, lp);
+            }
+            LinearLayout.LayoutParams tl = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            row.addView(ratingTile(r), tl);
+            i++;
+        }
+        while (row != null && i % 3 != 0) {
+            row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+            i++;
+        }
+        ratingsPanel.setVisibility(View.VISIBLE);
+    }
+
+    /** A score in its colour (green / yellow / red), then whose it is. */
+    private View ratingPill(GameInfo.Rating r) {
+        LinearLayout chip = new LinearLayout(this);
+        chip.setOrientation(LinearLayout.HORIZONTAL);
+        chip.setGravity(Gravity.CENTER_VERTICAL);
+        chip.setPadding(dp(3), dp(3), dp(10), dp(3));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(7));
+        bg.setColor(0x33FFFFFF);
+        chip.setBackground(bg);
+        TextView box = new TextView(this);
+        box.setText(r.value);
+        box.setTypeface(com.limelight.pocket.ui.PocketFonts.bold());
+        box.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f);
+        box.setIncludeFontPadding(false);
+        box.setGravity(Gravity.CENTER);
+        int color = com.limelight.pocket.info.Ratings.color(r.score);
+        box.setTextColor(r.score >= 50 && r.score < 75 ? 0xFF1A1A1A : 0xFFFFFFFF);
+        GradientDrawable sq = new GradientDrawable();
+        sq.setCornerRadius(dp(5));
+        sq.setColor(color);
+        box.setBackground(sq);
+        box.setPadding(dp(6), dp(4), dp(6), dp(4));
+        chip.addView(box);
+        TextView label = new TextView(this);
+        label.setText(r.source);
+        label.setTypeface(com.limelight.pocket.ui.PocketFonts.medium());
+        label.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11.5f);
+        label.setTextColor(0xF2FFFFFF);
+        label.setIncludeFontPadding(false);
+        LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        llp.setMarginStart(dp(7));
+        chip.addView(label, llp);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        lp.setMarginEnd(dp(8));
+        chip.setLayoutParams(lp);
+        return chip;
+    }
+
+    /** One rating in the panel: the score big in its colour, who gave it, and a word more. */
+    private View ratingTile(GameInfo.Rating r) {
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.HORIZONTAL);
+        tile.setGravity(Gravity.CENTER_VERTICAL);
+        tile.setPadding(0, 0, dp(10), 0);
+        TextView box = new TextView(this);
+        String value = r.value;
+        int slash = value.indexOf('/');
+        if (slash > 0) {
+            // "9.4/10": the score big, "/10" small
+            android.text.SpannableString sp = new android.text.SpannableString(value);
+            sp.setSpan(new android.text.style.RelativeSizeSpan(0.62f), slash, value.length(), 0);
+            box.setText(sp);
+        }
+        else {
+            box.setText(value);
+        }
+        box.setTypeface(com.limelight.pocket.ui.PocketFonts.bold());
+        box.setTextSize(TypedValue.COMPLEX_UNIT_SP, value.length() > 4 ? 13f : 15f);
+        box.setIncludeFontPadding(false);
+        box.setGravity(Gravity.CENTER);
+        int color = com.limelight.pocket.info.Ratings.color(r.score);
+        box.setTextColor(color);
+        GradientDrawable sq = new GradientDrawable();
+        sq.setCornerRadius(dp(11));
+        sq.setColor((color & 0x00FFFFFF) | 0x24000000);
+        sq.setStroke(Math.max(1, dp(1f)), (color & 0x00FFFFFF) | 0x73000000);
+        box.setBackground(sq);
+        tile.addView(box, new LinearLayout.LayoutParams(dp(56), dp(44)));
+        LinearLayout words = new LinearLayout(this);
+        words.setOrientation(LinearLayout.VERTICAL);
+        TextView src = new TextView(this);
+        src.setText(r.source);
+        src.setTypeface(com.limelight.pocket.ui.PocketFonts.semibold());
+        src.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
+        src.setTextColor(0xFFFFFFFF);
+        src.setMaxLines(1);
+        src.setEllipsize(TextUtils.TruncateAt.END);
+        words.addView(src);
+        String note = r.note;
+        if ("critics".equals(note)) {
+            note = getString(R.string.pocket_rating_critics);
+        }
+        else if (note == null && !r.aggregate) {
+            note = getString(R.string.pocket_rating_review);
+        }
+        if (note != null) {
+            TextView n = new TextView(this);
+            n.setText(note);
+            n.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f);
+            n.setTextColor(androidx.core.content.ContextCompat.getColor(this, R.color.pocket_text_dim));
+            n.setMaxLines(2);
+            n.setEllipsize(TextUtils.TruncateAt.END);
+            LinearLayout.LayoutParams nl = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT);
+            nl.topMargin = dp(2);
+            words.addView(n, nl);
+        }
+        LinearLayout.LayoutParams wl = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        wl.setMarginStart(dp(10));
+        tile.addView(words, wl);
+        return tile;
+    }
+
+    /** A thin bar that fills (with a soft glow), for how far along the achievements are. */
+    private static final class ProgressLine extends View {
+        private final android.graphics.Paint track = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint fill = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.RectF r = new android.graphics.RectF();
+        private int from = 0xFF6FB8FF;
+        private int to = 0xFFC08CFF;
+        private float shown;
+
+        ProgressLine(android.content.Context c) {
+            super(c);
+            track.setColor(0x24FFFFFF);
+        }
+
+        void setColors(int a, int b) {
+            from = a;
+            to = b;
+            invalidate();
+        }
+
+        void setFraction(float f, boolean animate) {
+            final float target = Math.max(0f, Math.min(1f, f));
+            if (animate && PocketPrefs.animationsEnabled(getContext())) {
+                android.animation.ValueAnimator va = android.animation.ValueAnimator.ofFloat(0f, target);
+                va.setDuration(900);
+                va.setStartDelay(150);
+                va.setInterpolator(PocketMotion.DECELERATE);
+                va.addUpdateListener(an -> {
+                    shown = (float) an.getAnimatedValue();
+                    invalidate();
+                });
+                va.start();
+            }
+            else {
+                shown = target;
+                invalidate();
+            }
+        }
+
+        @Override
+        protected void onDraw(android.graphics.Canvas c) {
+            float h = getHeight();
+            r.set(0, 0, getWidth(), h);
+            c.drawRoundRect(r, h / 2f, h / 2f, track);
+            if (shown <= 0f) {
+                return;
+            }
+            r.set(0, 0, Math.max(h, getWidth() * shown), h);
+            fill.setShader(new android.graphics.LinearGradient(0, 0, r.right, 0, from, to, Shader.TileMode.CLAMP));
+            c.drawRoundRect(r, h / 2f, h / 2f, fill);
+        }
     }
 
     /** 0: the hero, 1: the media row, 2: about and details. */

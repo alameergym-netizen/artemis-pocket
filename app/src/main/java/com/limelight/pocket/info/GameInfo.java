@@ -41,6 +41,87 @@ public final class GameInfo {
     /** Language the text is in ("english", "arabic"...). */
     public String language;
     public long fetchedAt;
+    /** What critics and players thought, from every source that rates it (see Ratings). */
+    public List<Rating> ratings = new ArrayList<>();
+    /** Which version of the ratings lookup filled this in (older answers are looked up again). */
+    public int ratingsVersion;
+
+    /** One rating: who gave it, the score as they wrote it and on 0..100. */
+    public static final class Rating {
+        /** "Metacritic", "OpenCritic", "Steam", "IGN"... */
+        public String source;
+        /** As written: "85", "9/10", "92%", "4.3". */
+        public String value;
+        /** 0..100 (for the colour and the order), -1 when it can't be compared. */
+        public int score = -1;
+        /** A word or two more: "Very Positive", "12,345 reviews", "critics". */
+        public String note;
+        /** An aggregate of many reviews (Metacritic, OpenCritic, Steam's players), not one critic. */
+        public boolean aggregate;
+        /** Players' rather than critics'. */
+        public boolean users;
+
+        public Rating() {
+        }
+
+        public Rating(String source, String value, int score, String note, boolean aggregate, boolean users) {
+            this.source = source;
+            this.value = value;
+            this.score = score;
+            this.note = note;
+            this.aggregate = aggregate;
+            this.users = users;
+        }
+    }
+
+    /** Adds a rating unless that source already has one. */
+    public void addRating(Rating r) {
+        if (r == null || r.source == null || r.value == null) {
+            return;
+        }
+        if (ratings == null) {
+            ratings = new ArrayList<>();
+        }
+        for (Rating have : ratings) {
+            if (have.source.equalsIgnoreCase(r.source)) {
+                return;
+            }
+        }
+        ratings.add(r);
+    }
+
+    /** The critics' score to show first (Metacritic, then OpenCritic, then any other aggregate), or null. */
+    public Rating criticScore() {
+        if (ratings == null) {
+            return null;
+        }
+        Rating best = null;
+        for (Rating r : ratings) {
+            if (!r.aggregate || r.users || r.score < 0) {
+                continue;
+            }
+            if ("Metacritic".equals(r.source)) {
+                return r;
+            }
+            if (best == null || "OpenCritic".equals(r.source)) {
+                best = r;
+            }
+        }
+        return best;
+    }
+
+    /** The players' score to show (Steam, Google Play, IGDB's users), or null. */
+    public Rating playerScore() {
+        if (ratings == null) {
+            return null;
+        }
+        for (Rating r : ratings) {
+            if (r.users && r.score >= 0) {
+                return r;
+            }
+        }
+        return null;
+    }
 
     public static final class Shot {
         public String thumb;

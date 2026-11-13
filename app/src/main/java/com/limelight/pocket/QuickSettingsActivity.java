@@ -841,7 +841,7 @@ public class QuickSettingsActivity extends ConsoleActivity {
                 getString(R.string.pocket_accent_rose), getString(R.string.pocket_accent_amber),
                 getString(R.string.pocket_accent_coral), getString(R.string.pocket_accent_lime),
                 getString(R.string.pocket_accent_cyan), getString(R.string.pocket_accent_violet),
-                getString(R.string.pocket_accent_neon)};
+                getString(R.string.pocket_accent_neon), getString(R.string.pocket_accent_portal)};
         addChoice(getString(R.string.pocket_set_accent), getString(R.string.pocket_set_accent_sub), accentLabels,
                 () -> {
                     int current = PocketPrefs.accentColor(this);

@@ -409,6 +409,138 @@ public final class SystemArt {
 
     // ---- Composed pictures ----------------------------------------------------------------------
 
+    /** A cover file decoded at about this width (null: none, or unreadable). */
+    public static Bitmap decodeCover(File f, int width) {
+        if (f == null || !f.exists()) {
+            return null;
+        }
+        try {
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            BitmapFactory.decodeFile(f.getAbsolutePath(), o);
+            int sample = 1;
+            while (o.outWidth / (sample * 2) >= width) {
+                sample *= 2;
+            }
+            BitmapFactory.Options d = new BitmapFactory.Options();
+            d.inSampleSize = sample;
+            return BitmapFactory.decodeFile(f.getAbsolutePath(), d);
+        } catch (RuntimeException | OutOfMemoryError e) {
+            return null;
+        }
+    }
+
+    /**
+     * "Recently played" / "Favourites" as a card made of their games: the newest one's cover, soft
+     * and dark, filling it, and up to three covers fanned out in front (the newest on top), with
+     * the collection's name and how many. Null when none of its games has a cover yet.
+     */
+    public static Bitmap collageCard(java.util.List<Bitmap> covers, String label, String count, int accent,
+                                     int w, int h) {
+        java.util.List<Bitmap> got = new java.util.ArrayList<>();
+        for (Bitmap b : covers) {
+            if (b != null) {
+                got.add(b);
+            }
+        }
+        if (got.isEmpty()) {
+            return null;
+        }
+        Bitmap out = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(out);
+        Paint filter = new Paint(Paint.FILTER_BITMAP_FLAG | Paint.ANTI_ALIAS_FLAG);
+        // The newest cover, blurred (drawn tiny, then stretched), filling the card
+        Bitmap first = got.get(0);
+        Bitmap tiny = Bitmap.createScaledBitmap(first, 12, Math.max(1, 12 * first.getHeight() / Math.max(1, first.getWidth())), true);
+        float bs = Math.max(w / (float) tiny.getWidth(), h / (float) tiny.getHeight());
+        Matrix bm = new Matrix();
+        bm.setScale(bs, bs);
+        bm.postTranslate((w - tiny.getWidth() * bs) / 2f, (h - tiny.getHeight() * bs) / 2f);
+        cv.drawBitmap(tiny, bm, filter);
+        Paint shade = new Paint(Paint.ANTI_ALIAS_FLAG);
+        shade.setShader(new LinearGradient(0, 0, 0, h, new int[]{0x66000000, 0x99000000, 0xE6000000},
+                new float[]{0f, 0.55f, 1f}, Shader.TileMode.CLAMP));
+        cv.drawRect(0, 0, w, h, shade);
+        Paint glow = new Paint(Paint.ANTI_ALIAS_FLAG);
+        glow.setShader(new RadialGradient(w / 2f, h * 0.36f, Math.max(w, h) * 0.6f, withAlpha(accent, 0x40), 0,
+                Shader.TileMode.CLAMP));
+        cv.drawRect(0, 0, w, h, glow);
+
+        // The covers, fanned: the older ones behind, tilted, the newest in front
+        float ch = Math.min(h * 0.6f, w * 0.62f / 0.72f);
+        float cw = ch * 0.72f;
+        float cx = w / 2f;
+        float cy = h * 0.40f;
+        int n = Math.min(3, got.size());
+        float[] angle = n == 1 ? new float[]{0f} : n == 2 ? new float[]{-9f, 0f} : new float[]{-11f, 11f, 0f};
+        float[] dx = n == 1 ? new float[]{0f} : n == 2 ? new float[]{-cw * 0.28f, cw * 0.1f} : new float[]{-cw * 0.36f, cw * 0.36f, 0f};
+        float[] size = n == 1 ? new float[]{1f} : n == 2 ? new float[]{0.86f, 1f} : new float[]{0.84f, 0.84f, 1f};
+        // drawn back to front: index into got for each slot
+        int[] which = n == 1 ? new int[]{0} : n == 2 ? new int[]{1, 0} : new int[]{1, 2, 0};
+        Paint shadow = new Paint(Paint.ANTI_ALIAS_FLAG);
+        shadow.setColor(0x99000000);
+        shadow.setShadowLayer(ch * 0.07f, 0, ch * 0.03f, 0xB3000000);
+        Paint rim = new Paint(Paint.ANTI_ALIAS_FLAG);
+        rim.setStyle(Paint.Style.STROKE);
+        rim.setStrokeWidth(Math.max(1f, ch * 0.008f));
+        rim.setColor(0x40FFFFFF);
+        for (int i = 0; i < n; i++) {
+            Bitmap c = got.get(which[i]);
+            float sw = cw * size[i];
+            float sh = ch * size[i];
+            RectF r = new RectF(-sw / 2f, -sh / 2f, sw / 2f, sh / 2f);
+            float rad = sw * 0.07f;
+            cv.save();
+            cv.translate(cx + dx[i], cy + (size[i] < 1f ? ch * 0.03f : 0f));
+            cv.rotate(angle[i]);
+            cv.drawRoundRect(r, rad, rad, shadow);
+            cv.save();
+            android.graphics.Path clip = new android.graphics.Path();
+            clip.addRoundRect(r, rad, rad, android.graphics.Path.Direction.CW);
+            cv.clipPath(clip);
+            float s = Math.max(sw / c.getWidth(), sh / c.getHeight());
+            Matrix m = new Matrix();
+            m.setScale(s, s);
+            m.postTranslate(-c.getWidth() * s / 2f, -c.getHeight() * s / 2f);
+            cv.drawBitmap(c, m, filter);
+            if (i < n - 1) {
+                // The ones behind a little darker
+                Paint dim = new Paint();
+                dim.setColor(0x4D000000);
+                cv.drawRect(r, dim);
+            }
+            cv.restore();
+            cv.drawRoundRect(r, rad, rad, rim);
+            cv.restore();
+        }
+
+        // The name at the bottom, and how many in a pill at the top
+        Paint t = new Paint(Paint.ANTI_ALIAS_FLAG);
+        t.setColor(0xFFFFFFFF);
+        t.setTypeface(com.limelight.pocket.ui.PocketFonts.bold());
+        t.setTextAlign(Paint.Align.CENTER);
+        t.setTextSize(Math.min(h * 0.075f, w * 0.11f));
+        t.setShadowLayer(h * 0.02f, 0, 0, 0xCC000000);
+        while (t.measureText(label) > w * 0.88f && t.getTextSize() > h * 0.04f) {
+            t.setTextSize(t.getTextSize() * 0.92f);
+        }
+        cv.drawText(label, w / 2f, h * 0.9f, t);
+        if (count != null) {
+            Paint cp = new Paint(Paint.ANTI_ALIAS_FLAG);
+            cp.setTextSize(h * 0.055f);
+            cp.setTypeface(com.limelight.pocket.ui.PocketFonts.semibold());
+            float tw = cp.measureText(count);
+            float pad = h * 0.03f;
+            RectF pill = new RectF(w - tw - pad * 4, pad * 2, w - pad * 2, pad * 2 + cp.getTextSize() + pad * 1.6f);
+            Paint pb = new Paint(Paint.ANTI_ALIAS_FLAG);
+            pb.setColor(0x8C000000);
+            cv.drawRoundRect(pill, pad * 1.4f, pad * 1.4f, pb);
+            cp.setColor(0xFFFFFFFF);
+            cv.drawText(count, pill.left + pad, pill.bottom - pad * 1.1f, cp);
+        }
+        return out;
+    }
+
     /**
      * The system's card: its artwork filling a card of its colour, darkened at the bottom where its
      * white logo sits, with the number of games in a pill (null when there's no artwork). Blocking.

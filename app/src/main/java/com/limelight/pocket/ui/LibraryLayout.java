@@ -304,7 +304,13 @@ public final class LibraryLayout {
     }
 
     private static Layouts.Layout previous(Context c) {
-        int n = Layouts.ALL.length;
+        // The libraries' layouts (Home's own Portal layout isn't one of them)
+        int n = 0;
+        for (Layouts.Layout each : Layouts.ALL) {
+            if (each.arrange != Layouts.PORTAL) {
+                n++;
+            }
+        }
         // nextLibrary n-1 times is the one before (and keeps the chip for it)
         Layouts.Layout l = null;
         for (int i = 0; i < n - 1; i++) {

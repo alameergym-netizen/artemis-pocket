@@ -123,6 +123,11 @@ public class HomeActivity extends ConsoleActivity {
     private View glow;
     private int glowColor;
     private static final float FOCUS_SCALE = 1.1f;
+    /** Portal layout: how much bigger the chosen tile is than the others. */
+    private static final float PORTAL_GROW = 1.42f;
+    /** Portal layout: the tile whose name shows beside it, and the room the others leave it. */
+    private int portalFocus = -1;
+    private float portalExtra;
     private static final long CHECK_TIMEOUT_MS = 12000;
     private static final long WAKE_TIMEOUT_MS = 75000;
 
@@ -599,9 +604,14 @@ public class HomeActivity extends ConsoleActivity {
             lines = 1;
         }
         h = Math.max(36f, Math.min(h, Math.max(logoBaseH, logoRoomH)));
-        float w = Math.min(430f, logoBaseW * f);
-        logo.setMaxHeight(Math.round(h * d));
-        logo.setMaxWidth(Math.round(w * d));
+        // The logo's box (LogoView scales the logo to it, up as well as down)
+        ViewGroup.LayoutParams lp = logo.getLayoutParams();
+        int px = Math.round(h * d);
+        if (lp.height != px || lp.width != ViewGroup.LayoutParams.MATCH_PARENT) {
+            lp.height = px;
+            lp.width = ViewGroup.LayoutParams.MATCH_PARENT;
+            logo.setLayoutParams(lp);
+        }
         descLimit = lines;
         if (desc != null && desc.getMaxLines() > lines) {
             desc.setMaxLines(lines);
@@ -864,8 +874,17 @@ public class HomeActivity extends ConsoleActivity {
             meta.setVisibility(View.GONE);
             return;
         }
-        if (info != null && info.metacritic > 0) {
-            meta.addView(ratingChip(info.metacritic));
+        // The critics' score (Metacritic, OpenCritic...) and the players' (Steam, Google Play)
+        GameInfo.Rating critics = info != null ? info.criticScore() : null;
+        if (critics != null) {
+            meta.addView(ratingChip(critics.score, critics.value, critics.source));
+        }
+        else if (info != null && info.metacritic > 0) {
+            meta.addView(ratingChip(info.metacritic, String.valueOf(info.metacritic), getString(R.string.pocket_meta_metacritic)));
+        }
+        GameInfo.Rating players = info != null ? info.playerScore() : null;
+        if (players != null) {
+            meta.addView(ratingChip(players.score, players.value, players.source));
         }
         String trophies = com.limelight.pocket.retro.Achievements.chip(this, e.item);
         if (trophies != null) {
@@ -933,7 +952,7 @@ public class HomeActivity extends ConsoleActivity {
     }
 
     /** The score in its colour (green / yellow / red, like Metacritic), then whose score it is. */
-    private View ratingChip(int score) {
+    private View ratingChip(int score, String value, String source) {
         LinearLayout chip = new LinearLayout(this);
         chip.setOrientation(LinearLayout.HORIZONTAL);
         chip.setGravity(Gravity.CENTER_VERTICAL);
@@ -944,12 +963,12 @@ public class HomeActivity extends ConsoleActivity {
         bg.setColor(0x40FFFFFF);
         chip.setBackground(bg);
         TextView box = new TextView(this);
-        box.setText(String.valueOf(score));
+        box.setText(value);
         box.setTypeface(PocketFonts.bold());
         box.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 10.5f);
         box.setIncludeFontPadding(false);
         box.setGravity(Gravity.CENTER);
-        int color = score >= 75 ? 0xFF66CC33 : (score >= 50 ? 0xFFFFCC33 : 0xFFFF3B30);
+        int color = com.limelight.pocket.info.Ratings.color(score);
         box.setTextColor(score >= 50 && score < 75 ? 0xFF1A1A1A : 0xFFFFFFFF);
         GradientDrawable sq = new GradientDrawable();
         sq.setCornerRadius(4 * d);
@@ -958,7 +977,7 @@ public class HomeActivity extends ConsoleActivity {
         box.setPadding(Math.round(6 * d), Math.round(3 * d), Math.round(6 * d), Math.round(3 * d));
         chip.addView(box);
         TextView label = new TextView(this);
-        label.setText(R.string.pocket_meta_metacritic);
+        label.setText(source);
         label.setTypeface(PocketFonts.medium());
         label.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 11f);
         label.setTextColor(0xE6FFFFFF);
@@ -1065,7 +1084,9 @@ public class HomeActivity extends ConsoleActivity {
      */
     private void applyLayout(boolean relayout) {
         layout = com.limelight.pocket.ui.Layouts.home(this);
-        boolean shelf = layout.arrange == com.limelight.pocket.ui.Layouts.SHELF;
+        boolean portal = layout.arrange == com.limelight.pocket.ui.Layouts.PORTAL;
+        // The Portal layout is a shelf too (one row, side to side), just at the top
+        boolean shelf = layout.arrange == com.limelight.pocket.ui.Layouts.SHELF || portal;
         boolean list = layout.arrange == com.limelight.pocket.ui.Layouts.LIST;
         String shape = layout.shape;
         float w;
@@ -1079,12 +1100,12 @@ public class HomeActivity extends ConsoleActivity {
             w = h * 2.14f;
         }
         else {
-            w = list ? 52 : (shelf ? 84 : 78);
+            w = portal ? 60 : (list ? 52 : (shelf ? 84 : 78));
             h = w;
         }
         tileW = Math.round(w * d);
         tileH = Math.round(h * d);
-        tileRadius = (com.limelight.pocket.ui.LibraryLayout.STYLE_ICON.equals(shape) ? (list ? 12 : 16) : 10) * d;
+        tileRadius = (com.limelight.pocket.ui.LibraryLayout.STYLE_ICON.equals(shape) ? (list ? 12 : (portal ? 12 : 16)) : 10) * d;
         int screenW = getResources().getDisplayMetrics().widthPixels;
         FrameLayout.LayoutParams rlp = (FrameLayout.LayoutParams) row.getLayoutParams();
         FrameLayout.LayoutParams hlp = (FrameLayout.LayoutParams) heroView.getLayoutParams();
@@ -1131,6 +1152,27 @@ public class HomeActivity extends ConsoleActivity {
             if (sideScrim != null) {
                 sideScrim.setVisibility(View.GONE);
             }
+            if (portal) {
+                // The row right under the tabs (room for the chosen tile to grow), the hero at
+                // the bottom over the art, its buttons just above the hints
+                int grown = Math.round(tileH * PORTAL_GROW);
+                rlp.gravity = Gravity.TOP;
+                rlp.topMargin = Math.round(50 * d);
+                rlp.bottomMargin = 0;
+                rlp.height = grown + Math.round(16 * d);
+                row.setPadding(Math.round(22 * d), Math.round(6 * d), Math.round(320 * d), Math.round(6 * d));
+                float top = 50 + rlp.height / d + 18;
+                float availP = screenH - top - 44;
+                float roomP = availP - 116 - 46;
+                descLines = 2;
+                if (roomP < 80) {
+                    descLines = 1;
+                    roomP = availP - 116 - 28;
+                }
+                logoMax = Math.round(Math.max(48, Math.min(112, roomP)));
+                hlp.bottomMargin = Math.round(44 * d);
+                rowLabel.setVisibility(View.GONE);
+            }
         }
         else {
             int cell = tileW + Math.round((list ? 0 : 22) * d);
@@ -1173,8 +1215,7 @@ public class HomeActivity extends ConsoleActivity {
             applyLogoScale(shownEntry.item);
         }
         else {
-            logo.setMaxWidth(Math.round(logoBaseW * d));
-            logo.setMaxHeight(Math.round(logoMax * d));
+            applyLogoScale(null);
         }
         title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, shelf ? (logoMax < 80 ? 32f : 38f) : 30f);
         desc.setMaxLines(Math.min(descLines, descLimit));
@@ -1239,12 +1280,16 @@ public class HomeActivity extends ConsoleActivity {
                 }
                 return true;
             }
-            if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN && event.getAction() == KeyEvent.ACTION_DOWN) {
+            boolean portalRow = layout != null && layout.arrange == com.limelight.pocket.ui.Layouts.PORTAL;
+            if (keyCode == (portalRow ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN)
+                    && event.getAction() == KeyEvent.ACTION_DOWN) {
+                // To the tiles (under the buttons, or above them in the Portal layout)
                 focusAt(Math.max(0, heroPos), 0);
                 return true;
             }
-            if ((keyCode == KeyEvent.KEYCODE_DPAD_UP) && event.getAction() == KeyEvent.ACTION_DOWN) {
-                return true; // nothing above the buttons but the tabs (L1 / R1)
+            if (keyCode == (portalRow ? KeyEvent.KEYCODE_DPAD_DOWN : KeyEvent.KEYCODE_DPAD_UP)
+                    && event.getAction() == KeyEvent.ACTION_DOWN) {
+                return true; // nothing on the other side but the tabs (L1 / R1) or the hints
             }
             if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && v == play && event.getAction() == KeyEvent.ACTION_DOWN
                     && layout != null && layout.arrange != com.limelight.pocket.ui.Layouts.SHELF) {
@@ -2044,6 +2089,19 @@ public class HomeActivity extends ConsoleActivity {
                     }
                     return true;
                 }
+                boolean portal = layout != null && layout.arrange == com.limelight.pocket.ui.Layouts.PORTAL;
+                if (portal && event.getAction() == KeyEvent.ACTION_DOWN) {
+                    // The row is at the top: down to the game's buttons, nothing above
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                        if (play.getVisibility() == View.VISIBLE) {
+                            play.requestFocus();
+                        }
+                        return true;
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                        return true;
+                    }
+                }
                 boolean shelf = layout == null || layout.arrange == com.limelight.pocket.ui.Layouts.SHELF;
                 if (shelf && keyCode == KeyEvent.KEYCODE_DPAD_UP && event.getAction() == KeyEvent.ACTION_DOWN) {
                     if (play.getVisibility() == View.VISIBLE) {
@@ -2065,6 +2123,7 @@ public class HomeActivity extends ConsoleActivity {
                             PocketUi.tick(HomeActivity.this);
                         }
                         updateHero(pos);
+                        portalRefresh(true);
                     }
                 }
             });
@@ -2076,6 +2135,18 @@ public class HomeActivity extends ConsoleActivity {
             HomeStore.Entry e = entries.get(position);
             sizeTile(h);
             focusLook(h, h.itemView.hasFocus(), false);
+            if (layout.arrange == com.limelight.pocket.ui.Layouts.PORTAL) {
+                portalLook(h, position == heroPos, false);
+                boolean rtl = getWindow().getDecorView().getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+                h.itemView.setTranslationX(heroPos >= 0 && position > heroPos ? portalShiftPx() * (rtl ? -1 : 1) : 0f);
+            }
+            else {
+                h.itemView.setTranslationX(0f);
+                h.name.setTranslationX(0f);
+                if (layout.arrange != com.limelight.pocket.ui.Layouts.LIST) {
+                    h.name.setAlpha(1f);
+                }
+            }
             h.name.setText(e != null ? displayName(e.item) : getString(R.string.pocket_home_add_short));
             if (e == null) {
                 h.boundKey = "+";
@@ -2159,6 +2230,7 @@ public class HomeActivity extends ConsoleActivity {
         public void onViewRecycled(@NonNull TileHolder h) {
             h.boundKey = null;
             h.itemView.animate().cancel();
+            h.itemView.setTranslationX(0f);
             focusLook(h, false, false);
             super.onViewRecycled(h);
         }
@@ -2173,17 +2245,23 @@ public class HomeActivity extends ConsoleActivity {
     private void sizeTile(TileHolder h) {
         boolean list = layout.arrange == com.limelight.pocket.ui.Layouts.LIST;
         boolean grid = layout.arrange == com.limelight.pocket.ui.Layouts.GRID;
+        boolean portal = layout.arrange == com.limelight.pocket.ui.Layouts.PORTAL;
         int pad = Math.round(10 * d);
         ViewGroup.LayoutParams flp = h.itemView.getLayoutParams();
         int fw = (list || grid) ? ViewGroup.LayoutParams.MATCH_PARENT : tileW + pad * 2;
         int fh = tileH + pad * 2;
+        if (portal) {
+            // Side by side with a small gap; tall enough for the chosen one to grow in place
+            fw = tileW + Math.round(12 * d);
+            fh = Math.round(tileH * PORTAL_GROW) + Math.round(4 * d);
+        }
         if (flp == null) {
             flp = new RecyclerView.LayoutParams(fw, fh);
         }
         flp.width = fw;
         flp.height = fh;
         h.itemView.setLayoutParams(flp);
-        int gravity = list ? (Gravity.CENTER_VERTICAL | Gravity.START) : Gravity.CENTER;
+        int gravity = list || portal ? (Gravity.CENTER_VERTICAL | Gravity.START) : Gravity.CENTER;
         int start = list ? Math.round(8 * d) : 0;
         for (View v : new View[]{h.image, h.label}) {
             FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) v.getLayoutParams();
@@ -2217,18 +2295,61 @@ public class HomeActivity extends ConsoleActivity {
             h.itemView.setPivotX(fw / 2f);
             h.itemView.setPivotY(fh / 2f);
         }
-        if (list) {
+        if (portal) {
+            // The name beside the chosen tile (wider than the tile's frame: it overhangs)
             FrameLayout.LayoutParams nlp = (FrameLayout.LayoutParams) h.name.getLayoutParams();
+            nlp.width = Math.round(240 * d);
+            nlp.gravity = Gravity.CENTER_VERTICAL | Gravity.START;
+            nlp.setMarginStart(Math.round(tileW * PORTAL_GROW) + Math.round(14 * d));
+            h.name.setLayoutParams(nlp);
+            h.name.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15f);
+            h.name.setMaxLines(2);
+            h.name.setVisibility(View.VISIBLE);
+            for (View v : new View[]{h.image, h.label, h.ring}) {
+                v.setPivotX(getWindow().getDecorView().getLayoutDirection() == View.LAYOUT_DIRECTION_RTL ? tileW : 0f);
+                v.setPivotY(tileH / 2f);
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                h.itemView.resetPivot();
+            }
+        }
+        else if (list) {
+            FrameLayout.LayoutParams nlp = (FrameLayout.LayoutParams) h.name.getLayoutParams();
+            nlp.width = ViewGroup.LayoutParams.MATCH_PARENT;
             nlp.setMarginStart(start + tileW + Math.round(18 * d));
             h.name.setLayoutParams(nlp);
+            h.name.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f);
+            h.name.setMaxLines(1);
             h.name.setVisibility(View.VISIBLE);
+            for (View v : new View[]{h.image, h.label, h.ring}) {
+                v.setScaleX(1f);
+                v.setScaleY(1f);
+            }
         }
         else {
             h.name.setVisibility(View.GONE);
+            for (View v : new View[]{h.image, h.label, h.ring}) {
+                v.setScaleX(1f);
+                v.setScaleY(1f);
+            }
         }
     }
 
     private void focusLook(TileHolder h, boolean focused, boolean animate) {
+        if (layout != null && layout.arrange == com.limelight.pocket.ui.Layouts.PORTAL) {
+            // The tile itself doesn't lift: the chosen one grows in place (portalLook); the glow
+            // shows while the row has the focus
+            h.itemView.setScaleX(1f);
+            h.itemView.setScaleY(1f);
+            h.itemView.setTranslationZ(focused ? 8 * d : 0f);
+            if (animate && PocketPrefs.animationsEnabled(this)) {
+                h.ring.animate().alpha(focused ? 1f : 0f).setDuration(focused ? 160 : 120).start();
+            }
+            else {
+                h.ring.setAlpha(focused ? 1f : 0f);
+            }
+            return;
+        }
         if (layout != null && layout.arrange == com.limelight.pocket.ui.Layouts.LIST) {
             h.name.setAlpha(focused ? 1f : 0.55f);
         }
@@ -2245,6 +2366,74 @@ public class HomeActivity extends ConsoleActivity {
             h.itemView.setScaleY(s);
             h.itemView.setTranslationZ(z);
             h.ring.setAlpha(focused ? 1f : 0f);
+        }
+    }
+
+    /** Portal layout: the current game's tile big with its name beside it, the others small. */
+    private void portalLook(TileHolder h, boolean current, boolean animate) {
+        float s = current ? PORTAL_GROW : 1f;
+        boolean anim = animate && PocketPrefs.animationsEnabled(this);
+        for (View v : new View[]{h.image, h.label, h.ring}) {
+            if (anim) {
+                v.animate().scaleX(s).scaleY(s).setDuration(Spring.UI_DURATION_MS + 60)
+                        .setInterpolator(Spring.UI_CURVE).start();
+            }
+            else {
+                v.animate().cancel();
+                v.setScaleX(s);
+                v.setScaleY(s);
+            }
+        }
+        float nameX = current ? 0f : -10 * d;
+        if (anim) {
+            h.name.animate().alpha(current ? 1f : 0f).translationX(nameX)
+                    .setStartDelay(current ? 70 : 0).setDuration(current ? 260 : 120)
+                    .setInterpolator(PocketMotion.DECELERATE).start();
+        }
+        else {
+            h.name.animate().cancel();
+            h.name.setAlpha(current ? 1f : 0f);
+            h.name.setTranslationX(nameX);
+        }
+    }
+
+    /** How far the tiles after the current one move aside for it and its name. */
+    private float portalShiftPx() {
+        return portalExtra;
+    }
+
+    /** Portal layout: every tile on screen to its place (after a move, or new tiles). */
+    private void portalRefresh(boolean animate) {
+        if (row == null || layout == null || layout.arrange != com.limelight.pocket.ui.Layouts.PORTAL) {
+            return;
+        }
+        boolean rtl = getWindow().getDecorView().getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+        for (int i = 0; i < row.getChildCount(); i++) {
+            RecyclerView.ViewHolder vh = row.getChildViewHolder(row.getChildAt(i));
+            if (vh instanceof TileHolder && vh.getBindingAdapterPosition() == heroPos) {
+                TileHolder th = (TileHolder) vh;
+                CharSequence text = th.name.getText();
+                float nameW = Math.min(240 * d, th.name.getPaint().measureText(text != null ? text.toString() : ""));
+                portalExtra = tileW * (PORTAL_GROW - 1f) + 14 * d + nameW + 22 * d;
+            }
+        }
+        boolean anim = animate && PocketPrefs.animationsEnabled(this);
+        for (int i = 0; i < row.getChildCount(); i++) {
+            View child = row.getChildAt(i);
+            RecyclerView.ViewHolder vh = row.getChildViewHolder(child);
+            if (!(vh instanceof TileHolder)) {
+                continue;
+            }
+            int pos = vh.getBindingAdapterPosition();
+            portalLook((TileHolder) vh, pos == heroPos, animate);
+            float target = heroPos >= 0 && pos > heroPos ? portalExtra * (rtl ? -1 : 1) : 0f;
+            if (anim) {
+                child.animate().translationX(target).setDuration(Spring.UI_DURATION_MS + 60)
+                        .setInterpolator(Spring.UI_CURVE).start();
+            }
+            else {
+                child.setTranslationX(target);
+            }
         }
     }
 

@@ -46,6 +46,8 @@ public final class GameInfoService {
 
     private static final long FRESH_MS = TimeUnit.DAYS.toMillis(21);
     private static final long MISS_MS = TimeUnit.DAYS.toMillis(3);
+    /** Answers from before this version of the ratings get their ratings looked up once more. */
+    static final int RATINGS_VERSION = 2;
     private static final int MAX_BYTES = 4 * 1024 * 1024;
     private static final String KEY_STEAM_ID = "pocket_info_steam_";
     private static final String KEY_PLAY_PKG = "pocket_info_play_";
@@ -114,12 +116,18 @@ public final class GameInfoService {
         final String key = key(name);
         final long now = System.currentTimeMillis();
         Entry hit = MEMORY.get(key);
-        if (!refresh && hit != null && now - hit.at < (hit.info != null ? FRESH_MS : MISS_MS)) {
+        if (!refresh && hit != null && now - hit.at < (hit.info != null ? FRESH_MS : MISS_MS)
+                && (hit.info == null || hit.info.ratingsVersion >= RATINGS_VERSION)) {
             callback.onInfo(hit.info);
             return;
         }
         IO.execute(() -> {
             Entry entry = refresh ? null : readDisk(app, key);
+            // Kept from before the ratings: just its ratings, now (not the whole lookup again)
+            if (entry != null && entry.info != null && now - entry.at < FRESH_MS
+                    && entry.info.ratingsVersion < RATINGS_VERSION && addRatings(app, entry.info, name)) {
+                writeDisk(app, key, entry);
+            }
             if (entry == null || now - entry.at >= (entry.info != null ? FRESH_MS : MISS_MS)) {
                 Entry fresh = new Entry();
                 fresh.at = System.currentTimeMillis();
@@ -418,6 +426,9 @@ public final class GameInfoService {
             }
         }
         if (info != null) {
+            addRatings(context, info, name);
+        }
+        if (info != null) {
             info.fetchedAt = System.currentTimeMillis();
         }
         return info;
@@ -446,6 +457,90 @@ public final class GameInfoService {
             info.language = lang;
         }
         return info;
+    }
+
+    // ---- Ratings ------------------------------------------------------------------------------
+
+    /**
+     * Every rating there is for it: Metacritic (Steam's), Steam's players, Wikipedia's reviews box
+     * (Metacritic, OpenCritic, GameRankings and the critics: IGN, GameSpot, Famitsu...), IGDB's
+     * critics and players, Google Play's stars. Blocking. False when nothing could be reached.
+     */
+    static boolean addRatings(Context context, GameInfo info, String name) {
+        if (info.ratings == null) {
+            info.ratings = new java.util.ArrayList<>();
+        }
+        boolean reached = false;
+        if (info.metacritic > 0) {
+            info.addRating(new GameInfo.Rating("Metacritic", String.valueOf(info.metacritic), info.metacritic,
+                    "critics", true, false));
+        }
+        if (info.steamAppId > 0) {
+            try {
+                info.addRating(ExtraParsers.parseSteamReviews(http("https://store.steampowered.com/appreviews/"
+                        + info.steamAppId + "?json=1&language=all&purchase_type=all&num_per_page=0&filter=summary")));
+                reached = true;
+            } catch (IOException | RuntimeException ignored) {
+            }
+        }
+        try {
+            String title = englishWikiTitle(info, name);
+            reached = true;
+            if (title != null) {
+                String text = ExtraParsers.wikitext(http("https://en.wikipedia.org/w/api.php?action=parse&format=json"
+                        + "&formatversion=2&prop=wikitext&redirects=1&page=" + enc(title)));
+                for (GameInfo.Rating r : Ratings.fromWikitext(text)) {
+                    info.addRating(r);
+                }
+            }
+        } catch (IOException | RuntimeException ignored) {
+        }
+        // IGDB's own (when it's set up and nothing else had critics)
+        if (info.criticScore() == null && !GameInfo.SOURCE_IGDB.equals(info.source) && Igdb.configured(context)) {
+            try {
+                GameInfo igdb = ExtraParsers.parseIgdb(Igdb.search(context, name), name);
+                reached = true;
+                if (igdb != null && igdb.ratings != null) {
+                    for (GameInfo.Rating r : igdb.ratings) {
+                        info.addRating(r);
+                    }
+                }
+            } catch (IOException | RuntimeException ignored) {
+            }
+        }
+        // The aggregates first (critics, then players), then the critics, best first
+        java.util.Collections.sort(info.ratings, (a, b) -> {
+            int ra = a.aggregate ? (a.users ? 1 : 0) : 2;
+            int rb = b.aggregate ? (b.users ? 1 : 0) : 2;
+            if (ra != rb) {
+                return ra - rb;
+            }
+            return ra == 2 ? b.score - a.score : 0;
+        });
+        if (reached) {
+            info.ratingsVersion = RATINGS_VERSION;
+        }
+        return reached;
+    }
+
+    /** The game's article on English Wikipedia (where the reviews box is), or null. */
+    private static String englishWikiTitle(GameInfo info, String name) throws IOException {
+        String page = info.pageUrl;
+        if (page != null && page.contains("en.wikipedia.org/wiki/")) {
+            try {
+                return java.net.URLDecoder.decode(page.substring(page.indexOf("/wiki/") + 6), "UTF-8").replace('_', ' ');
+            } catch (RuntimeException e) {
+                // a strange address: search below
+            }
+        }
+        String look = info.title != null && !info.title.trim().isEmpty() ? info.title : name;
+        List<String> titles = InfoParsers.parseWikiSearch(http("https://en.wikipedia.org/w/api.php?action=query"
+                + "&list=search&format=json&srlimit=5&srsearch=" + enc(look + " video game")));
+        String title = InfoParsers.bestWikiTitle(look, titles);
+        if (title == null && !look.equals(name)) {
+            title = InfoParsers.bestWikiTitle(name, titles);
+        }
+        return title;
     }
 
     private static String enc(String s) {

@@ -208,16 +208,12 @@
                 android:clipChildren="false"
                 android:clipToPadding="false">
 
-            <ImageView
+            <com.limelight.pocket.ui.LogoView
                 android:id="@+id/pocketHeroLogo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="340dp"
+                android:layout_height="match_parent"
                 android:layout_gravity="bottom|start"
-                android:adjustViewBounds="true"
                 android:importantForAccessibility="no"
-                android:maxWidth="340dp"
-                android:maxHeight="72dp"
-                android:scaleType="fitStart"
                 android:visibility="gone" />
 
             <TextView

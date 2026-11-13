@@ -184,17 +184,13 @@
                 android:textSize="10sp" />
 
             <!-- A game's logo (when there is one) takes the place of its name -->
-            <ImageView
+            <com.limelight.pocket.ui.LogoView
                 android:id="@+id/pocketHeroLogo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="340dp"
+                android:layout_height="66dp"
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="3dp"
-                android:adjustViewBounds="true"
                 android:importantForAccessibility="no"
-                android:maxWidth="340dp"
-                android:maxHeight="66dp"
-                android:scaleType="fitStart"
                 android:visibility="gone" />
 
             <TextView

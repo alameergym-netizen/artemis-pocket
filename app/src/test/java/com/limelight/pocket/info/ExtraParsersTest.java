@@ -36,7 +36,10 @@ public class ExtraParsersTest {
         assertEquals(2, info.genres.size());
         assertEquals("Nintendo EAD", info.developers.get(0));
         assertEquals("Nintendo", info.publishers.get(0));
-        assertEquals(99, info.metacritic);
+        // IGDB's critics: a rating of its own (not called Metacritic)
+        assertEquals(0, info.metacritic);
+        assertEquals("IGDB", info.criticScore().source);
+        assertEquals(99, info.criticScore().score);
         // Screenshots, then artworks
         assertEquals(3, info.screenshots.size());
         assertEquals("https://images.igdb.com/igdb/image/upload/t_1080p/sc1.jpg", info.screenshots.get(0).full);

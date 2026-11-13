@@ -720,15 +720,28 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
             if (keyArt != null) {
                 keyArt.show(ready);
             }
+            // Recently played / favourites: their own games' art (the newest first)
+            final List<RomScanner.Rom> games = system.startsWith("@") ? romsOf(system) : null;
             systemWork.execute(() -> {
                 // Each picked by itself on SteamGridDB (logo, background), else the theme's
                 Bitmap ownLogo = SystemArt.picked(this, system, PocketArt.LOGO, lw);
-                final Bitmap mark = ownLogo != null ? ownLogo : SystemArt.logo(this, system, lw, lh);
+                final Bitmap mark = ownLogo != null ? ownLogo : games != null ? null : SystemArt.logo(this, system, lw, lh);
                 final SystemArt.Info info = SystemArt.info(this, system);
-                String backKey = system + "|" + PocketArt.version();
+                String backKey = system + "|" + PocketArt.version()
+                        + (games != null && !games.isEmpty() ? "|" + games.get(0).key() : "");
                 Bitmap back = BACKDROPS.get(backKey);
                 if (back == null) {
                     back = SystemArt.picked(this, system, PocketArt.HERO, bw);
+                    if (back == null && games != null) {
+                        for (int i = 0; i < Math.min(4, games.size()) && back == null; i++) {
+                            back = SystemArt.decodeCover(PocketArt.file(this, RetroLibrary.UUID, games.get(i).id(),
+                                    PocketArt.HERO), bw);
+                        }
+                        for (int i = 0; i < Math.min(4, games.size()) && back == null; i++) {
+                            back = SystemArt.decodeCover(PocketArt.file(this, RetroLibrary.UUID, games.get(i).id(),
+                                    PocketArt.COVER), bw / 2);
+                        }
+                    }
                     if (back == null) {
                         back = SystemArt.backdrop(this, system, color, bw, bh);
                     }
@@ -1566,24 +1579,48 @@ public class RetroActivity extends ConsoleActivity implements CarouselAdapter.Li
                 // Drawn here (no text under it: the card says it all)
                 text.setVisibility(View.GONE);
                 final String style = SystemArt.style(RetroActivity.this);
-                final String artKey = "art|" + e.key + "#" + e.count + "|" + style + "|" + PocketArt.version();
+                // Recently played / favourites are drawn from their games: a new first one, a new card
+                final List<RomScanner.Rom> collection = e.kind == KIND_SYSTEM && e.system != null && e.system.startsWith("@")
+                        ? romsOf(e.system) : null;
+                String lead = collection != null && !collection.isEmpty() ? "|" + collection.get(0).key() : "";
+                final String artKey = "art|" + e.key + "#" + e.count + "|" + style + "|" + PocketArt.version() + lead;
                 Bitmap art = e.kind == KIND_SYSTEM ? CARDS.get(artKey) : null;
                 if (art != null) {
                     image.setImageBitmap(art);
                     return card;
                 }
                 image.setImageBitmap(cardFor(e, w, h));
-                if (e.kind == KIND_SYSTEM && (e.count > 0 || e.system.startsWith("@")) && SystemArt.enabled(RetroActivity.this)) {
+                final boolean themeArt = SystemArt.enabled(RetroActivity.this);
+                if (e.kind == KIND_SYSTEM && (e.count > 0 || e.system.startsWith("@")) && (themeArt || collection != null)) {
                     // The console's own art, once it's here (downloaded the first time)
                     final String system = e.system;
                     final int color = SYS_FAVS.equals(system) ? 0xFFF9A825 : SYS_RECENT.equals(system) ? 0xFF37474F : colorOf(system);
                     final String count = String.valueOf(e.count);
                     final boolean ready = SystemArt.has(RetroActivity.this, system, style);
+                    final String collectionName = e.label;
                     systemWork.execute(() -> {
                         // A cover picked on SteamGridDB for the console wins over its theme art
                         Bitmap own = SystemArt.picked(RetroActivity.this, system, PocketArt.COVER, w);
+                        Bitmap fan = null;
+                        if (own == null && collection != null) {
+                            // Its own games' covers, fanned out (the newest in front)
+                            List<Bitmap> covers = new ArrayList<>();
+                            for (RomScanner.Rom r : collection) {
+                                if (covers.size() >= 3) {
+                                    break;
+                                }
+                                Bitmap c = SystemArt.decodeCover(PocketArt.file(RetroActivity.this, RetroLibrary.UUID,
+                                        r.id(), PocketArt.COVER), Math.max(64, w / 2));
+                                if (c != null) {
+                                    covers.add(c);
+                                }
+                            }
+                            fan = SystemArt.collageCard(covers, collectionName, count,
+                                    com.limelight.pocket.ui.PocketTheme.accent(RetroActivity.this), w, h);
+                        }
                         final Bitmap made = own != null ? SystemArt.pictureCard(own, count, w, h)
-                                : SystemArt.card(RetroActivity.this, system, style, color, count, w, h);
+                                : fan != null ? fan
+                                : themeArt ? SystemArt.card(RetroActivity.this, system, style, color, count, w, h) : null;
                         if (made == null) {
                             return;
                         }

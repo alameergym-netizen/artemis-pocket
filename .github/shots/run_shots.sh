@@ -118,7 +118,7 @@ if scene home_layouts; then
   key KEYCODE_BUTTON_SELECT gamepad 2.5; shot 23_home_grid_tiles
   key KEYCODE_BUTTON_SELECT gamepad 2.5
   key KEYCODE_BUTTON_SELECT gamepad 2.5; shot 24_home_list
-  key KEYCODE_BUTTON_SELECT gamepad 2.5; shot 25_home_tiles_again
+  key KEYCODE_BUTTON_SELECT gamepad 2.5; shot 25_home_after_list
 fi
 
 if scene add; then

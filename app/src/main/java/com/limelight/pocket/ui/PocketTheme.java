@@ -18,7 +18,7 @@ public final class PocketTheme {
 
     /** Accent presets: white, ice, mint, lilac, rose, amber. */
     public static final int[] ACCENTS = {0xFFFFFFFF, 0xFF9FD8FF, 0xFF86F0C8, 0xFFC3B2FF, 0xFFFF9EBE, 0xFFFFC978,
-            0xFFFF8F7A, 0xFFC8F27A, 0xFF6FE6F0, 0xFF9E8CFF, 0xFF4CFF8F};
+            0xFFFF8F7A, 0xFFC8F27A, 0xFF6FE6F0, 0xFF9E8CFF, 0xFF4CFF8F, 0xFF3D8BFF};
 
     /** A whole look in one choice: accent, background, material and sound set. */
     public static final class Preset {
@@ -27,13 +27,20 @@ public final class PocketTheme {
         public final String backdrop;
         public final boolean frost;
         public final String sounds;
+        /** Home's layout that comes with it (null: leave it as it is). */
+        public final String layout;
 
         Preset(int name, int accent, String backdrop, boolean frost, String sounds) {
+            this(name, accent, backdrop, frost, sounds, null);
+        }
+
+        Preset(int name, int accent, String backdrop, boolean frost, String sounds, String layout) {
             this.name = name;
             this.accent = accent;
             this.backdrop = backdrop;
             this.frost = frost;
             this.sounds = sounds;
+            this.layout = layout;
         }
     }
 
@@ -47,6 +54,9 @@ public final class PocketTheme {
             new Preset(R.string.pocket_theme_arcade, 0xFF9E8CFF, PocketPrefs.BACKDROP_ART, false, "retro"),
             new Preset(R.string.pocket_theme_ocean, 0xFF6FE6F0, PocketPrefs.BACKDROP_ART, true, "crystal"),
             new Preset(R.string.pocket_theme_mono, 0xFFFFFFFF, PocketPrefs.BACKDROP_BLACK, false, "crisp"),
+            // PlayStation Portal: its blue, the game's art behind everything, and Home laid out
+            // its way (the tiles at the top, the game at the bottom)
+            new Preset(R.string.pocket_theme_portal, 0xFF3D8BFF, PocketPrefs.BACKDROP_ART, true, "crystal", "portal"),
     };
 
     /** Which theme the current settings match, or -1 when they've been mixed by hand. */
@@ -71,6 +81,9 @@ public final class PocketTheme {
                 .putString(PocketPrefs.KEY_SOUND_STYLE, t.sounds)
                 .apply();
         PocketPrefs.setFrost(context, t.frost);
+        if (t.layout != null) {
+            Layouts.setHome(context, t.layout);
+        }
     }
 
     public static int accent(Context context) {

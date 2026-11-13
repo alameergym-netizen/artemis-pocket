@@ -141,18 +141,20 @@ public abstract class ConsoleActivity extends AppCompatActivity {
             return;
         }
         float f = PocketPrefs.logoScale(this) / 100f;
-        if (Math.abs(f - 1f) < 0.01f) {
-            return;
-        }
         float d = getResources().getDisplayMetrics().density;
         // The box keeps one height for every game (nothing under it moves), a little less
         // generous than the logo can be so the row keeps its room
-        float h = Math.max(48f, Math.min(118f, 74f * f));
+        float h = Math.max(44f, Math.min(118f, 74f * f));
         ViewGroup.LayoutParams lp = box.getLayoutParams();
         lp.height = Math.round(h * d);
         box.setLayoutParams(lp);
-        logo.setMaxHeight(Math.round((h - 2f) * d));
-        logo.setMaxWidth(Math.round(Math.min(480f, 340f * f) * d));
+        // The logo fills the box's height (LogoView scales it), as wide as the size allows
+        ViewGroup.LayoutParams llp = logo.getLayoutParams();
+        int width = Math.round(Math.min(480f, 340f * Math.max(1f, f)) * d);
+        if (lp.height != box.getHeight() || llp.width != width) {
+            llp.width = width;
+            logo.setLayoutParams(llp);
+        }
     }
 
     /** Views tagged "glass" in the layout become real glass over the screen's backdrop. */
@@ -331,6 +333,40 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         }
         hideSystemBars(activity);
         keepBarsHidden(activity);
+        preferHighestRefreshRate(activity);
+    }
+
+    /**
+     * The screen's fastest refresh rate for the menus (a 120 Hz panel scrolls and animates at
+     * 120): the same resolution, the highest rate it offers. The stream sets its own.
+     */
+    private static void preferHighestRefreshRate(android.app.Activity a) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return;
+        }
+        try {
+            @SuppressWarnings("deprecation")
+            android.view.Display display = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+                    ? a.getDisplay() : a.getWindowManager().getDefaultDisplay();
+            if (display == null) {
+                return;
+            }
+            android.view.Display.Mode now = display.getMode();
+            android.view.Display.Mode best = now;
+            for (android.view.Display.Mode m : display.getSupportedModes()) {
+                if (m.getPhysicalWidth() == now.getPhysicalWidth() && m.getPhysicalHeight() == now.getPhysicalHeight()
+                        && m.getRefreshRate() > best.getRefreshRate() + 0.5f) {
+                    best = m;
+                }
+            }
+            WindowManager.LayoutParams lp = a.getWindow().getAttributes();
+            if (lp.preferredDisplayModeId != best.getModeId()) {
+                lp.preferredDisplayModeId = best.getModeId();
+                a.getWindow().setAttributes(lp);
+            }
+        } catch (RuntimeException ignored) {
+            // the system's choice then
+        }
     }
 
     @SuppressWarnings("deprecation")
@@ -395,6 +431,8 @@ public abstract class ConsoleActivity extends AppCompatActivity {
         super.onResume();
         // Back from a game: no more watching for its achievements
         com.limelight.pocket.retro.TrophyWatch.stop(this);
+        // The logo size may have been changed in Settings meanwhile
+        applyHeroLogoSize();
         PocketMusic.screenShown(this);
         com.limelight.pocket.home.PlayTime.resumed(this);
         // Just switched layout: which one it is now

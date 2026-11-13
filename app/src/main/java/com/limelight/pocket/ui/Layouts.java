@@ -34,6 +34,9 @@ public final class Layouts {
     public static final int SHELF = 0;
     public static final int GRID = 1;
     public static final int LIST = 2;
+    /** Home only: the PlayStation way, a row of tiles at the top (the chosen one bigger, its name
+     *  beside it) and the game's logo, details and Play at the bottom over its art. */
+    public static final int PORTAL = 3;
 
     public static final class Layout {
         public final String id;
@@ -63,6 +66,7 @@ public final class Layouts {
             new Layout("grid_tiles", R.string.pocket_layout_grid_tiles, GRID, LibraryLayout.STYLE_ICON),
             new Layout("grid_wide", R.string.pocket_layout_grid_wide, GRID, LibraryLayout.STYLE_WIDE),
             new Layout("list", R.string.pocket_layout_list, LIST, LibraryLayout.STYLE_ICON),
+            new Layout("portal", R.string.pocket_layout_portal, PORTAL, LibraryLayout.STYLE_ICON),
     };
 
     // ---- Home --------------------------------------------------------------------------------
@@ -81,6 +85,11 @@ public final class Layouts {
 
     public static Layout home(Context c) {
         return ALL[homeIndex(c)];
+    }
+
+    /** Home's layout, by its id ("portal", "tiles"...). */
+    public static void setHome(Context c, String id) {
+        PocketPrefs.prefs(c).edit().putString(KEY_HOME, id).apply();
     }
 
     public static Layout nextHome(Context c) {
@@ -106,6 +115,10 @@ public final class Layouts {
     /** The next layout for the libraries (saved); the screen re-creates itself to show it. */
     public static Layout nextLibrary(Context c) {
         int i = (libraryIndex(c) + 1) % ALL.length;
+        // The Portal layout is Home's own
+        while (ALL[i].arrange == PORTAL) {
+            i = (i + 1) % ALL.length;
+        }
         Layout l = ALL[i];
         PocketPrefs.setViewMode(c, l.mode());
         if (l.arrange != LIST) {
@@ -269,6 +282,25 @@ public final class Layouts {
                     c.drawRoundRect(r, rad, rad, i == 0 ? fill : dim);
                     x += tw + gap;
                 }
+            }
+            else if (l.arrange == PORTAL) {
+                // small tiles at the top (the first bigger, a line beside it), the hero at the bottom
+                float big = h * 0.36f;
+                float small = big * 0.7f;
+                r.set(x0, y0, x0 + big, y0 + big);
+                c.drawRoundRect(r, rad, rad, fill);
+                r.set(x0 + big + 2 * d, y0 + big * 0.38f, x0 + big + w * 0.22f, y0 + big * 0.62f);
+                c.drawRoundRect(r, rad, rad, fill);
+                float x = x0 + big + w * 0.26f;
+                for (int i = 0; x + small <= x0 + w + 0.5f && i < 4; i++) {
+                    r.set(x, y0, x + small, y0 + small);
+                    c.drawRoundRect(r, rad, rad, dim);
+                    x += small + 2f * d;
+                }
+                r.set(x0, y0 + h * 0.6f, x0 + w * 0.42f, y0 + h * 0.74f);
+                c.drawRoundRect(r, rad, rad, dim);
+                r.set(x0, y0 + h * 0.84f, x0 + w * 0.22f, y0 + h);
+                c.drawRoundRect(r, rad * 2, rad * 2, fill);
             }
             else if (l.arrange == GRID) {
                 // a grid on the left, a details pane on the right

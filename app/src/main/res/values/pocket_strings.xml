@@ -1248,4 +1248,13 @@
     <string name="pocket_companion_port_saved">Wi-Fi port set to %1$d</string>
     <string name="pocket_companion_port_ok">Pocket Nexus PC answers on port %1$d</string>
     <string name="pocket_companion_port_missing">Saved, but nothing answers on port %1$d yet: check the port on the PC and that Pocket Nexus PC is running</string>
+    <string name="pocket_layout_portal">Portal</string>
+    <string name="pocket_theme_portal">Portal</string>
+    <string name="pocket_accent_portal">PlayStation blue</string>
+    <string name="pocket_page_achievements">Achievements</string>
+    <string name="pocket_page_ratings">Ratings</string>
+    <string name="pocket_trophy_count_pct">%1$d / %2$d  ·  %3$d%%</string>
+    <string name="pocket_trophy_last">Last unlocked: %1$s · %2$s</string>
+    <string name="pocket_rating_critics">Critics\' average</string>
+    <string name="pocket_rating_review">Review</string>
 </resources>

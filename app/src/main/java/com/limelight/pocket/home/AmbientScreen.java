@@ -112,7 +112,12 @@ public final class AmbientScreen {
         }
     };
 
-    private final Runnable letSleep = () -> activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    private final Runnable letSleep = new Runnable() {
+        @Override
+        public void run() {
+            activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
+    };
 
     public void show(List<Item> games, int start) {
         if (showing || activity.isFinishing()) {

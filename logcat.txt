@@ -1,0 +1,400 @@
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering$StateReceiver.onReceive(Tethering.java:1141)
+E/SystemServiceRegistry(  764): 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0$android-app-LoadedApk$ReceiverDispatcher$Args(LoadedApk.java:1790)
+E/SystemServiceRegistry(  764): 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(Unknown Source:2)
+E/SystemServiceRegistry(  764): 	at android.os.Handler.handleCallback(Handler.java:942)
+E/SystemServiceRegistry(  764): 	at android.os.Handler.dispatchMessage(Handler.java:99)
+E/SystemServiceRegistry(  764): 	at android.os.Looper.loopOnce(Looper.java:201)
+E/SystemServiceRegistry(  764): 	at android.os.Looper.loop(Looper.java:288)
+E/SystemServiceRegistry(  764): 	at android.os.HandlerThread.run(HandlerThread.java:67)
+E/RIL     (  495): Error 0 transmitting APDU: 0
+E/RIL     (  495): Error 0 transmitting APDU: 0
+E/TelephonyProvider(  821): internal sim-specific settings backup data file does not exist. Aborting restore
+E/EGL_emulation(  427): eglQueryContext 3100  EGL_BAD_ATTRIBUTE
+E/EGL_emulation(  427): tid 431: eglQueryContext(2122): error 0x3004 (EGL_BAD_ATTRIBUTE)
+E/HWComposer(  427): getDisplayDecorationSupport: getDisplayDecorationSupport failed for display 4619827259835644672: Unsupported (8)
+E/GnssUtilsJni(  539): IGnssConfiguration setEsExtensionSec() failed.
+E/GnssConfiguration(  539): Unable to set ES_EXTENSION_SEC: 0
+E/SystemServiceRegistry(  764): No service published for: ethernet
+E/SystemServiceRegistry(  764): android.os.ServiceManager$ServiceNotFoundException: No service published for: ethernet
+E/SystemServiceRegistry(  764): 	at android.os.ServiceManager.getServiceOrThrow(ServiceManager.java:166)
+E/SystemServiceRegistry(  764): 	at android.app.SystemServiceRegistry$137.createService(SystemServiceRegistry.java:1825)
+E/SystemServiceRegistry(  764): 	at android.app.SystemServiceRegistry$CachedServiceFetcher.getService(SystemServiceRegistry.java:1924)
+E/SystemServiceRegistry(  764): 	at android.app.SystemServiceRegistry.getSystemService(SystemServiceRegistry.java:1601)
+E/SystemServiceRegistry(  764): 	at android.app.ContextImpl.getSystemService(ContextImpl.java:2120)
+E/SystemServiceRegistry(  764): 	at android.content.ContextWrapper.getSystemService(ContextWrapper.java:900)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.isEthernetSupported(Tethering.java:1550)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.makeSupportedDownstreams(Tethering.java:2509)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.updateSupportedDownstreams(Tethering.java:2483)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.updateConfiguration(Tethering.java:504)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.lambda$new$3(Tethering.java:339)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.$r8$lambda$gUNv5kQ9F3l-55GJaHD0NFxn_Fo(Unknown Source:0)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering$$ExternalSyntheticLambda4.accept(Unknown Source:4)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.util.VersionedBroadcastListener$Receiver.onReceive(VersionedBroadcastListener.java:103)
+E/SystemServiceRegistry(  764): 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0$android-app-LoadedApk$ReceiverDispatcher$Args(LoadedApk.java:1790)
+E/SystemServiceRegistry(  764): 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(Unknown Source:2)
+E/SystemServiceRegistry(  764): 	at android.os.Handler.handleCallback(Handler.java:942)
+E/SystemServiceRegistry(  764): 	at android.os.Handler.dispatchMessage(Handler.java:99)
+E/SystemServiceRegistry(  764): 	at android.os.Looper.loopOnce(Looper.java:201)
+E/SystemServiceRegistry(  764): 	at android.os.Looper.loop(Looper.java:288)
+E/SystemServiceRegistry(  764): 	at android.os.HandlerThread.run(HandlerThread.java:67)
+E/GnssUtilsJni(  539): IGnssConfiguration setEsExtensionSec() failed.
+E/GnssConfiguration(  539): Unable to set ES_EXTENSION_SEC: 0
+E/MboOceController(  539): onDataConnectionStateChanged unexpected State: 1
+E/WifiDataStall(  539): onDataConnectionStateChanged unexpected State: 1
+E/Netd    (  345): no such netId 100
+E/Netd    (  345): no such netId 100
+E/ConnectivityService(  539): Exception in networkAddRouteParcel for non-gateway: android.os.ServiceSpecificException: Machine is not on the network (code 64)
+E/Netd    (  345): no such netId 100
+E/ConnectivityService(  539): Exception in networkAddRouteParcel for gateway: android.os.ServiceSpecificException: Machine is not on the network (code 64)
+E/NetlinkEvent(  345): NetlinkEvent::FindParam(): Parameter 'INTERFACE' not found
+E/NetlinkEvent(  345): NetlinkEvent::FindParam(): Parameter 'STATE' not found
+E/NetlinkEvent(  345): NetlinkEvent::FindParam(): Parameter 'TIME_NS' not found
+E/NetlinkEvent(  345): NetlinkEvent::FindParam(): Parameter 'UID' not found
+E/libEGL  (  720): validate_display:538 error 3001 (EGL_NOT_INITIALIZED)
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+E/android.hardware.power.stats@1.0-service-mock(  393): Failed to getEnergyData
+E/TestHarnessModeService(  539): Failed to start Test Harness Mode; no implementation of PersistentDataBlockManagerInternal was bound!
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+E/SystemServiceRegistry(  539): No service published for: contexthub
+E/SystemServiceRegistry(  539): android.os.ServiceManager$ServiceNotFoundException: No service published for: contexthub
+E/SystemServiceRegistry(  539): 	at android.os.ServiceManager.getServiceOrThrow(ServiceManager.java:166)
+E/SystemServiceRegistry(  539): 	at android.hardware.location.ContextHubManager.<init>(ContextHubManager.java:1015)
+E/SystemServiceRegistry(  539): 	at android.app.SystemServiceRegistry$93.createService(SystemServiceRegistry.java:1123)
+E/SystemServiceRegistry(  539): 	at android.app.SystemServiceRegistry$93.createService(SystemServiceRegistry.java:1119)
+E/SystemServiceRegistry(  539): 	at android.app.SystemServiceRegistry$CachedServiceFetcher.getService(SystemServiceRegistry.java:1924)
+E/SystemServiceRegistry(  539): 	at android.app.SystemServiceRegistry.getSystemService(SystemServiceRegistry.java:1601)
+E/SystemServiceRegistry(  539): 	at android.app.ContextImpl.getSystemService(ContextImpl.java:2120)
+E/SystemServiceRegistry(  539): 	at android.content.Context.getSystemService(Context.java:4158)
+E/SystemServiceRegistry(  539): 	at com.android.server.nearby.NearbyService$SystemInjector.initializeContextHubManagerAdapter(NearbyService.java:229)
+E/SystemServiceRegistry(  539): 	at com.android.server.nearby.NearbyService.onBootPhase(NearbyService.java:164)
+E/SystemServiceRegistry(  539): 	at com.android.server.ConnectivityServiceInitializer.onBootPhase(ConnectivityServiceInitializer.java:93)
+E/SystemServiceRegistry(  539): 	at com.android.server.SystemServiceManager.startBootPhase(SystemServiceManager.java:294)
+E/SystemServiceRegistry(  539): 	at com.android.server.am.ActivityManagerService.finishBooting(ActivityManagerService.java:5111)
+E/SystemServiceRegistry(  539): 	at com.android.server.am.ActivityManagerService.bootAnimationComplete(ActivityManagerService.java:5239)
+E/SystemServiceRegistry(  539): 	at com.android.server.wm.WindowManagerService.performEnableScreen(WindowManagerService.java:3783)
+E/SystemServiceRegistry(  539): 	at com.android.server.wm.WindowManagerService.-$$Nest$mperformEnableScreen(Unknown Source:0)
+E/SystemServiceRegistry(  539): 	at com.android.server.wm.WindowManagerService$H.handleMessage(WindowManagerService.java:5394)
+E/SystemServiceRegistry(  539): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+E/SystemServiceRegistry(  539): 	at android.os.Looper.loopOnce(Looper.java:201)
+E/SystemServiceRegistry(  539): 	at android.os.Looper.loop(Looper.java:288)
+E/SystemServiceRegistry(  539): 	at android.os.HandlerThread.run(HandlerThread.java:67)
+E/SystemServiceRegistry(  539): 	at com.android.server.ServiceThread.run(ServiceThread.java:44)
+E/SystemServiceRegistry(  539): Manager wrapper not available: contexthub
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+E/WifiVendorHal(  539): getUsableChannels(l.4133) failed {.code = ERROR_NOT_SUPPORTED, .description = }
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+E/WifiVendorHal(  539): getUsableChannels(l.4133) failed {.code = ERROR_NOT_SUPPORTED, .description = }
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+E/WifiScoringParams(  539): Invalid frequency(-1), using 5G as default rssi array
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+D/nativeloader( 1265): classloader namespace configured for unbundled product apk. library_path=/product/app/LatinIME/lib/x86_64:/product/app/LatinIME/LatinIME.apk!/lib/x86_64:/product/lib64:/system/product/lib64
+E/bootstat( 1284): Failed to read /data/misc/bootstat/post_decrypt_time_elapsed: No such file or directory
+E/bootstat( 1284): Failed to parse boot time record: /data/misc/bootstat/post_decrypt_time_elapsed
+E/selinux (    0): SELinux: Could not get canonical path for /sys/kernel/debug/tracing/instances/wifi restorecon: No such file or directory.
+E/selinux (    0):  
+E/FingerprintHal(  505): Could not load fingerprints from storage at /data/vendor_de/0/fpdata/emufp.bin; it has not yet been created.
+E/FingerprintHal(  505): Could not load authenticator id from storage at /data/vendor_de/0/fpdata/emuauthid.bin; it has not yet been created.
+E/BackupPasswordManager(  539): Unable to read backup pw version
+E/BackupPasswordManager(  539): Unable to read saved backup pw hash
+E/TaskPersister(  539): File error accessing recents directory (directory doesn't exist?).
+E/icing   (  539): icing-array-storage.cc:111: Array storage bad crc 970400251 vs 0
+E/icing   (  539): icing-dynamic-trie.cc:515: Trie mmap node failed
+E/icing   (  539): document-store.cc:354: Failed to init KeyMapper file: /data/system_ce/0/appsearch/icing/document_dir/key_mapper_dir/key_mapperFailed to initialize KeyMapper
+E/icing   (  539): icing-flash-bitmap.cc:96: Flash bitmap /data/system_ce/0/appsearch/icing/index_dir/idx/lite.lexicon.prop.2 is dirty
+E/icing   (  539): icing-dynamic-trie.cc:1217: Init of /data/system_ce/0/appsearch/icing/index_dir/idx/lite.lexicon.prop.2 failed
+E/icing   (  539): icing-dynamic-trie.cc:1274: Open prop bitmap failed: /data/system_ce/0/appsearch/icing/index_dir/idx/lite.lexicon.prop.2
+E/Traceur ( 1382): traceService:stderr: Warning: No PTY. CTRL+C won't gracefully stop the trace. If you are running perfetto via adb shell, use the -tt arg (adb shell -t perfetto ...) or consider using the helper script tools/record_android_trace from the Perfetto repository.
+E/Traceur ( 1382): traceService:stderr: 
+E/perfetto(  472): ing_service_impl.cc:556 Failed to attach consumer, session 'traceur' not found for uid 10081
+E/NearbyManager(  539): Cannot stop scan with this callback because it is never registered.
+E/KeyguardUpdateMonitorLog(  720): onSubscriptionInfoChanged()
+E/FrameEvents( 1112): updateAcquireFence: Did not find frame.
+I/ResolverListAdapter( 1355): Add DisplayResolveInfo component: ComponentInfo{com.artemispocket/com.limelight.pocket.apps.HomeScreen}, intent component: ComponentInfo{com.artemispocket/com.limelight.pocket.apps.HomeScreen}
+E/MediaBrowser(  765): onConnectFailed for ComponentInfo{com.android.music/com.android.music.MediaPlaybackService}
+E/SystemServiceRegistry(  764): No service published for: ethernet
+E/SystemServiceRegistry(  764): android.os.ServiceManager$ServiceNotFoundException: No service published for: ethernet
+E/SystemServiceRegistry(  764): 	at android.os.ServiceManager.getServiceOrThrow(ServiceManager.java:166)
+E/SystemServiceRegistry(  764): 	at android.app.SystemServiceRegistry$137.createService(SystemServiceRegistry.java:1825)
+E/SystemServiceRegistry(  764): 	at android.app.SystemServiceRegistry$CachedServiceFetcher.getService(SystemServiceRegistry.java:1924)
+E/SystemServiceRegistry(  764): 	at android.app.SystemServiceRegistry.getSystemService(SystemServiceRegistry.java:1601)
+E/SystemServiceRegistry(  764): 	at android.app.ContextImpl.getSystemService(ContextImpl.java:2120)
+E/SystemServiceRegistry(  764): 	at android.content.ContextWrapper.getSystemService(ContextWrapper.java:900)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.isEthernetSupported(Tethering.java:1550)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.makeSupportedDownstreams(Tethering.java:2509)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.updateSupportedDownstreams(Tethering.java:2483)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.updateConfiguration(Tethering.java:504)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.lambda$new$3(Tethering.java:339)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.$r8$lambda$gUNv5kQ9F3l-55GJaHD0NFxn_Fo(Unknown Source:0)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering$$ExternalSyntheticLambda4.accept(Unknown Source:4)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.util.VersionedBroadcastListener$Receiver.onReceive(VersionedBroadcastListener.java:103)
+E/SystemServiceRegistry(  764): 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0$android-app-LoadedApk$ReceiverDispatcher$Args(LoadedApk.java:1790)
+E/SystemServiceRegistry(  764): 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(Unknown Source:2)
+E/SystemServiceRegistry(  764): 	at android.os.Handler.handleCallback(Handler.java:942)
+E/SystemServiceRegistry(  764): 	at android.os.Handler.dispatchMessage(Handler.java:99)
+E/SystemServiceRegistry(  764): 	at android.os.Looper.loopOnce(Looper.java:201)
+E/SystemServiceRegistry(  764): 	at android.os.Looper.loop(Looper.java:288)
+E/SystemServiceRegistry(  764): 	at android.os.HandlerThread.run(HandlerThread.java:67)
+E/GnssUtilsJni(  539): IGnssConfiguration setEsExtensionSec() failed.
+E/GnssConfiguration(  539): Unable to set ES_EXTENSION_SEC: 0
+E/NotificationUtils( 1285): Invalid channel requested: miscellaneous
+E/libprocessgroup(  539): AddTidToCgroup failed to write '1653'; fd=376: Invalid argument
+E/libprocessgroup(  539): Failed to add task into cgroup
+E/DrmHalHidl( 1752): uuid=[edef8ba979d64ace a3c827dcd51d21ed] No supported hal instance found
+E/DrmHalHidl( 1752): uuid=[edef8ba979d64ace a3c827dcd51d21ed] No supported hal instance found
+E/Netd    (  345): no such netId 101
+E/Netd    (  345): no such netId 101
+E/Netd    (  345): no such netId 101
+E/ConnectivityService(  539): Exception in networkAddRouteParcel for non-gateway: android.os.ServiceSpecificException: Machine is not on the network (code 64)
+E/Netd    (  345): no such netId 101
+E/ConnectivityService(  539): Exception in networkAddRouteParcel for gateway: android.os.ServiceSpecificException: Machine is not on the network (code 64)
+E/MultiDisplayService( 1338): invalid parameters for add/modify display
+E/WifiVendorHal(  539): stopRssiMonitoring(l.2786) failed {.code = ERROR_NOT_AVAILABLE, .description = }
+E/NetlinkEvent(  345): NetlinkEvent::FindParam(): Parameter 'INTERFACE' not found
+E/NetlinkEvent(  345): NetlinkEvent::FindParam(): Parameter 'STATE' not found
+E/NetlinkEvent(  345): NetlinkEvent::FindParam(): Parameter 'TIME_NS' not found
+E/NetlinkEvent(  345): NetlinkEvent::FindParam(): Parameter 'UID' not found
+E/netd    (  345): Error adding route ::/0 -> fe80::2 wlan0 to table 1016: File exists
+E/libprocessgroup(  539): AddTidToCgroup failed to write '1730'; fd=376: Invalid argument
+E/libprocessgroup(  539): Failed to add task into cgroup
+E/FrameEvents( 1112): updateAcquireFence: Did not find frame.
+E/SystemServiceRegistry(  764): No service published for: ethernet
+E/SystemServiceRegistry(  764): android.os.ServiceManager$ServiceNotFoundException: No service published for: ethernet
+E/SystemServiceRegistry(  764): 	at android.os.ServiceManager.getServiceOrThrow(ServiceManager.java:166)
+E/SystemServiceRegistry(  764): 	at android.app.SystemServiceRegistry$137.createService(SystemServiceRegistry.java:1825)
+E/SystemServiceRegistry(  764): 	at android.app.SystemServiceRegistry$CachedServiceFetcher.getService(SystemServiceRegistry.java:1924)
+E/SystemServiceRegistry(  764): 	at android.app.SystemServiceRegistry.getSystemService(SystemServiceRegistry.java:1601)
+E/SystemServiceRegistry(  764): 	at android.app.ContextImpl.getSystemService(ContextImpl.java:2120)
+E/SystemServiceRegistry(  764): 	at android.content.ContextWrapper.getSystemService(ContextWrapper.java:900)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.isEthernetSupported(Tethering.java:1550)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.makeSupportedDownstreams(Tethering.java:2509)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.updateSupportedDownstreams(Tethering.java:2483)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.updateConfiguration(Tethering.java:504)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering.-$$Nest$mupdateConfiguration(Unknown Source:0)
+E/SystemServiceRegistry(  764): 	at com.android.networkstack.tethering.Tethering$StateReceiver.onReceive(Tethering.java:1141)
+E/SystemServiceRegistry(  764): 	at android.app.LoadedApk$ReceiverDispatcher$Args.lambda$getRunnable$0$android-app-LoadedApk$ReceiverDispatcher$Args(LoadedApk.java:1790)
+E/SystemServiceRegistry(  764): 	at android.app.LoadedApk$ReceiverDispatcher$Args$$ExternalSyntheticLambda0.run(Unknown Source:2)
+E/SystemServiceRegistry(  764): 	at android.os.Handler.handleCallback(Handler.java:942)
+E/SystemServiceRegistry(  764): 	at android.os.Handler.dispatchMessage(Handler.java:99)
+E/SystemServiceRegistry(  764): 	at android.os.Looper.loopOnce(Looper.java:201)
+E/SystemServiceRegistry(  764): 	at android.os.Looper.loop(Looper.java:288)
+E/SystemServiceRegistry(  764): 	at android.os.HandlerThread.run(HandlerThread.java:67)
+I/ResolverListAdapter( 1355): Add DisplayResolveInfo component: ComponentInfo{com.artemispocket/com.limelight.pocket.apps.HomeScreen}, intent component: ComponentInfo{com.artemispocket/com.limelight.pocket.apps.HomeScreen}
+D/AndroidRuntime( 1910): >>>>>> START com.android.internal.os.RuntimeInit uid 2000 <<<<<<
+I/AndroidRuntime( 1910): Using default boot image
+I/AndroidRuntime( 1910): Leaving lock profiling enabled
+E/apexd   (    0): Didn't generate uevent for [com.android.apex.cts.shim] removal
+E/apexd   (    0): Didn't generate uevent for [com.android.appsearch] removal
+E/apexd   (    0): Didn't generate uevent for [com.android.btservices] removal
+E/apexd   (    0): Didn't generate uevent for [com.android.i18n] removal
+E/apexd   (    0): Didn't generate uevent for [com.android.ondevicepersonalization] removal
+E/apexd   (    0): Didn't generate uevent for [com.android.os.statsd] removal
+E/apexd   (    0): Didn't generate uevent for [com.android.runtime] removal
+E/apexd   (    0): Didn't generate uevent for [com.android.scheduling] removal
+E/apexd   (    0): Didn't generate uevent for [com.android.sdkext] removal
+E/apexd   (    0): Didn't generate uevent for [com.android.tzdata] removal
+D/AndroidRuntime( 1910): Calling main entry com.android.commands.svc.Svc
+D/AndroidRuntime( 1910): Shutting down VM
+E/apexd   (    0): Didn't generate uevent for [com.android.vndk.v33] removal
+I/ActivityManager(  539): Force stopping com.artemispocket appid=10126 user=0: from pid 1945
+D/CarrierSvcBindHelper(  821): onHandleForceStop: [com.artemispocket]
+I/ActivityManager(  539): Force stopping com.artemispocket appid=10126 user=0: from pid 1954
+D/CarrierSvcBindHelper(  821): onHandleForceStop: [com.artemispocket]
+E/C2SoftAvcEnc(  496): Unable to set air params = 0x1ad
+I/ActivityTaskManager(  539): START u0 {act=android.intent.action.MAIN cat=[android.intent.category.LAUNCHER] flg=0x10000000 cmp=com.artemispocket/com.limelight.PcView} from uid 2000
+D/CoreBackPreview(  539): Window{728f057 u0 Splash Screen com.artemispocket}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@949002d, mPriority=0}
+I/ActivityManager(  539): Start proc 1995:com.artemispocket/u0a126 for next-top-activity {com.artemispocket/com.limelight.PcView}
+V/GraphicsEnvironment( 1995): ANGLE Developer option for 'com.artemispocket' set to: 'default'
+V/GraphicsEnvironment( 1995): ANGLE GameManagerService for com.artemispocket: false
+I/ActivityTaskManager(  539): START u0 {cmp=com.artemispocket/com.limelight.pocket.home.HomeActivity} from uid 10126
+D/CoreBackPreview(  539): Window{67dd9ca u0 com.artemispocket/com.limelight.PcView}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@851ee58, mPriority=0}
+W/ActivityTaskManager(  539): Activity top resumed state loss timeout for ActivityRecord{54c2dbd u0 com.artemispocket/com.limelight.PcView} t25}
+W/ActivityTaskManager(  539): Activity pause timeout for ActivityRecord{54c2dbd u0 com.artemispocket/com.limelight.PcView} t25}
+E/SQLiteLog( 1995): (14) cannot open file at line 39583 of [bcd014c473]
+E/SQLiteLog( 1995): (14) os_unix.c:39583: (2) open(/data/user/0/com.artemispocket/databases/computers.db) - 
+E/SQLiteDatabase( 1995): Failed to open database '/data/user/0/com.artemispocket/databases/computers.db'.
+E/SQLiteDatabase( 1995): android.database.sqlite.SQLiteCantOpenDatabaseException: Cannot open database '/data/user/0/com.artemispocket/databases/computers.db' with flags 0x1: File /data/user/0/com.artemispocket/databases/computers.db doesn't exist
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:262)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:205)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.openConnectionLocked(SQLiteConnectionPool.java:512)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java:210)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java:202)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openInner(SQLiteDatabase.java:1085)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.open(SQLiteDatabase.java:1065)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java:956)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java:903)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.LegacyDatabaseReader.migrateAllComputers(SourceFile:90)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerDatabaseManager.initializeDb(SourceFile:70)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerDatabaseManager.<init>(SourceFile:55)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerManagerService.onCreate(SourceFile:726)
+E/SQLiteDatabase( 1995): 	at android.app.ActivityThread.handleCreateService(ActivityThread.java:4485)
+E/SQLiteDatabase( 1995): 	at android.app.ActivityThread.-$$Nest$mhandleCreateService(Unknown Source:0)
+E/SQLiteDatabase( 1995): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2161)
+E/SQLiteDatabase( 1995): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+E/SQLiteDatabase( 1995): 	at android.os.Looper.loopOnce(Looper.java:201)
+E/SQLiteDatabase( 1995): 	at android.os.Looper.loop(Looper.java:288)
+E/SQLiteDatabase( 1995): 	at android.app.ActivityThread.main(ActivityThread.java:7872)
+E/SQLiteDatabase( 1995): 	at java.lang.reflect.Method.invoke(Native Method)
+E/SQLiteDatabase( 1995): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+E/SQLiteDatabase( 1995): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
+E/SQLiteDatabase( 1995): Caused by: android.database.sqlite.SQLiteCantOpenDatabaseException: unknown error (code 14 SQLITE_CANTOPEN): Could not open database
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.nativeOpen(Native Method)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:224)
+E/SQLiteDatabase( 1995): 	... 22 more
+E/SQLiteLog( 1995): (14) cannot open file at line 39583 of [bcd014c473]
+E/SQLiteLog( 1995): (14) os_unix.c:39583: (2) open(/data/user/0/com.artemispocket/databases/computers2.db) - 
+E/SQLiteDatabase( 1995): Failed to open database '/data/user/0/com.artemispocket/databases/computers2.db'.
+E/SQLiteDatabase( 1995): android.database.sqlite.SQLiteCantOpenDatabaseException: Cannot open database '/data/user/0/com.artemispocket/databases/computers2.db' with flags 0x1: File /data/user/0/com.artemispocket/databases/computers2.db doesn't exist
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:262)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:205)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.openConnectionLocked(SQLiteConnectionPool.java:512)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java:210)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java:202)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openInner(SQLiteDatabase.java:1085)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.open(SQLiteDatabase.java:1065)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java:956)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java:903)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.LegacyDatabaseReader2.migrateAllComputers(SourceFile:71)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerDatabaseManager.initializeDb(SourceFile:74)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerDatabaseManager.<init>(SourceFile:55)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerManagerService.onCreate(SourceFile:726)
+E/SQLiteDatabase( 1995): 	at android.app.ActivityThread.handleCreateService(ActivityThread.java:4485)
+E/SQLiteDatabase( 1995): 	at android.app.ActivityThread.-$$Nest$mhandleCreateService(Unknown Source:0)
+E/SQLiteDatabase( 1995): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2161)
+E/SQLiteDatabase( 1995): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+E/SQLiteDatabase( 1995): 	at android.os.Looper.loopOnce(Looper.java:201)
+E/SQLiteDatabase( 1995): 	at android.os.Looper.loop(Looper.java:288)
+E/SQLiteDatabase( 1995): 	at android.app.ActivityThread.main(ActivityThread.java:7872)
+E/SQLiteDatabase( 1995): 	at java.lang.reflect.Method.invoke(Native Method)
+E/SQLiteDatabase( 1995): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+E/SQLiteDatabase( 1995): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
+E/SQLiteDatabase( 1995): Caused by: android.database.sqlite.SQLiteCantOpenDatabaseException: unknown error (code 14 SQLITE_CANTOPEN): Could not open database
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.nativeOpen(Native Method)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:224)
+E/SQLiteDatabase( 1995): 	... 22 more
+E/SQLiteLog( 1995): (14) cannot open file at line 39583 of [bcd014c473]
+E/SQLiteLog( 1995): (14) os_unix.c:39583: (2) open(/data/user/0/com.artemispocket/databases/computers3.db) - 
+E/SQLiteDatabase( 1995): Failed to open database '/data/user/0/com.artemispocket/databases/computers3.db'.
+E/SQLiteDatabase( 1995): android.database.sqlite.SQLiteCantOpenDatabaseException: Cannot open database '/data/user/0/com.artemispocket/databases/computers3.db' with flags 0x1: File /data/user/0/com.artemispocket/databases/computers3.db doesn't exist
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:262)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:205)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.openConnectionLocked(SQLiteConnectionPool.java:512)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java:210)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java:202)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openInner(SQLiteDatabase.java:1085)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.open(SQLiteDatabase.java:1065)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java:956)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java:903)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.LegacyDatabaseReader3.migrateAllComputers(SourceFile:110)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerDatabaseManager.initializeDb(SourceFile:78)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerDatabaseManager.<init>(SourceFile:55)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerManagerService.onCreate(SourceFile:726)
+E/SQLiteDatabase( 1995): 	at android.app.ActivityThread.handleCreateService(ActivityThread.java:4485)
+E/SQLiteDatabase( 1995): 	at android.app.ActivityThread.-$$Nest$mhandleCreateService(Unknown Source:0)
+E/SQLiteDatabase( 1995): 	at android.app.ActivityThread$H.handleMessage(ActivityThread.java:2161)
+E/SQLiteDatabase( 1995): 	at android.os.Handler.dispatchMessage(Handler.java:106)
+E/SQLiteDatabase( 1995): 	at android.os.Looper.loopOnce(Looper.java:201)
+E/SQLiteDatabase( 1995): 	at android.os.Looper.loop(Looper.java:288)
+E/SQLiteDatabase( 1995): 	at android.app.ActivityThread.main(ActivityThread.java:7872)
+E/SQLiteDatabase( 1995): 	at java.lang.reflect.Method.invoke(Native Method)
+E/SQLiteDatabase( 1995): 	at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:548)
+E/SQLiteDatabase( 1995): 	at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:936)
+E/SQLiteDatabase( 1995): Caused by: android.database.sqlite.SQLiteCantOpenDatabaseException: unknown error (code 14 SQLITE_CANTOPEN): Could not open database
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.nativeOpen(Native Method)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:224)
+E/SQLiteDatabase( 1995): 	... 22 more
+D/ConnectivityService(  539): requestNetwork for uid/pid:10126/1995 activeRequest: null callbackRequest: 44 [NetworkRequest [ REQUEST id=45, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10126 RequestorUid: 10126 RequestorPkg: com.artemispocket UnderlyingNetworks: Null] ]] callback flags: 0 order: 2147483647
+D/WifiNetworkFactory(  539): got request NetworkRequest [ REQUEST id=45, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10126 RequestorUid: 10126 RequestorPkg: com.artemispocket UnderlyingNetworks: Null] ]
+D/UntrustedWifiNetworkFactory(  539): got request NetworkRequest [ REQUEST id=45, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10126 RequestorUid: 10126 RequestorPkg: com.artemispocket UnderlyingNetworks: Null] ]
+D/OemPaidWifiNetworkFactory(  539): got request NetworkRequest [ REQUEST id=45, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10126 RequestorUid: 10126 RequestorPkg: com.artemispocket UnderlyingNetworks: Null] ]
+D/MultiInternetWifiNetworkFactory(  539): got request NetworkRequest [ REQUEST id=45, [ Capabilities: INTERNET&NOT_RESTRICTED&TRUSTED&NOT_VCN_MANAGED Uid: 10126 RequestorUid: 10126 RequestorPkg: com.artemispocket UnderlyingNetworks: Null] ]
+E/SQLiteLog( 1995): (14) cannot open file at line 39583 of [bcd014c473]
+E/SQLiteLog( 1995): (14) os_unix.c:39583: (2) open(/data/user/0/com.artemispocket/databases/computers.db) - 
+E/SQLiteDatabase( 1995): Failed to open database '/data/user/0/com.artemispocket/databases/computers.db'.
+E/SQLiteDatabase( 1995): android.database.sqlite.SQLiteCantOpenDatabaseException: Cannot open database '/data/user/0/com.artemispocket/databases/computers.db' with flags 0x1: File /data/user/0/com.artemispocket/databases/computers.db doesn't exist
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:262)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:205)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.openConnectionLocked(SQLiteConnectionPool.java:512)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java:210)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java:202)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openInner(SQLiteDatabase.java:1085)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.open(SQLiteDatabase.java:1065)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java:956)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java:903)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.LegacyDatabaseReader.migrateAllComputers(SourceFile:90)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerDatabaseManager.initializeDb(SourceFile:70)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerDatabaseManager.<init>(SourceFile:55)
+E/SQLiteDatabase( 1995): 	at com.limelight.pocket.home.HomeStore.load(SourceFile:174)
+E/SQLiteDatabase( 1995): 	at com.limelight.pocket.home.HomeActivity.$r8$lambda$PxiBslgEIrTxQzuDJ6vt33HNchM(SourceFile:446)
+E/SQLiteDatabase( 1995): 	at com.limelight.pocket.home.HomeActivity$$ExternalSyntheticLambda26.run(SourceFile:0)
+E/SQLiteDatabase( 1995): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1137)
+E/SQLiteDatabase( 1995): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:637)
+E/SQLiteDatabase( 1995): 	at java.lang.Thread.run(Thread.java:1012)
+E/SQLiteDatabase( 1995): Caused by: android.database.sqlite.SQLiteCantOpenDatabaseException: unknown error (code 14 SQLITE_CANTOPEN): Could not open database
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.nativeOpen(Native Method)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:224)
+E/SQLiteDatabase( 1995): 	... 17 more
+E/SQLiteLog( 1995): (14) cannot open file at line 39583 of [bcd014c473]
+E/SQLiteLog( 1995): (14) os_unix.c:39583: (2) open(/data/user/0/com.artemispocket/databases/computers2.db) - 
+E/SQLiteDatabase( 1995): Failed to open database '/data/user/0/com.artemispocket/databases/computers2.db'.
+E/SQLiteDatabase( 1995): android.database.sqlite.SQLiteCantOpenDatabaseException: Cannot open database '/data/user/0/com.artemispocket/databases/computers2.db' with flags 0x1: File /data/user/0/com.artemispocket/databases/computers2.db doesn't exist
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:262)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:205)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.openConnectionLocked(SQLiteConnectionPool.java:512)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java:210)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java:202)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openInner(SQLiteDatabase.java:1085)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.open(SQLiteDatabase.java:1065)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java:956)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java:903)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.LegacyDatabaseReader2.migrateAllComputers(SourceFile:71)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerDatabaseManager.initializeDb(SourceFile:74)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerDatabaseManager.<init>(SourceFile:55)
+E/SQLiteDatabase( 1995): 	at com.limelight.pocket.home.HomeStore.load(SourceFile:174)
+E/SQLiteDatabase( 1995): 	at com.limelight.pocket.home.HomeActivity.$r8$lambda$PxiBslgEIrTxQzuDJ6vt33HNchM(SourceFile:446)
+E/SQLiteDatabase( 1995): 	at com.limelight.pocket.home.HomeActivity$$ExternalSyntheticLambda26.run(SourceFile:0)
+E/SQLiteDatabase( 1995): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1137)
+E/SQLiteDatabase( 1995): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:637)
+E/SQLiteDatabase( 1995): 	at java.lang.Thread.run(Thread.java:1012)
+E/SQLiteDatabase( 1995): Caused by: android.database.sqlite.SQLiteCantOpenDatabaseException: unknown error (code 14 SQLITE_CANTOPEN): Could not open database
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.nativeOpen(Native Method)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:224)
+E/SQLiteDatabase( 1995): 	... 17 more
+E/SQLiteLog( 1995): (14) cannot open file at line 39583 of [bcd014c473]
+E/SQLiteLog( 1995): (14) os_unix.c:39583: (2) open(/data/user/0/com.artemispocket/databases/computers3.db) - 
+E/SQLiteDatabase( 1995): Failed to open database '/data/user/0/com.artemispocket/databases/computers3.db'.
+E/SQLiteDatabase( 1995): android.database.sqlite.SQLiteCantOpenDatabaseException: Cannot open database '/data/user/0/com.artemispocket/databases/computers3.db' with flags 0x1: File /data/user/0/com.artemispocket/databases/computers3.db doesn't exist
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:262)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:205)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.openConnectionLocked(SQLiteConnectionPool.java:512)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java:210)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnectionPool.open(SQLiteConnectionPool.java:202)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openInner(SQLiteDatabase.java:1085)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.open(SQLiteDatabase.java:1065)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java:956)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteDatabase.openDatabase(SQLiteDatabase.java:903)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.LegacyDatabaseReader3.migrateAllComputers(SourceFile:110)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerDatabaseManager.initializeDb(SourceFile:78)
+E/SQLiteDatabase( 1995): 	at com.limelight.computers.ComputerDatabaseManager.<init>(SourceFile:55)
+E/SQLiteDatabase( 1995): 	at com.limelight.pocket.home.HomeStore.load(SourceFile:174)
+E/SQLiteDatabase( 1995): 	at com.limelight.pocket.home.HomeActivity.$r8$lambda$PxiBslgEIrTxQzuDJ6vt33HNchM(SourceFile:446)
+E/SQLiteDatabase( 1995): 	at com.limelight.pocket.home.HomeActivity$$ExternalSyntheticLambda26.run(SourceFile:0)
+E/SQLiteDatabase( 1995): 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1137)
+E/SQLiteDatabase( 1995): 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:637)
+E/SQLiteDatabase( 1995): 	at java.lang.Thread.run(Thread.java:1012)
+E/SQLiteDatabase( 1995): Caused by: android.database.sqlite.SQLiteCantOpenDatabaseException: unknown error (code 14 SQLITE_CANTOPEN): Could not open database
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.nativeOpen(Native Method)
+E/SQLiteDatabase( 1995): 	at android.database.sqlite.SQLiteConnection.open(SQLiteConnection.java:224)
+E/SQLiteDatabase( 1995): 	... 17 more
+D/CoreBackPreview(  539): Window{ee6052a u0 com.artemispocket/com.limelight.pocket.home.HomeActivity}: Setting back callback OnBackInvokedCallbackInfo{mCallback=android.window.IOnBackInvokedCallback$Stub$Proxy@7e378b8, mPriority=0}
+I/ActivityTaskManager(  539): Displayed com.artemispocket/com.limelight.pocket.home.HomeActivity: +1s929ms
+D/CoreBackPreview(  539): Window{728f057 u0 Splash Screen com.artemispocket EXITING}: Setting back callback null
+W/InputManager-JNI(  539): Input channel object '728f057 Splash Screen com.artemispocket (client)' was disposed without first being removed with the input manager!
+E/TaskPersister(  539): File error accessing recents directory (directory doesn't exist?).
+D/ProfileInstaller( 1995): Skipping profile installation for com.artemispocket

@@ -1,0 +1,6 @@
+103:Note: Some input files use or override a deprecated API.
+104:Note: Recompile with -Xlint:deprecation for details.
+105:Note: Some input files use unchecked or unsafe operations.
+106:Note: Recompile with -Xlint:unchecked for details.
+191:Note: Some input files use or override a deprecated API.
+192:Note: Recompile with -Xlint:deprecation for details.
